@@ -1,9 +1,24 @@
-# supasheet-docs
+# Supasheet Documentation
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+Official documentation for [Supasheet](https://github.com/supasheet/supasheet) - a SQL-based admin panel and CMS built on top of Supabase.
 
-Run development server:
+## About Supasheet
+
+Supasheet is a powerful, code-first admin panel where you primarily write SQL to define your entire application. It leverages Supabase's core features (PostgREST, Auth, Storage, RLS) and automatically generates UI based on your database schema.
+
+### Key Features
+
+- **CRUD Operations** - Define tables and views in SQL, get automatic UI
+- **Authentication & Authorization** - Supabase Auth + PostgreSQL RLS
+- **Charts & Dashboards** - Visualizations using SQL views
+- **Reports** - Generate reports from SQL queries
+- **Audit Logs** - Automatic change tracking with PostgreSQL triggers
+- **Storage Management** - File upload/management with Supabase Storage
+- **SQL Editor** - Built-in database management
+
+## Development
+
+Run the development server:
 
 ```bash
 npm run dev
@@ -15,31 +30,54 @@ yarn dev
 
 Open http://localhost:3000 with your browser to see the result.
 
-## Explore
+## Documentation Structure
 
-In the project, you can see:
+The documentation is organized into three main sections:
 
-- `lib/source.ts`: Code for content source adapter, [`loader()`](https://fumadocs.dev/docs/headless/source-api) provides the interface to access your content.
-- `lib/layout.shared.tsx`: Shared options for layouts, optional but preferred to keep.
+### 📚 Guide (`/docs/guide`)
+Learn how to use Supasheet as a framework:
+- Installation & Quickstart
+- SQL-First Philosophy
+- CRUD Operations
+- Database Schema & Data Types
+- Authorization with RLS
+- Charts, Dashboards & Reports
+- Audit Logs & User Management
+- Storage & SQL Editor
+- Complete Examples
 
-| Route                     | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `app/(home)`              | The route group for your landing page and other pages. |
-| `app/docs`                | The documentation layout and pages.                    |
-| `app/api/search/route.ts` | The Route Handler for search.                          |
+### 🌐 Platform (`/docs/platform`)
+Information about the hosted Supasheet platform (coming soon):
+- Managed infrastructure
+- Instant deployment
+- Team collaboration
+- Custom domains
 
-### Fumadocs MDX
+### 🚀 Self-Host (`/docs/self-host`)
+Deploy Supasheet on your own infrastructure:
+- Prerequisites
+- Database Setup
+- Deployment Options
+- Internationalization
 
-A `source.config.ts` config file has been included, you can customise different options like frontmatter schema.
+## Project Structure
 
-Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
+- `content/docs/` - MDX documentation files
+- `lib/source.ts` - Content source adapter using Fumadocs
+- `lib/layout.shared.tsx` - Shared layout configuration
+- `app/(home)` - Landing page and marketing pages
+- `app/docs` - Documentation layout and pages
+- `app/api/search/route.ts` - Search API route handler
+
+## Technology Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Documentation**: [Fumadocs](https://fumadocs.dev)
+- **Styling**: Tailwind CSS
+- **Components**: Fumadocs UI
 
 ## Learn More
 
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.dev) - learn about Fumadocs
+- [Supasheet Repository](https://github.com/supasheet/supasheet)
+- [Fumadocs Documentation](https://fumadocs.dev)
+- [Next.js Documentation](https://nextjs.org/docs)
