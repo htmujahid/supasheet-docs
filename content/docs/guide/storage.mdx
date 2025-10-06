@@ -1,0 +1,180 @@
+---
+title: Storage
+description: Manage files with Supabase Storage
+---
+
+## Overview
+
+Supasheet comes with two pre-configured storage buckets for file management. Both buckets are public (files are accessible via public URLs) but have different authorization rules.
+
+You can also create additional custom buckets based on your needs.
+
+## Default Storage Buckets
+
+### Public Bucket
+
+For files that should be viewable by anyone but only managed by their owners.
+
+**Allowed Operations:**
+- **Read** - Anyone can view files (including anonymous users)
+- **Insert** - Authenticated users can upload files
+- **Update** - Only file owners can update their files
+- **Delete** - Only file owners can delete their files
+
+**Use Cases:**
+- Product images
+- Blog post images
+- Public downloads
+- Shared resources
+
+**Authorization:**
+```sql
+-- Anyone can read
+SELECT - public (anonymous + authenticated)
+
+-- Authenticated users can upload
+INSERT - authenticated
+
+-- Only owners can update their files
+UPDATE - authenticated (owner_id = auth.uid())
+
+-- Only owners can delete their files
+DELETE - authenticated (owner_id = auth.uid())
+```
+
+### Personal Bucket
+
+For private files that only the owner can access.
+
+**Allowed Operations:**
+- **Read** - Only file owners can view their files
+- **Insert** - Only file owners can upload to their own folder
+- **Update** - Only file owners can update their files
+- **Delete** - Only file owners can delete their files
+
+**Use Cases:**
+- User documents
+- Private files
+- Personal uploads
+- Sensitive data
+
+**Authorization:**
+```sql
+-- Only owners can read their files
+SELECT - authenticated (owner_id = auth.uid())
+
+-- Only owners can upload to their folder
+INSERT - authenticated (owner_id = auth.uid())
+
+-- Only owners can update their files
+UPDATE - authenticated (owner_id = auth.uid())
+
+-- Only owners can delete their files
+DELETE - authenticated (owner_id = auth.uid())
+```
+
+## Using Storage with FILE Type
+
+The easiest way to use storage is with the `FILE` data type:
+
+```sql
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  name TEXT NOT NULL,
+  image FILE,  -- Automatically uses storage
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Configure file upload
+comment on column products.image is '{"accept":"image/*","maxSize":2097152,"maxFiles":1}';
+```
+
+See [Data Types](/docs/guide/data-types) for more details on the FILE type.
+
+## File Organization
+
+Files are automatically organized using this pattern:
+
+```
+{schema}/{table}/{column}/{filename}
+```
+
+**Example:**
+- Schema: `public`
+- Table: `products`
+- Column: `image`
+- Filename: `product-photo.jpg`
+
+**Storage path:** `public/products/image/product-photo.jpg`
+
+## Access Control
+
+### Public Bucket Example
+
+```sql
+-- Everyone can view
+-- https://your-project.supabase.co/storage/v1/object/public/public/products/image/photo.jpg
+
+-- Only owner can update/delete
+UPDATE storage.objects SET ... WHERE owner_id = auth.uid();
+DELETE FROM storage.objects WHERE owner_id = auth.uid();
+```
+
+### Personal Bucket Example
+
+```sql
+-- Only owner can view, upload, update, delete
+SELECT * FROM storage.objects
+WHERE bucket_id = 'personal'
+  AND owner_id = auth.uid();
+```
+
+## Creating Custom Buckets
+
+You can create additional buckets for specific use cases:
+
+```sql
+-- Create a custom bucket
+insert into storage.buckets (id, name, public)
+values ('invoices', 'invoices', true);
+
+-- Add policies for the bucket
+create policy "Users can upload invoices"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'invoices'
+  and owner_id::uuid = auth.uid()
+);
+
+create policy "Users can read own invoices"
+on storage.objects for select
+to authenticated
+using (
+  bucket_id = 'invoices'
+  and owner_id::uuid = auth.uid()
+);
+```
+
+## Storage Limits
+
+Common file size limits in bytes:
+
+- **1 MB** = `1048576`
+- **2 MB** = `2097152`
+- **5 MB** = `5242880`
+- **10 MB** = `10485760`
+- **50 MB** = `52428800`
+- **100 MB** = `104857600`
+
+Configure in your FILE column comment:
+
+```sql
+comment on column products.image is '{"accept":"image/*","maxSize":5242880}';
+```
+
+## Next Steps
+
+- **[Data Types](/docs/guide/data-types)** - Learn about the FILE type
+- **[CRUD Operations](/docs/guide/crud-operations)** - Use storage in tables
+- **[Authorization](/docs/guide/authorization)** - Custom storage policies

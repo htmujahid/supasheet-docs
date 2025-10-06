@@ -1,0 +1,70 @@
+---
+title: Environment Variables
+description: Configure Supasheet with environment variables
+---
+
+## Development (.env.development)
+
+For local development with Supabase running locally:
+
+```bash
+# Supabase (Local)
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+```
+
+## Production (.env)
+
+Configure these for production deployment:
+
+```bash
+# Site
+NEXT_PUBLIC_SITE_URL=https://yourdomain.com
+NEXT_PUBLIC_PRODUCT_NAME=Supasheet
+NEXT_PUBLIC_SITE_TITLE="Supasheet - The easiest way to manage Supabase"
+NEXT_PUBLIC_SITE_DESCRIPTION="Supasheet is the easiest way to manage Supabase."
+NEXT_PUBLIC_DEFAULT_THEME_MODE=light
+NEXT_PUBLIC_THEME_COLOR="#ffffff"
+NEXT_PUBLIC_THEME_COLOR_DARK="#0a0a0a"
+NEXT_PUBLIC_PRIMARY_SITE_URL=https://yourdomain.com
+
+# Supabase (Get from supabase.com project settings)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Auth
+NEXT_PUBLIC_AUTH_PASSWORD=true
+NEXT_PUBLIC_AUTH_MAGIC_LINK=false
+NEXT_PUBLIC_CAPTCHA_SITE_KEY=
+
+# Locales
+NEXT_PUBLIC_LOCALES_PATH=public/locales
+
+# Feature Flags
+NEXT_PUBLIC_ENABLE_THEME_TOGGLE=true
+NEXT_PUBLIC_LANGUAGE_PRIORITY=application
+NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNT_DELETION=true
+```
+
+## Getting Supabase Credentials
+
+1. Go to [supabase.com](https://supabase.com) and sign in
+2. Open your project
+3. Go to **Settings** → **API**
+4. Copy:
+   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
+   - **anon/public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY`
+
+## Security
+
+- `NEXT_PUBLIC_*` variables are safe for client-side (exposed to browser)
+- `SUPABASE_SERVICE_ROLE_KEY` is server-side only (keep secret)
+- Never commit `.env` or `.env.local` files to git
+
+## Next Steps
+
+- **[Deployment](/docs/self-host/deployment)** - Deploy to production
+- **[Production Checklist](/docs/self-host/production-checklist)** - Pre-launch checks

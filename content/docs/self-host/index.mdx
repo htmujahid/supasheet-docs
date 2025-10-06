@@ -1,0 +1,101 @@
+---
+title: Self-Hosting Overview
+description: Deploy Supasheet on your own infrastructure
+---
+
+## Why Self-Host?
+
+Self-hosting Supasheet gives you complete control:
+
+- **Full Control** - Own your data and infrastructure
+- **Customization** - Modify the codebase as needed
+- **Privacy** - Keep sensitive data on your infrastructure
+- **Cost-Effective** - No platform fees
+- **Compliance** - Meet regulatory requirements
+
+## Tech Stack
+
+Supasheet is built with:
+
+- **Framework** - Next.js 15 (App Router)
+- **Language** - TypeScript
+- **Styling** - Tailwind CSS 4
+- **UI Components** - Shadcn UI
+- **Database** - PostgreSQL (via Supabase)
+- **Authentication** - Supabase Auth
+- **Storage** - Supabase Storage
+- **State Management** - TanStack Query
+- **Forms** - React Hook Form + Zod
+
+## Folder Structure
+
+```
+supasheet/
+├── app/                    # Next.js App Router
+│   ├── auth/              # Authentication pages
+│   ├── home/              # Main application
+│   └── api/               # API routes
+├── features/              # Feature modules
+│   ├── auth/             # Authentication
+│   ├── resource/         # CRUD interfaces
+│   ├── chart/            # Charts
+│   ├── dashboard/        # Dashboards
+│   ├── report/           # Reports
+│   └── sql/              # SQL editor
+├── components/            # Shared components
+│   ├── ui/               # Shadcn UI
+│   └── layouts/          # Layout components
+├── lib/                   # Utilities
+│   ├── supabase/         # Supabase clients
+│   └── i18n/             # Internationalization
+├── supabase/              # Database
+│   ├── migrations/       # SQL migrations
+│   └── seed.sql          # Seed data
+└── public/                # Static assets
+```
+
+## Deployment Options
+
+Supasheet can be deployed to:
+
+- **Vercel** - Recommended for Next.js (easiest)
+- **Docker** - Containerized deployment
+- **Railway** - Simple platform
+- **AWS/GCP/Azure** - Enterprise solutions
+- **VPS** - Self-managed server
+
+## Prerequisites
+
+- **Supabase Project** - Create at [supabase.com](https://supabase.com)
+- **Node.js 18+** - Runtime environment
+- **Git** - Version control
+
+## Quick Start
+
+```bash
+# Clone repository
+git clone https://github.com/supasheet/supasheet.git
+cd supasheet
+
+# Install dependencies
+npm install
+
+# Configure environment
+cp .env.example .env.local
+# Edit .env.local with your Supabase credentials
+
+# Run migrations
+npx supabase db push
+
+# Build
+npm run build
+
+# Start
+npm start
+```
+
+## Next Steps
+
+- **[Deployment](/docs/self-host/deployment)** - Deploy to production
+- **[Environment Variables](/docs/self-host/environment-variables)** - Configure settings
+- **[Production Checklist](/docs/self-host/production-checklist)** - Pre-launch checks

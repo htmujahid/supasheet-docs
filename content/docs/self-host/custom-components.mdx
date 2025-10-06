@@ -1,0 +1,508 @@
+---
+title: Custom Components
+description: Extend the UI when auto-generated interfaces aren't enough
+---
+
+## When to Use Custom Components
+
+While Supasheet auto-generates most UI, you may need custom components for:
+
+- Complex workflows or multi-step processes
+- Custom visualizations beyond standard charts
+- Integration with third-party services
+- Specialized input controls
+- Custom business logic presentation
+
+## Creating Custom Pages
+
+### Basic Custom Page
+
+```tsx
+// app/home/custom-feature/page.tsx
+import { createServerClient } from '@/lib/supabase/clients/server-client';
+
+export default async function CustomFeaturePage() {
+  const supabase = createServerClient();
+
+  const { data: products } = await supabase
+    .from('products')
+    .select('*')
+    .limit(10);
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">Custom Feature</h1>
+      <div className="grid grid-cols-3 gap-4">
+        {products?.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+### With Client Interactivity
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+import { createClient } from '@/lib/supabase/clients/client-client';
+
+export function InteractiveComponent() {
+  const [data, setData] = useState([]);
+  const supabase = createClient();
+
+  async function loadData() {
+    const { data } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    setData(data || []);
+  }
+
+  return (
+    <div>
+      <button onClick={loadData}>Load Data</button>
+      {/* Render data */}
+    </div>
+  );
+}
+```
+
+## Custom Forms
+
+### Using React Hook Form
+
+```tsx
+'use client';
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { createClient } from '@/lib/supabase/clients/client-client';
+
+const schema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  quantity: z.number().min(1),
+});
+
+type FormData = z.infer<typeof schema>;
+
+export function CustomOrderForm() {
+  const supabase = createClient();
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
+
+  async function onSubmit(data: FormData) {
+    const { error } = await supabase
+      .from('orders')
+      .insert(data);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    // Success!
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <input {...register('name')} placeholder="Name" />
+      {errors.name && <span className="text-red-500">{errors.name.message}</span>}
+
+      <input {...register('email')} placeholder="Email" />
+      {errors.email && <span className="text-red-500">{errors.email.message}</span>}
+
+      <input {...register('quantity', { valueAsNumber: true })} type="number" />
+      {errors.quantity && <span className="text-red-500">{errors.quantity.message}</span>}
+
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+```
+
+### Multi-Step Form
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+
+type Step1Data = { name: string; email: string };
+type Step2Data = { address: string; city: string };
+type Step3Data = { payment: string };
+
+export function MultiStepForm() {
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState<Partial<Step1Data & Step2Data & Step3Data>>({});
+
+  const { register, handleSubmit } = useForm();
+
+  function handleStep1(data: Step1Data) {
+    setFormData({ ...formData, ...data });
+    setStep(2);
+  }
+
+  function handleStep2(data: Step2Data) {
+    setFormData({ ...formData, ...data });
+    setStep(3);
+  }
+
+  async function handleStep3(data: Step3Data) {
+    const finalData = { ...formData, ...data };
+    // Submit to Supabase
+  }
+
+  return (
+    <div>
+      {step === 1 && (
+        <form onSubmit={handleSubmit(handleStep1)}>
+          <input {...register('name')} placeholder="Name" />
+          <input {...register('email')} placeholder="Email" />
+          <button type="submit">Next</button>
+        </form>
+      )}
+
+      {step === 2 && (
+        <form onSubmit={handleSubmit(handleStep2)}>
+          <input {...register('address')} placeholder="Address" />
+          <input {...register('city')} placeholder="City" />
+          <button type="button" onClick={() => setStep(1)}>Back</button>
+          <button type="submit">Next</button>
+        </form>
+      )}
+
+      {step === 3 && (
+        <form onSubmit={handleSubmit(handleStep3)}>
+          <input {...register('payment')} placeholder="Payment Method" />
+          <button type="button" onClick={() => setStep(2)}>Back</button>
+          <button type="submit">Submit</button>
+        </form>
+      )}
+    </div>
+  );
+}
+```
+
+## Custom Data Tables
+
+### Using TanStack Table
+
+```tsx
+'use client';
+
+import { useDataTable } from '@/interfaces/data-table/hooks/use-data-table';
+import { DataTable } from '@/interfaces/data-table/components/data-table';
+
+export function CustomDataTable({ data }: { data: any[] }) {
+  const table = useDataTable({
+    data,
+    columns: [
+      {
+        accessorKey: 'name',
+        header: 'Name',
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => (
+          <span className={`px-2 py-1 rounded ${
+            row.original.status === 'active' ? 'bg-green-100' : 'bg-red-100'
+          }`}>
+            {row.original.status}
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <button onClick={() => handleEdit(row.original)}>
+            Edit
+          </button>
+        ),
+      },
+    ],
+  });
+
+  return <DataTable table={table} />;
+}
+```
+
+## Custom Charts
+
+### Using Recharts
+
+```tsx
+'use client';
+
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/clients/client-client';
+
+export function RevenueChart() {
+  const supabase = createClient();
+
+  const { data } = useQuery({
+    queryKey: ['revenue-chart'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('charts')
+        .select('*')
+        .eq('chart_name', 'daily_revenue');
+      return data;
+    },
+  });
+
+  return (
+    <LineChart width={800} height={400} data={data}>
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis dataKey="date" />
+      <YAxis />
+      <Tooltip />
+      <Line type="monotone" dataKey="revenue" stroke="#8884d8" />
+    </LineChart>
+  );
+}
+```
+
+## Server Actions
+
+### Create Server Action
+
+```tsx
+'use server';
+
+import { createServerClient } from '@/lib/supabase/clients/server-client';
+import { revalidatePath } from 'next/cache';
+
+export async function createProduct(formData: FormData) {
+  const supabase = createServerClient();
+
+  const name = formData.get('name') as string;
+  const price = parseFloat(formData.get('price') as string);
+
+  const { error } = await supabase
+    .from('products')
+    .insert({ name, price });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath('/home/products');
+  return { success: true };
+}
+```
+
+### Use in Component
+
+```tsx
+'use client';
+
+import { createProduct } from './actions';
+import { useTransition } from 'react';
+
+export function ProductForm() {
+  const [isPending, startTransition] = useTransition();
+
+  async function handleSubmit(formData: FormData) {
+    startTransition(async () => {
+      const result = await createProduct(formData);
+      if (result.error) {
+        alert(result.error);
+      }
+    });
+  }
+
+  return (
+    <form action={handleSubmit}>
+      <input name="name" required />
+      <input name="price" type="number" step="0.01" required />
+      <button type="submit" disabled={isPending}>
+        {isPending ? 'Creating...' : 'Create Product'}
+      </button>
+    </form>
+  );
+}
+```
+
+## Realtime Features
+
+### Subscribe to Changes
+
+```tsx
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/clients/client-client';
+
+export function RealtimeOrders() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const supabase = createClient();
+
+  useEffect(() => {
+    // Initial load
+    supabase
+      .from('orders')
+      .select('*')
+      .then(({ data }) => setOrders(data || []));
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('orders-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setOrders((prev) => [payload.new, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setOrders((prev) =>
+              prev.map((order) =>
+                order.id === payload.new.id ? payload.new : order
+              )
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setOrders((prev) =>
+              prev.filter((order) => order.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
+
+  return (
+    <div>
+      <h2>Live Orders ({orders.length})</h2>
+      {orders.map((order) => (
+        <div key={order.id}>{order.status}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Integration with Third-Party APIs
+
+### Payment Integration
+
+```tsx
+'use server';
+
+import { createServerClient } from '@/lib/supabase/clients/server-client';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+export async function createCheckoutSession(orderId: string) {
+  const supabase = createServerClient();
+
+  // Get order details
+  const { data: order } = await supabase
+    .from('orders')
+    .select('*, order_items(*)')
+    .eq('id', orderId)
+    .single();
+
+  if (!order) throw new Error('Order not found');
+
+  // Create Stripe session
+  const session = await stripe.checkout.sessions.create({
+    line_items: order.order_items.map((item: any) => ({
+      price_data: {
+        currency: 'usd',
+        product_data: { name: item.name },
+        unit_amount: item.price * 100,
+      },
+      quantity: item.quantity,
+    })),
+    mode: 'payment',
+    success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/success`,
+    cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/cancel`,
+  });
+
+  return { sessionId: session.id };
+}
+```
+
+## Styling Custom Components
+
+### Using Tailwind CSS
+
+```tsx
+export function StyledCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border bg-card p-6 shadow-sm">
+      <h3 className="text-lg font-semibold mb-4">{title}</h3>
+      <div className="space-y-4">
+        {children}
+      </div>
+    </div>
+  );
+}
+```
+
+### Using Shadcn Components
+
+```tsx
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+
+export function ShippingForm() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Shipping Information</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Input placeholder="Address" />
+        <Input placeholder="City" />
+        <Input placeholder="Postal Code" />
+        <Button>Save Address</Button>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+## Adding to Navigation
+
+Update the sidebar:
+
+```tsx
+// components/layouts/primary-sidebar.tsx
+import { Package, BarChart, FileText, Settings, CustomIcon } from 'lucide-react';
+
+const navigationItems = [
+  // ... existing items
+  {
+    label: 'Custom Feature',
+    path: '/home/custom-feature',
+    icon: <CustomIcon className="w-4 h-4" />,
+  },
+];
+```
+
+## Next Steps
+
+- **[Internationalization](/docs/guide/internationalization)** - Add translations
+- **[Theming](/docs/guide/theming)** - Customize appearance
+- **[CRUD Operations](/docs/guide/crud-operations)** - Leverage auto-generated UI

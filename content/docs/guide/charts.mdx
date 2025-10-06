@@ -1,0 +1,502 @@
+---
+title: Charts
+description: Create data visualizations using SQL views
+---
+
+## Overview
+
+Charts in Supasheet are created by defining SQL views in the `charts` schema. To display a chart, you need to:
+
+1. Create a view in the `charts` schema
+2. Grant permissions on the view
+3. **Register the chart** in the `supasheet.charts` table
+4. Grant `:select` permission to roles
+
+## Chart Types
+
+Supasheet supports these chart types:
+
+- **`area`** - Area chart for trends over time
+- **`bar`** - Bar chart for categorical comparisons
+- **`line`** - Line chart for time-series data
+- **`pie`** - Pie chart for distribution visualization
+- **`radar`** - Radar chart for multi-metric comparison
+
+## Creating Charts
+
+### Area Chart
+
+```sql
+-- Step 1: Create view
+create view charts.task_trend_area as
+select
+  to_char(date_trunc('day', created_at), 'Mon DD') as date,
+  count(*) filter (where status = 'completed') as completed,
+  count(*) filter (where status = 'pending') as pending,
+  count(*) filter (where status = 'in_progress') as active
+from tasks
+where created_at >= current_date - interval '7 days'
+group by date_trunc('day', created_at)
+order by date_trunc('day', created_at);
+
+-- Step 2: Grant permissions
+revoke all on charts.task_trend_area from authenticated, service_role;
+grant select on charts.task_trend_area to authenticated;
+
+-- Step 3: Register chart
+insert into supasheet.charts (name, description, "group", chart_type, view_name, is_active)
+values ('Task Trend', 'Task creation trend over last 7 days', 'Tasks', 'area', 'task_trend_area', true);
+
+-- Step 4: Grant permission to role
+insert into supasheet.role_permissions (role, permission)
+values ('user', 'charts.task_trend_area:select');
+```
+
+### Bar Chart
+
+```sql
+-- View for bar chart
+create view charts.task_priority_bar as
+select
+  priority as label,
+  count(*) as total,
+  count(*) filter (where status = 'completed') as completed
+from tasks
+group by priority
+order by
+  case priority
+    when 'urgent' then 1
+    when 'high' then 2
+    when 'medium' then 3
+    when 'low' then 4
+  end;
+
+grant select on charts.task_priority_bar to authenticated;
+
+insert into supasheet.charts (name, description, "group", chart_type, view_name, is_active)
+values ('Priority Breakdown', 'Tasks grouped by priority level', 'Tasks', 'bar', 'task_priority_bar', true);
+```
+
+### Line Chart
+
+```sql
+-- View for line chart
+create view charts.task_completion_line as
+select
+  to_char(date_trunc('day', created_at), 'Mon DD') as date,
+  count(*) as created,
+  count(*) filter (where status = 'completed') as completed
+from tasks
+where created_at >= current_date - interval '14 days'
+group by date_trunc('day', created_at)
+order by date_trunc('day', created_at);
+
+grant select on charts.task_completion_line to authenticated;
+
+insert into supasheet.charts (name, description, "group", chart_type, view_name, is_active)
+values ('Completion Rate', 'Daily task completion over 2 weeks', 'Tasks', 'line', 'task_completion_line', true);
+```
+
+### Pie Chart
+
+```sql
+-- View for pie chart
+create view charts.task_status_pie as
+select
+  status as label,
+  count(*) as value
+from tasks
+group by status;
+
+grant select on charts.task_status_pie to authenticated;
+
+insert into supasheet.charts (name, description, "group", chart_type, view_name, is_active)
+values ('Status Distribution', 'Current task status breakdown', 'Tasks', 'pie', 'task_status_pie', true);
+```
+
+### Radar Chart
+
+```sql
+-- View for radar chart
+create view charts.task_metrics_radar as
+select
+  priority as metric,
+  count(*) as total,
+  count(*) filter (where status = 'completed') as completed,
+  count(*) filter (where due_date < current_timestamp and status != 'completed') as overdue
+from tasks
+group by priority;
+
+grant select on charts.task_metrics_radar to authenticated;
+
+insert into supasheet.charts (name, description, "group", chart_type, view_name, is_active)
+values ('Priority Metrics', 'Task metrics across priorities', 'Tasks', 'radar', 'task_metrics_radar', true);
+```
+
+## Chart Types
+
+### Single Metric
+
+```sql
+CREATE VIEW charts.total_revenue AS
+SELECT
+  SUM(total) as value,
+  'Total Revenue' as label
+FROM orders;
+```
+
+### Multi-Series Line Chart
+
+```sql
+CREATE VIEW charts.revenue_vs_cost AS
+SELECT
+  DATE(created_at) as date,
+  SUM(total) as revenue,
+  SUM(cost) as cost,
+  SUM(total - cost) as profit
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '30 days'
+GROUP BY date
+ORDER BY date;
+```
+
+### Stacked Bar Chart
+
+```sql
+CREATE VIEW charts.orders_by_status_daily AS
+SELECT
+  DATE(created_at) as date,
+  COUNT(*) FILTER (WHERE status = 'pending') as pending,
+  COUNT(*) FILTER (WHERE status = 'processing') as processing,
+  COUNT(*) FILTER (WHERE status = 'completed') as completed
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '30 days'
+GROUP BY date
+ORDER BY date;
+```
+
+### Horizontal Bar Chart
+
+```sql
+CREATE VIEW charts.top_customers AS
+SELECT
+  u.name as customer,
+  SUM(o.total) as lifetime_value
+FROM orders o
+JOIN users u ON o.customer_id = u.id
+GROUP BY u.id, u.name
+ORDER BY lifetime_value DESC
+LIMIT 10;
+```
+
+## Advanced Charts
+
+### Funnel Chart
+
+```sql
+CREATE VIEW charts.sales_funnel AS
+SELECT
+  'Visitors' as stage,
+  (SELECT COUNT(*) FROM page_views) as count,
+  1 as order_index
+UNION ALL
+SELECT
+  'Sign Ups' as stage,
+  (SELECT COUNT(*) FROM users) as count,
+  2 as order_index
+UNION ALL
+SELECT
+  'Trial Started' as stage,
+  (SELECT COUNT(*) FROM subscriptions WHERE status = 'trial') as count,
+  3 as order_index
+UNION ALL
+SELECT
+  'Paid Customers' as stage,
+  (SELECT COUNT(*) FROM subscriptions WHERE status = 'active') as count,
+  4 as order_index
+ORDER BY order_index;
+```
+
+### Heatmap
+
+```sql
+CREATE VIEW charts.sales_heatmap AS
+SELECT
+  EXTRACT(HOUR FROM created_at) as hour,
+  TO_CHAR(created_at, 'Day') as day,
+  COUNT(*) as orders
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '30 days'
+GROUP BY hour, day;
+```
+
+### Comparison Chart
+
+```sql
+CREATE VIEW charts.yoy_comparison AS
+SELECT
+  DATE_TRUNC('month', created_at) as month,
+  SUM(total) FILTER (WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())) as this_year,
+  SUM(total) FILTER (WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW()) - 1) as last_year
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '2 years'
+GROUP BY month
+ORDER BY month;
+```
+
+### Gauge Chart
+
+For progress or percentage metrics:
+
+```sql
+CREATE VIEW charts.goal_progress AS
+SELECT
+  (SELECT SUM(total) FROM orders WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())) as current,
+  100000 as goal,
+  ROUND(
+    (SELECT SUM(total) FROM orders WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW()))::NUMERIC / 100000 * 100,
+    2
+  ) as percentage;
+```
+
+## User-Specific Charts
+
+Show personalized data using RLS:
+
+```sql
+-- Sales rep performance
+CREATE VIEW charts.my_sales_trend AS
+SELECT
+  DATE(created_at) as date,
+  SUM(total) as revenue
+FROM orders
+WHERE sales_rep_id = auth.uid()
+  AND created_at >= NOW() - INTERVAL '30 days'
+GROUP BY date
+ORDER BY date;
+
+-- Customer spending
+CREATE VIEW charts.my_spending AS
+SELECT
+  DATE_TRUNC('month', created_at) as month,
+  SUM(total) as spent
+FROM orders
+WHERE customer_id = auth.uid()
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12;
+```
+
+## Dynamic Filtering
+
+Add date range parameters:
+
+```sql
+CREATE VIEW charts.flexible_revenue AS
+SELECT
+  DATE(created_at) as date,
+  SUM(total) as revenue
+FROM orders
+WHERE created_at >= COALESCE(
+  (current_setting('app.start_date', true))::DATE,
+  NOW() - INTERVAL '30 days'
+)
+AND created_at <= COALESCE(
+  (current_setting('app.end_date', true))::DATE,
+  NOW()
+)
+GROUP BY date
+ORDER BY date;
+
+-- Use with:
+-- SET app.start_date = '2024-01-01';
+-- SET app.end_date = '2024-01-31';
+```
+
+## Chart Metadata
+
+Add descriptions and formatting hints:
+
+```sql
+CREATE VIEW charts.monthly_revenue AS
+SELECT
+  DATE_TRUNC('month', created_at) as month,
+  SUM(total) as revenue,
+  'currency' as format,  -- Hint for number formatting
+  'line' as chart_type   -- Suggested chart type
+FROM orders
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12;
+
+COMMENT ON VIEW charts.monthly_revenue IS
+  'Monthly revenue trend for the last 12 months';
+```
+
+## Performance Optimization
+
+### Materialized Views
+
+For complex or slow queries:
+
+```sql
+CREATE MATERIALIZED VIEW charts.expensive_chart AS
+SELECT
+  category,
+  subcategory,
+  COUNT(*) as count,
+  SUM(revenue) as total_revenue,
+  AVG(revenue) as avg_revenue
+FROM large_fact_table
+JOIN dimension_table USING (id)
+GROUP BY category, subcategory;
+
+-- Create index
+CREATE INDEX ON charts.expensive_chart(category);
+
+-- Refresh periodically
+REFRESH MATERIALIZED VIEW charts.expensive_chart;
+```
+
+### Incremental Updates
+
+```sql
+-- Only update recent data
+CREATE MATERIALIZED VIEW charts.recent_metrics AS
+SELECT
+  DATE(created_at) as date,
+  SUM(total) as revenue
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '90 days'
+GROUP BY date;
+
+-- Refresh more frequently (every hour)
+CREATE OR REPLACE FUNCTION refresh_recent_charts()
+RETURNS void AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW charts.recent_metrics;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### Indexes
+
+Add indexes on frequently queried columns:
+
+```sql
+-- Index for date filtering
+CREATE INDEX orders_created_at_idx ON orders(created_at DESC);
+
+-- Index for grouping
+CREATE INDEX orders_status_idx ON orders(status);
+
+-- Composite index
+CREATE INDEX orders_date_status_idx ON orders(created_at, status);
+```
+
+## Complete Charts Example
+
+```sql
+-- Create charts schema
+CREATE SCHEMA IF NOT EXISTS charts;
+GRANT USAGE ON SCHEMA charts TO authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA charts TO authenticated;
+
+-- Revenue trend
+CREATE VIEW charts.revenue_trend AS
+SELECT
+  DATE(created_at) as date,
+  SUM(total) as revenue,
+  COUNT(*) as orders,
+  AVG(total) as avg_order_value
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '90 days'
+GROUP BY date
+ORDER BY date;
+
+-- Category breakdown
+CREATE VIEW charts.category_sales AS
+SELECT
+  p.category,
+  COUNT(oi.id) as items_sold,
+  SUM(oi.quantity * oi.price) as revenue
+FROM order_items oi
+JOIN products p ON oi.product_id = p.id
+WHERE oi.created_at >= NOW() - INTERVAL '30 days'
+GROUP BY p.category
+ORDER BY revenue DESC;
+
+-- Customer segments
+CREATE VIEW charts.customer_distribution AS
+SELECT
+  CASE
+    WHEN order_count >= 10 THEN 'Frequent (10+)'
+    WHEN order_count >= 5 THEN 'Regular (5-9)'
+    WHEN order_count >= 2 THEN 'Occasional (2-4)'
+    ELSE 'One-time'
+  END as segment,
+  COUNT(*) as customers
+FROM (
+  SELECT customer_id, COUNT(*) as order_count
+  FROM orders
+  GROUP BY customer_id
+) customer_orders
+GROUP BY segment;
+
+-- Growth metrics
+CREATE VIEW charts.user_growth AS
+SELECT
+  DATE(created_at) as date,
+  COUNT(*) OVER (ORDER BY DATE(created_at)) as cumulative_users,
+  COUNT(*) as new_users
+FROM users
+WHERE created_at >= NOW() - INTERVAL '90 days'
+GROUP BY date
+ORDER BY date;
+
+-- Product performance
+CREATE VIEW charts.top_products AS
+SELECT
+  p.name,
+  SUM(oi.quantity) as units_sold,
+  SUM(oi.quantity * oi.price) as revenue
+FROM products p
+JOIN order_items oi ON p.id = oi.product_id
+JOIN orders o ON oi.order_id = o.id
+WHERE o.created_at >= NOW() - INTERVAL '30 days'
+GROUP BY p.id, p.name
+ORDER BY revenue DESC
+LIMIT 10;
+```
+
+## Chart Permissions
+
+Control access to sensitive data:
+
+```sql
+-- Public charts (no RLS needed)
+CREATE VIEW charts.public_stats AS
+SELECT
+  COUNT(*) as total_users,
+  COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as new_users_week
+FROM users;
+
+-- Role-based access
+CREATE VIEW charts.admin_revenue AS
+SELECT
+  DATE(created_at) as date,
+  SUM(total) as revenue
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '30 days'
+  AND (
+    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
+    OR sales_rep_id = auth.uid()
+  )
+GROUP BY date;
+```
+
+## Next Steps
+
+- **[Dashboards](/docs/guide/dashboards)** - Combine charts into dashboards
+- **[Reports](/docs/guide/reports)** - Generate detailed reports
+- **[Database Schema](/docs/guide/database-schema)** - Learn more about the charts schema

@@ -1,0 +1,152 @@
+---
+title: Deployment
+description: Deploy Supasheet to production
+---
+
+## Prerequisites
+
+Before deploying, you need:
+
+1. **Create Supabase Project**
+   - Go to [supabase.com](https://supabase.com)
+   - Click "New Project"
+   - Note your project URL and API keys
+
+2. **Push Database Migrations**
+   ```bash
+   # Link to your Supabase project
+   npx supabase link --project-ref your-project-ref
+
+   # Push all migrations
+   npx supabase db push
+   ```
+
+3. **Configure Environment Variables**
+   - Get credentials from Supabase dashboard
+   - Set up in your deployment platform
+
+## Environment Variables
+
+Required variables for deployment:
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# App Configuration
+NEXT_PUBLIC_SITE_URL=https://yourdomain.com
+NEXT_PUBLIC_PRODUCT_NAME=Supasheet
+NEXT_PUBLIC_DEFAULT_LOCALE=en
+NEXT_PUBLIC_DEFAULT_THEME_MODE=system
+```
+
+## Deployment Platforms
+
+### Vercel (Recommended)
+
+Easiest deployment for Next.js applications.
+
+**Steps:**
+1. Go to [vercel.com](https://vercel.com)
+2. Import your Git repository
+3. Add environment variables (Settings → Environment Variables)
+4. Deploy
+
+**CLI:**
+```bash
+npm i -g vercel
+vercel login
+vercel --prod
+```
+
+### Docker
+
+For containerized deployments.
+
+**Build and run:**
+```bash
+docker build -t supasheet .
+docker run -p 3000:3000 --env-file .env supasheet
+```
+
+### Railway
+
+Simple deployment with built-in databases.
+
+**Steps:**
+1. Go to [railway.app](https://railway.app)
+2. New Project → Deploy from GitHub
+3. Add environment variables
+4. Deploy
+
+### VPS (Ubuntu/Debian)
+
+For self-managed servers.
+
+**Setup:**
+```bash
+# Install dependencies
+sudo apt update && sudo apt install -y nodejs npm nginx
+
+# Clone and build
+git clone https://github.com/supasheet/supasheet.git
+cd supasheet
+npm install
+npm run build
+
+# Start with PM2
+npm install -g pm2
+pm2 start npm --name supasheet -- start
+pm2 save
+pm2 startup
+```
+
+## Pushing Migrations
+
+After deploying, ensure migrations are applied:
+
+```bash
+# Link to your Supabase project
+npx supabase link --project-ref your-project-ref
+
+# Push all migrations
+npx supabase db push
+
+# Or push specific migration
+npx supabase db push --include-seed
+```
+
+For production Supabase projects, you can also use the Supabase CLI:
+
+```bash
+# Set project reference
+export SUPABASE_PROJECT_REF=your-project-ref
+export SUPABASE_ACCESS_TOKEN=your-access-token
+
+# Push migrations
+npx supabase db push
+```
+
+## Post-Deployment
+
+1. **Verify Deployment**
+   - Visit your deployed URL
+   - Test sign up/sign in
+   - Check CRUD operations
+
+2. **Configure Custom Domain** (optional)
+   - Add domain in platform settings
+   - Update DNS records
+   - Wait for SSL provisioning
+
+3. **Monitor**
+   - Check deployment logs
+   - Verify database connection
+   - Test critical features
+
+## Next Steps
+
+- **[Environment Variables](/docs/self-host/environment-variables)** - Full variable list
+- **[Production Checklist](/docs/self-host/production-checklist)** - Pre-launch verification

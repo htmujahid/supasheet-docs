@@ -1,0 +1,453 @@
+---
+title: Dashboards
+description: Build data dashboards using SQL views
+---
+
+## Overview
+
+Dashboards in Supasheet are powered by SQL views in the `dashboards` schema. To display a dashboard widget, you need to:
+
+1. Create a view in the `dashboards` schema
+2. Grant permissions on the view
+3. **Register the widget** in the `supasheet.dashboards` table
+4. Grant `:select` permission to roles
+
+## Widget Types
+
+Supasheet supports these dashboard widget types:
+
+- **`card_1`** - Simple metric card (value, icon, label)
+- **`card_2`** - Split layout card (primary/secondary values)
+- **`card_3`** - Value with percentage
+- **`card_4`** - Progress layout with segments
+- **`table_1`** - Simple table (2-3 columns)
+- **`table_2`** - Detailed table (4-5 columns)
+
+## Creating Dashboard Widgets
+
+### Card 1 - Simple Metric
+
+```sql
+-- Step 1: Create view
+create view dashboards.task_summary as
+select
+  count(*) as value,
+  'list-todo' as icon,
+  'active tasks' as label
+from tasks
+where status != 'completed';
+
+-- Step 2: Grant permissions
+revoke all on dashboards.task_summary from authenticated, service_role;
+grant select on dashboards.task_summary to authenticated;
+
+-- Step 3: Register widget
+insert into supasheet.dashboards (name, description, "group", widget_type, view_name, is_active)
+values ('Task Summary', 'Summary of active tasks', 'Tasks', 'card_1', 'task_summary', true);
+
+-- Step 4: Grant permission to role
+insert into supasheet.role_permissions (role, permission)
+values ('user', 'dashboards.task_summary:select');
+```
+
+### Card 2 - Split Layout
+
+```sql
+-- View for card_2 (primary/secondary values)
+create view dashboards.task_completion_rate as
+select
+  count(*) filter (where status = 'completed') as primary,
+  count(*) filter (where status != 'completed') as secondary,
+  'Completed' as primary_label,
+  'Active' as secondary_label
+from tasks;
+
+grant select on dashboards.task_completion_rate to authenticated;
+
+insert into supasheet.dashboards (name, description, "group", widget_type, view_name, is_active)
+values ('Task Overview', 'Completed vs Active tasks', 'Tasks', 'card_2', 'task_completion_rate', true);
+```
+
+### Card 3 - Value with Percentage
+
+```sql
+-- View for card_3 (value and percent)
+create view dashboards.tasks_by_status as
+select
+  count(*) filter (where status = 'completed') as value,
+  case
+    when count(*) > 0
+    then round((count(*) filter (where status = 'completed')::numeric / count(*)::numeric) * 100, 1)
+    else 0
+  end as percent
+from tasks;
+
+grant select on dashboards.tasks_by_status to authenticated;
+
+insert into supasheet.dashboards (name, description, caption, "group", widget_type, view_name, is_active)
+values ('Status Breakdown', 'Tasks by current status', 'Completed Tasks', 'Tasks', 'card_3', 'tasks_by_status', true);
+```
+
+### Card 4 - Progress with Segments
+
+```sql
+-- View for card_4 (progress layout)
+create view dashboards.task_urgent_count as
+select
+  count(*) filter (where status != 'completed' and priority in ('high', 'urgent')) as current,
+  count(*) filter (where status != 'completed') as total,
+  json_build_array(
+    json_build_object('label', 'Urgent', 'value', count(*) filter (where priority = 'urgent' and status != 'completed')),
+    json_build_object('label', 'High', 'value', count(*) filter (where priority = 'high' and status != 'completed')),
+    json_build_object('label', 'Overdue', 'value', count(*) filter (where due_date < current_timestamp and status != 'completed'))
+  ) as segments
+from tasks;
+
+grant select on dashboards.task_urgent_count to authenticated;
+
+insert into supasheet.dashboards (name, description, "group", widget_type, view_name, is_active)
+values ('Priority Alert', 'High priority items', 'Tasks', 'card_4', 'task_urgent_count', true);
+```
+
+### Table 1 - Simple Table
+
+```sql
+-- View for table_1 (2-3 columns)
+create view dashboards.task_list_simple as
+select
+  title,
+  status,
+  priority
+from tasks
+order by created_at desc
+limit 10;
+
+grant select on dashboards.task_list_simple to authenticated;
+
+insert into supasheet.dashboards (name, description, caption, "group", widget_type, view_name, is_active)
+values ('Recent Tasks', 'Latest tasks in the system', 'Last 10 tasks', 'Tasks', 'table_1', 'task_list_simple', true);
+```
+
+### Table 2 - Detailed Table
+
+```sql
+-- View for table_2 (4-5 columns)
+create view dashboards.task_list_detailed as
+select
+  title,
+  status,
+  priority,
+  to_char(created_at, 'MM/DD HH24:MI') as created,
+  case
+    when due_date < current_timestamp and status != 'completed' then 'Overdue'
+    when due_date is null then '-'
+    else to_char(due_date, 'MM/DD')
+  end as due
+from tasks
+order by created_at desc
+limit 10;
+
+grant select on dashboards.task_list_detailed to authenticated;
+
+insert into supasheet.dashboards (name, description, caption, "group", widget_type, view_name, is_active)
+values ('Task Overview', 'Detailed task listing', 'Recent activity', 'Tasks', 'table_2', 'task_list_detailed', true);
+```
+
+## Dashboard Types
+
+### KPI Cards
+
+Single metric displays:
+
+```sql
+CREATE VIEW dashboards.revenue_today AS
+SELECT
+  COALESCE(SUM(total), 0) as amount,
+  'Today''s Revenue' as label,
+  'currency' as format
+FROM orders
+WHERE DATE(created_at) = CURRENT_DATE;
+```
+
+### Lists
+
+Recent activity or top items:
+
+```sql
+CREATE VIEW dashboards.recent_orders AS
+SELECT
+  o.id,
+  o.created_at,
+  u.email as customer,
+  o.total,
+  o.status
+FROM orders o
+JOIN users u ON o.user_id = u.id
+ORDER BY o.created_at DESC
+LIMIT 10;
+```
+
+### Aggregations
+
+Grouped data:
+
+```sql
+CREATE VIEW dashboards.sales_by_category AS
+SELECT
+  p.category,
+  COUNT(oi.id) as items_sold,
+  SUM(oi.quantity * oi.price) as revenue
+FROM order_items oi
+JOIN products p ON oi.product_id = p.id
+GROUP BY p.category
+ORDER BY revenue DESC;
+```
+
+## User-Specific Dashboards
+
+Use RLS to show personalized dashboards:
+
+```sql
+-- Sales rep dashboard
+CREATE VIEW dashboards.my_sales AS
+SELECT
+  COUNT(*) as my_orders,
+  SUM(total) as my_revenue,
+  AVG(total) as my_avg_order
+FROM orders
+WHERE sales_rep_id = auth.uid();
+
+-- Customer dashboard
+CREATE VIEW dashboards.my_account AS
+SELECT
+  COUNT(*) as total_orders,
+  SUM(total) as total_spent,
+  MAX(created_at) as last_order_date
+FROM orders
+WHERE customer_id = auth.uid();
+```
+
+## Conditional Formatting
+
+Add context columns for UI styling:
+
+```sql
+CREATE VIEW dashboards.stock_alerts AS
+SELECT
+  name,
+  stock_quantity,
+  reorder_level,
+  CASE
+    WHEN stock_quantity = 0 THEN 'critical'
+    WHEN stock_quantity <= reorder_level THEN 'warning'
+    ELSE 'normal'
+  END as status
+FROM products
+WHERE stock_quantity <= reorder_level
+ORDER BY stock_quantity ASC;
+```
+
+## Real-Time Dashboards
+
+For real-time updates, use Supabase Realtime:
+
+```sql
+-- Enable realtime for the underlying table
+ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+
+-- Create view
+CREATE VIEW dashboards.live_orders AS
+SELECT
+  id,
+  customer_id,
+  total,
+  status,
+  created_at
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '1 hour'
+ORDER BY created_at DESC;
+```
+
+## Comparison Metrics
+
+Compare periods:
+
+```sql
+CREATE VIEW dashboards.revenue_comparison AS
+SELECT
+  -- This week
+  (SELECT COALESCE(SUM(total), 0)
+   FROM orders
+   WHERE created_at >= DATE_TRUNC('week', NOW())) as this_week,
+
+  -- Last week
+  (SELECT COALESCE(SUM(total), 0)
+   FROM orders
+   WHERE created_at >= DATE_TRUNC('week', NOW() - INTERVAL '1 week')
+     AND created_at < DATE_TRUNC('week', NOW())) as last_week,
+
+  -- % change
+  (SELECT ROUND(
+    ((SELECT COALESCE(SUM(total), 0) FROM orders WHERE created_at >= DATE_TRUNC('week', NOW()))::NUMERIC /
+     NULLIF((SELECT COALESCE(SUM(total), 1) FROM orders WHERE created_at >= DATE_TRUNC('week', NOW() - INTERVAL '1 week') AND created_at < DATE_TRUNC('week', NOW())), 0) - 1) * 100,
+    2
+  )) as percent_change;
+```
+
+## Performance Tips
+
+### 1. Use Materialized Views
+
+For expensive queries:
+
+```sql
+CREATE MATERIALIZED VIEW dashboards.complex_metrics AS
+SELECT
+  -- expensive aggregations
+  category,
+  COUNT(*) as count,
+  SUM(revenue) as total_revenue
+FROM large_table
+GROUP BY category;
+
+-- Refresh function
+CREATE OR REPLACE FUNCTION refresh_dashboard_metrics()
+RETURNS void AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW dashboards.complex_metrics;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Manual refresh or schedule with pg_cron
+SELECT cron.schedule('refresh-metrics', '*/15 * * * *', 'SELECT refresh_dashboard_metrics()');
+```
+
+### 2. Add Indexes
+
+```sql
+-- Index for date filtering
+CREATE INDEX orders_created_at_idx ON orders(created_at DESC);
+
+-- Index for aggregations
+CREATE INDEX order_items_product_idx ON order_items(product_id);
+```
+
+### 3. Limit Data Range
+
+```sql
+-- Only last 90 days
+CREATE VIEW dashboards.recent_metrics AS
+SELECT
+  DATE(created_at) as date,
+  COUNT(*) as orders,
+  SUM(total) as revenue
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '90 days'
+GROUP BY date;
+```
+
+## Complete Dashboard Example
+
+```sql
+-- Create schema
+CREATE SCHEMA IF NOT EXISTS dashboards;
+GRANT USAGE ON SCHEMA dashboards TO authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA dashboards TO authenticated;
+
+-- Overview metrics
+CREATE VIEW dashboards.overview AS
+SELECT
+  (SELECT COUNT(*) FROM users) as total_users,
+  (SELECT COUNT(*) FROM orders) as total_orders,
+  (SELECT SUM(total) FROM orders) as total_revenue,
+  (SELECT COUNT(DISTINCT customer_id) FROM orders WHERE created_at >= NOW() - INTERVAL '30 days') as active_customers;
+
+-- Revenue trend (last 30 days)
+CREATE VIEW dashboards.revenue_trend AS
+SELECT
+  DATE(created_at) as date,
+  SUM(total) as revenue,
+  COUNT(*) as order_count
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '30 days'
+GROUP BY date
+ORDER BY date;
+
+-- Top products
+CREATE VIEW dashboards.top_products AS
+SELECT
+  p.name,
+  COUNT(oi.id) as orders,
+  SUM(oi.quantity) as quantity_sold,
+  SUM(oi.quantity * oi.price) as revenue
+FROM products p
+JOIN order_items oi ON p.id = oi.product_id
+JOIN orders o ON oi.order_id = o.id
+WHERE o.created_at >= NOW() - INTERVAL '30 days'
+GROUP BY p.id, p.name
+ORDER BY revenue DESC
+LIMIT 10;
+
+-- Recent orders
+CREATE VIEW dashboards.recent_orders AS
+SELECT
+  o.id,
+  o.created_at,
+  u.email as customer,
+  o.total,
+  o.status
+FROM orders o
+JOIN users u ON o.user_id = u.id
+ORDER BY o.created_at DESC
+LIMIT 10;
+
+-- Customer segments
+CREATE VIEW dashboards.customer_segments AS
+SELECT
+  CASE
+    WHEN total_spent >= 1000 THEN 'VIP'
+    WHEN total_spent >= 500 THEN 'High Value'
+    WHEN total_spent >= 100 THEN 'Regular'
+    ELSE 'New'
+  END as segment,
+  COUNT(*) as customer_count,
+  SUM(total_spent) as segment_revenue
+FROM (
+  SELECT
+    customer_id,
+    SUM(total) as total_spent
+  FROM orders
+  GROUP BY customer_id
+) customer_totals
+GROUP BY segment
+ORDER BY segment_revenue DESC;
+```
+
+## Dashboard Permissions
+
+Control who sees what:
+
+```sql
+-- Admins see all data
+CREATE POLICY "Admins view dashboards"
+  ON dashboards.overview
+  FOR SELECT
+  TO authenticated
+  USING (
+    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
+  );
+
+-- Users see their own data
+CREATE VIEW dashboards.my_stats AS
+SELECT
+  COUNT(*) as my_orders,
+  SUM(total) as my_spent
+FROM orders
+WHERE customer_id = auth.uid();
+```
+
+## Next Steps
+
+- **[Charts](/docs/guide/charts)** - Add visualizations to your dashboards
+- **[Reports](/docs/guide/reports)** - Generate detailed reports
+- **[Authorization](/docs/guide/authorization)** - Control dashboard access

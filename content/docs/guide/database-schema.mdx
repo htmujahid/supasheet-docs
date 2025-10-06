@@ -1,0 +1,181 @@
+---
+title: Database Schema
+description: Understanding Supasheet's schema organization
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Schema Organization
+
+Supasheet uses PostgreSQL schemas to organize different types of functionality. This separation makes it easy to understand what data is used for what purpose.
+
+## Core Schemas
+
+### `public` Schema
+
+The default schema for your application tables. All tables here automatically get CRUD interfaces in Supasheet:
+
+```sql
+CREATE TABLE public.tasks (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  title TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+
+  -- Always reference supasheet.accounts for user relationships
+  account_id UUID REFERENCES supasheet.accounts(id) ON DELETE CASCADE,
+
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+<Callout type="warn">
+**Important**: Always use `supasheet.accounts(id)` for user relationships, not `auth.users(id)`. See [User Management](/docs/guide/user-management) for details.
+</Callout>
+
+### `supasheet` Schema
+
+Contains Supasheet's internal tables and metadata:
+
+- `supasheet.accounts` - User accounts (auto-created on signup)
+- `supasheet.roles` - User roles (admin, user, etc.)
+- `supasheet.role_permissions` - Permission assignments
+- `supasheet.tables` - Metadata about your tables
+- `supasheet.columns` - Metadata about table columns
+- `supasheet.views` - Metadata about database views
+- `supasheet.dashboards` - Dashboard widget registry
+- `supasheet.charts` - Chart registry
+- `supasheet.reports` - Report registry
+
+## Feature Schemas
+
+### `charts` Schema
+
+Create views here for data visualizations:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS charts;
+GRANT USAGE ON SCHEMA charts TO authenticated;
+
+-- Example: Task status distribution (pie chart)
+CREATE VIEW charts.task_status_pie AS
+SELECT
+  status::text as label,
+  COUNT(*) as value
+FROM tasks
+GROUP BY status;
+```
+
+After creating charts, you must:
+1. Grant permissions on the view
+2. Register the chart in `supasheet.charts` table
+3. Assign permissions to roles
+
+### `dashboards` Schema
+
+Create views for dashboard widgets:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS dashboards;
+GRANT USAGE ON SCHEMA dashboards TO authenticated;
+
+-- Example: Active tasks card
+CREATE VIEW dashboards.task_summary AS
+SELECT
+  COUNT(*) as value,
+  'list-todo' as icon,
+  'active tasks' as label
+FROM tasks
+WHERE status != 'completed';
+```
+
+Dashboard views support different widget types: `card_1`, `card_2`, `card_3`, `card_4`, `table_1`, `table_2`.
+
+### `reports` Schema
+
+Define views for reports:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS reports;
+GRANT USAGE ON SCHEMA reports TO authenticated;
+
+-- Example: Task report with user details
+CREATE VIEW reports.task_report AS
+SELECT
+  a.name as account_name,
+  t.*
+FROM tasks t
+JOIN supasheet.accounts a ON t.account_id = a.id;
+```
+
+## Updating Meta Tables
+
+**Critical Step**: After creating or modifying tables/views, you must update Supasheet's meta tables so the UI can discover your new resources.
+
+### Why Meta Tables?
+
+Supasheet maintains metadata about your database in these tables:
+- `supasheet.tables` - Information about all tables
+- `supasheet.columns` - Information about all columns
+- `supasheet.views` - Information about all views
+
+Without updating these, **your new tables/views won't appear in the Supasheet UI**.
+
+### How to Update
+
+After any schema changes, add this to your migration:
+
+```sql
+-- Update meta tables for public schema
+INSERT INTO supasheet.columns
+SELECT * FROM supasheet.generate_columns('public')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  name = EXCLUDED.name;
+
+INSERT INTO supasheet.tables
+SELECT * FROM supasheet.generate_tables('public')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  name = EXCLUDED.name;
+
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('public')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  name = EXCLUDED.name;
+
+-- Repeat for other schemas (reports, dashboards, charts)
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('reports')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('dashboards')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('charts')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+```
+
+<Callout type="warn">
+This step is **required** after every migration that creates or modifies tables/views. Without it, the Supasheet UI won't show your new resources.
+</Callout>
+
+## Schema Configuration
+
+Schemas are exposed via PostgREST API in `/supabase/config.toml`:
+
+```toml
+[api]
+schemas = ["public", "supasheet", "reports", "dashboards", "charts"]
+```
+
+This is already configured in Supasheet.
+
+## Next Steps
+
+- **[CRUD Operations](/docs/guide/crud-operations)** - Work with tables
+- **[Charts](/docs/guide/charts)** - Create visualizations
+- **[Dashboards](/docs/guide/dashboards)** - Build dashboards
+- **[Reports](/docs/guide/reports)** - Generate reports

@@ -1,0 +1,580 @@
+---
+title: Internationalization
+description: Multi-language support with i18next
+---
+
+## Overview
+
+Supasheet uses i18next and react-i18next for internationalization, allowing you to build multi-language applications.
+
+## Configuration
+
+### Default Language
+
+Set in environment variables:
+
+```bash
+NEXT_PUBLIC_DEFAULT_LOCALE=en
+```
+
+### Supported Languages
+
+Languages are defined in `/lib/i18n/settings.ts`:
+
+```typescript
+export const languages = ['en', 'es', 'fr', 'de', 'ja'];
+export const defaultLanguage = 'en';
+```
+
+## Translation Files
+
+### File Structure
+
+```
+/public/locales/
+├── en/
+│   ├── common.json
+│   ├── auth.json
+│   ├── resource.json
+│   └── custom.json
+├── es/
+│   ├── common.json
+│   ├── auth.json
+│   └── ...
+└── fr/
+    └── ...
+```
+
+### Common Translations
+
+```json
+// public/locales/en/common.json
+{
+  "app": {
+    "name": "Supasheet",
+    "tagline": "SQL-based Admin Panel"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "resources": "Resources",
+    "charts": "Charts",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search"
+  },
+  "messages": {
+    "success": "Operation successful",
+    "error": "An error occurred",
+    "loading": "Loading...",
+    "noData": "No data available"
+  }
+}
+```
+
+### Feature-Specific Translations
+
+```json
+// public/locales/en/resource.json
+{
+  "title": "Resources",
+  "create": "Create {{resource}}",
+  "edit": "Edit {{resource}}",
+  "delete": "Delete {{resource}}",
+  "deleteConfirm": "Are you sure you want to delete this {{resource}}?",
+  "table": {
+    "columns": "Columns",
+    "filters": "Filters",
+    "export": "Export",
+    "refresh": "Refresh"
+  },
+  "form": {
+    "required": "This field is required",
+    "invalid": "Invalid value",
+    "tooShort": "Value is too short",
+    "tooLong": "Value is too long"
+  }
+}
+```
+
+## Using Translations
+
+### Server Components
+
+```tsx
+import { getI18n } from '@/lib/i18n/i18n.server';
+
+export default async function Page() {
+  const i18n = await getI18n();
+
+  return (
+    <div>
+      <h1>{i18n.t('common:navigation.dashboard')}</h1>
+      <p>{i18n.t('common:app.tagline')}</p>
+    </div>
+  );
+}
+```
+
+### Client Components
+
+```tsx
+'use client';
+
+import { useI18n } from '@/lib/i18n/i18n.client';
+
+export function MyComponent() {
+  const { t } = useI18n();
+
+  return (
+    <div>
+      <h2>{t('common:navigation.resources')}</h2>
+      <button>{t('common:actions.create')}</button>
+    </div>
+  );
+}
+```
+
+### With Variables
+
+```tsx
+const { t } = useI18n();
+
+// Translation: "Create {{resource}}"
+<h1>{t('resource:create', { resource: 'Product' })}</h1>
+// Output: "Create Product"
+
+// Translation: "Hello {{name}}, you have {{count}} messages"
+<p>{t('messages:greeting', { name: 'John', count: 5 })}</p>
+// Output: "Hello John, you have 5 messages"
+```
+
+### Pluralization
+
+```json
+// public/locales/en/common.json
+{
+  "items": {
+    "count_one": "{{count}} item",
+    "count_other": "{{count}} items"
+  }
+}
+```
+
+```tsx
+const { t } = useI18n();
+
+<p>{t('common:items.count', { count: 1 })}</p>
+// Output: "1 item"
+
+<p>{t('common:items.count', { count: 5 })}</p>
+// Output: "5 items"
+```
+
+## Language Switcher
+
+### Simple Switcher
+
+```tsx
+'use client';
+
+import { useI18n } from '@/lib/i18n/i18n.client';
+import { languages } from '@/lib/i18n/settings';
+
+export function LanguageSwitcher() {
+  const { i18n } = useI18n();
+
+  return (
+    <select
+      value={i18n.language}
+      onChange={(e) => i18n.changeLanguage(e.target.value)}
+    >
+      {languages.map((lang) => (
+        <option key={lang} value={lang}>
+          {lang.toUpperCase()}
+        </option>
+      ))}
+    </select>
+  );
+}
+```
+
+### Dropdown Switcher
+
+```tsx
+'use client';
+
+import { useI18n } from '@/lib/i18n/i18n.client';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Languages } from 'lucide-react';
+
+const languageNames = {
+  en: 'English',
+  es: 'Español',
+  fr: 'Français',
+  de: 'Deutsch',
+  ja: '日本語',
+};
+
+export function LanguageDropdown() {
+  const { i18n } = useI18n();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Languages className="w-4 h-4 mr-2" />
+          {languageNames[i18n.language as keyof typeof languageNames]}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {Object.entries(languageNames).map(([code, name]) => (
+          <DropdownMenuItem
+            key={code}
+            onClick={() => i18n.changeLanguage(code)}
+          >
+            {name}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+```
+
+## Date and Time Formatting
+
+### Using date-fns
+
+```tsx
+import { format } from 'date-fns';
+import { enUS, es, fr, de, ja } from 'date-fns/locale';
+
+const locales = { en: enUS, es, fr, de, ja };
+
+export function formatDate(date: Date, locale: string) {
+  return format(date, 'PPP', {
+    locale: locales[locale as keyof typeof locales],
+  });
+}
+```
+
+### In Components
+
+```tsx
+'use client';
+
+import { useI18n } from '@/lib/i18n/i18n.client';
+import { formatDate } from '@/lib/utils/date';
+
+export function DateDisplay({ date }: { date: Date }) {
+  const { i18n } = useI18n();
+
+  return <span>{formatDate(date, i18n.language)}</span>;
+}
+```
+
+## Number and Currency Formatting
+
+```tsx
+'use client';
+
+import { useI18n } from '@/lib/i18n/i18n.client';
+
+export function PriceDisplay({ amount }: { amount: number }) {
+  const { i18n } = useI18n();
+
+  const formatted = new Intl.NumberFormat(i18n.language, {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+
+  return <span>{formatted}</span>;
+}
+
+// Usage:
+// <PriceDisplay amount={99.99} />
+// en: "$99.99"
+// de: "99,99 $"
+// fr: "99,99 $US"
+```
+
+## Database Content Translation
+
+### Translation Table Pattern
+
+```sql
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sku TEXT UNIQUE NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE product_translations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+  language TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  UNIQUE(product_id, language)
+);
+
+-- View for current language
+CREATE OR REPLACE FUNCTION get_product_translations(lang TEXT DEFAULT 'en')
+RETURNS TABLE (
+  id UUID,
+  sku TEXT,
+  price DECIMAL(10,2),
+  name TEXT,
+  description TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    p.id,
+    p.sku,
+    p.price,
+    COALESCE(pt_lang.name, pt_en.name) as name,
+    COALESCE(pt_lang.description, pt_en.description) as description
+  FROM products p
+  LEFT JOIN product_translations pt_lang
+    ON p.id = pt_lang.product_id AND pt_lang.language = lang
+  LEFT JOIN product_translations pt_en
+    ON p.id = pt_en.product_id AND pt_en.language = 'en';
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### JSONB Translation Pattern
+
+```sql
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sku TEXT UNIQUE NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  translations JSONB NOT NULL DEFAULT '{
+    "en": {"name": "", "description": ""},
+    "es": {"name": "", "description": ""}
+  }'::JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Function to get translation
+CREATE OR REPLACE FUNCTION get_translation(
+  translations JSONB,
+  lang TEXT DEFAULT 'en',
+  fallback_lang TEXT DEFAULT 'en'
+)
+RETURNS JSONB AS $$
+BEGIN
+  RETURN COALESCE(
+    translations->lang,
+    translations->fallback_lang,
+    '{}'::JSONB
+  );
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- View with current language
+CREATE VIEW products_localized AS
+SELECT
+  id,
+  sku,
+  price,
+  get_translation(translations, current_setting('app.language', true)) as content
+FROM products;
+```
+
+## Form Validation Messages
+
+### Zod with i18next
+
+```tsx
+import { z } from 'zod';
+import { useI18n } from '@/lib/i18n/i18n.client';
+
+export function useProductSchema() {
+  const { t } = useI18n();
+
+  return z.object({
+    name: z.string().min(1, t('resource:form.required')),
+    price: z.number().min(0, t('resource:form.invalid')),
+    description: z.string().max(500, t('resource:form.tooLong')),
+  });
+}
+```
+
+## SEO and Metadata
+
+### Localized Metadata
+
+```tsx
+import { getI18n } from '@/lib/i18n/i18n.server';
+import type { Metadata } from 'next';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const i18n = await getI18n();
+
+  return {
+    title: i18n.t('common:app.name'),
+    description: i18n.t('common:app.tagline'),
+  };
+}
+```
+
+### Alternate Language Links
+
+```tsx
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    alternates: {
+      languages: {
+        en: '/en',
+        es: '/es',
+        fr: '/fr',
+      },
+    },
+  };
+}
+```
+
+## RTL Support
+
+### Detect RTL Languages
+
+```typescript
+const rtlLanguages = ['ar', 'he', 'fa'];
+
+export function isRTL(language: string): boolean {
+  return rtlLanguages.includes(language);
+}
+```
+
+### Apply RTL Styles
+
+```tsx
+'use client';
+
+import { useI18n } from '@/lib/i18n/i18n.client';
+import { isRTL } from '@/lib/i18n/utils';
+
+export function RootLayout({ children }: { children: React.ReactNode }) {
+  const { i18n } = useI18n();
+  const dir = isRTL(i18n.language) ? 'rtl' : 'ltr';
+
+  return (
+    <html lang={i18n.language} dir={dir}>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## Best Practices
+
+### Namespace Organization
+
+```
+common.json       → Global UI elements, actions, messages
+auth.json         → Authentication pages
+resource.json     → CRUD operations
+dashboard.json    → Dashboard-specific
+charts.json       → Chart-related
+reports.json      → Report-related
+errors.json       → Error messages
+```
+
+### Translation Keys
+
+```typescript
+// Good ✅
+t('resource:create')
+t('common:actions.save')
+t('dashboard:metrics.revenue')
+
+// Bad ❌
+t('create')  // Too generic, namespace collision risk
+t('Save')    // Uppercase, inconsistent
+```
+
+### Dynamic Content
+
+```tsx
+// Translation file
+{
+  "order": {
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered"
+    }
+  }
+}
+
+// Component
+const { t } = useI18n();
+<span>{t(`order:status.${order.status}`)}</span>
+```
+
+### Missing Translations
+
+```typescript
+// i18n config
+{
+  fallbackLng: 'en',
+  saveMissing: true,
+  missingKeyHandler: (lng, ns, key) => {
+    console.warn(`Missing translation: ${ns}:${key} for ${lng}`);
+  }
+}
+```
+
+## Testing Translations
+
+```tsx
+import { render } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '@/lib/i18n/config';
+
+describe('MyComponent', () => {
+  it('renders in English', () => {
+    i18n.changeLanguage('en');
+    const { getByText } = render(
+      <I18nextProvider i18n={i18n}>
+        <MyComponent />
+      </I18nextProvider>
+    );
+    expect(getByText('Create')).toBeInTheDocument();
+  });
+
+  it('renders in Spanish', () => {
+    i18n.changeLanguage('es');
+    const { getByText } = render(
+      <I18nextProvider i18n={i18n}>
+        <MyComponent />
+      </I18nextProvider>
+    );
+    expect(getByText('Crear')).toBeInTheDocument();
+  });
+});
+```
+
+## Next Steps
+
+- **[Theming](/docs/guide/theming)** - Customize appearance
+- **[Custom Components](/docs/guide/custom-components)** - Build custom UI
+- **[Database Schema](/docs/guide/database-schema)** - Translate database content

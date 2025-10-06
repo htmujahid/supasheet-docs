@@ -1,0 +1,155 @@
+---
+title: Installation
+description: Get started with Supasheet in minutes
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Installation
+
+<Steps>
+<Step>
+### Clone the Repository
+
+```bash
+git clone https://github.com/supasheet/supasheet.git
+cd supasheet
+```
+</Step>
+
+<Step>
+### Install Dependencies
+
+<Tabs items={['npm', 'pnpm', 'yarn']}>
+<Tab value="npm">
+```bash
+npm install
+```
+</Tab>
+<Tab value="pnpm">
+```bash
+pnpm install
+```
+</Tab>
+<Tab value="yarn">
+```bash
+yarn install
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Set Up Supabase
+
+You can use either a local Supabase instance or a cloud project.
+
+#### Option 1: Local Development (Recommended)
+
+Start a local Supabase instance:
+
+```bash
+npx supabase start
+```
+
+This will start Supabase on `http://127.0.0.1:54321` and provide you with:
+- API URL
+- Anon Key
+- Service Role Key
+- Studio URL: `http://127.0.0.1:54323`
+
+#### Option 2: Cloud Project
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Get your API URL and keys from project settings
+</Step>
+
+<Step>
+### Configure Environment Variables
+
+Create a `.env.local` file in the root directory:
+
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# App Configuration
+NEXT_PUBLIC_PRODUCT_NAME=Supasheet
+NEXT_PUBLIC_SITE_TITLE=Supasheet Admin
+NEXT_PUBLIC_SITE_DESCRIPTION=SQL-based Admin Panel
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_DEFAULT_LOCALE=en
+NEXT_PUBLIC_DEFAULT_THEME_MODE=system
+```
+
+Replace the Supabase values with your actual credentials.
+</Step>
+
+<Step>
+### Run Database Migrations
+
+Apply the database schema:
+
+<Tabs items={['Local', 'Cloud']}>
+<Tab value="Local">
+```bash
+npx supabase db reset
+```
+</Tab>
+<Tab value="Cloud">
+```bash
+npx supabase db push
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Generate TypeScript Types
+
+```bash
+npm run typegen
+```
+
+This generates type definitions from your database schema.
+</Step>
+
+<Step>
+### Start Development Server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+</Step>
+</Steps>
+
+## Verify Installation
+
+You should see the Supasheet sign-in page. Create an account to get started!
+
+## Common Commands
+
+```bash
+# Development
+npm run dev              # Start dev server
+npm run build            # Build for production
+npm run typecheck        # Type checking
+npm run lint             # Run linter
+
+# Supabase
+npx supabase start       # Start local instance
+npx supabase stop        # Stop local instance
+npx supabase db reset    # Reset database
+npm run typegen          # Generate types
+```
+
+## Next Steps
+
+- **[Quickstart](/docs/guide/quickstart)** - Build your first feature
+- **[SQL-First Philosophy](/docs/guide/sql-first-philosophy)** - Understand the core concepts
+- **[Database Schema](/docs/guide/database-schema)** - Learn about custom schemas

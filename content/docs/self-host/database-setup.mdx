@@ -1,0 +1,104 @@
+---
+title: Database Setup
+description: Initialize and configure your PostgreSQL database
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+## Overview
+
+Supasheet includes pre-built migrations in `/supabase/migrations/` that create all necessary schemas, tables, and functions. You just need to apply them.
+
+## Local Setup (Development)
+
+<Steps>
+<Step>
+### Start Supabase
+
+```bash
+npx supabase start
+```
+
+Starts local Supabase instance with PostgreSQL.
+</Step>
+
+<Step>
+### Apply Migrations
+
+```bash
+npx supabase db reset
+```
+
+Applies all migrations from `/supabase/migrations/`.
+</Step>
+
+<Step>
+### Verify Setup
+
+```bash
+npx supabase status
+```
+
+Check that all services are running.
+</Step>
+</Steps>
+
+## Cloud Setup (Production)
+
+<Steps>
+<Step>
+### Create Supabase Project
+
+1. Go to [supabase.com/dashboard](https://supabase.com/dashboard)
+2. Click "New Project"
+3. Choose organization and region
+4. Set database password
+5. Wait for project creation (~2 minutes)
+</Step>
+
+<Step>
+### Link Project
+
+```bash
+npx supabase link --project-ref your-project-ref
+```
+
+Get `project-ref` from dashboard URL: `https://supabase.com/dashboard/project/[project-ref]`
+</Step>
+
+<Step>
+### Push Migrations
+
+```bash
+npx supabase db push
+```
+
+Applies all local migrations to cloud database.
+</Step>
+</Steps>
+
+## What Gets Created
+
+The migrations automatically create:
+
+- **Schemas**: `supasheet`, `public`
+- **Core Tables**: accounts, roles, permissions, meta tables
+- **Feature Tables**: dashboards, charts, reports, audit logs
+- **Storage Buckets**: public, personal
+- **Functions**: Permission checks, audit triggers, meta generators
+- **RLS Policies**: Row-level security on all tables
+
+## Adding Your Own Tables
+
+Create new migrations for your application tables:
+
+```bash
+npx supabase migration new add_products_table
+```
+
+See [Quickstart](/docs/guide/quickstart) for complete examples.
+
+## Next Steps
+
+- **[Deployment](/docs/self-host/deployment)** - Deploy your application
+- **[Environment Variables](/docs/self-host/environment-variables)** - Configure settings

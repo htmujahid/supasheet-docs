@@ -1,0 +1,81 @@
+---
+title: Production Checklist
+description: Essential checks before going live
+---
+
+## Security
+
+- [ ] **Environment Variables**
+  - All secrets configured in deployment platform
+  - No hardcoded credentials in code
+  - Service role key kept server-side only
+
+- [ ] **Row Level Security**
+  - RLS enabled on all tables
+  - Policies tested for all user roles
+  - No public access without policies
+
+- [ ] **HTTPS/SSL**
+  - SSL certificate active
+  - All requests use HTTPS
+  - Custom domain configured (if applicable)
+
+- [ ] **Authentication**
+  - Auth providers configured
+  - Email templates working
+  - Password reset functional
+
+## Database
+
+- [ ] **Migrations**
+  - All migrations pushed to production
+  - Meta tables updated
+  - Seed data loaded (if needed)
+
+- [ ] **Indexes**
+  - Indexes on frequently queried columns
+  - Indexes on foreign keys
+  - Performance tested
+
+- [ ] **Backups**
+  - Automated backups enabled
+  - Backup retention configured
+  - Restore procedure tested
+
+## Application
+
+- [ ] **Features Working**
+  - CRUD operations functional
+  - File uploads working
+  - Charts/dashboards loading
+  - Reports generating correctly
+
+- [ ] **Responsive Design**
+  - Mobile tested
+  - Tablet tested
+  - Desktop tested
+
+- [ ] **Performance**
+  - Page load times acceptable
+  - Images optimized
+  - No console errors
+
+## Testing
+
+- [ ] **Core Features**
+  - Sign up flow works
+  - Login works
+  - Password reset works
+  - CRUD operations tested
+  - File uploads working
+
+## Launch
+
+Once all checks pass:
+
+1. Deploy to production
+2. Test critical features
+3. Monitor for first 24 hours
+4. Gather user feedback
+
+**Congratulations on launching! 🎉**

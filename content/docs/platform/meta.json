@@ -1,0 +1,7 @@
+{
+  "title": "Platform",
+  "description": "Use Supasheet as a hosted platform",
+  "root": true,
+  "icon": "Cloud",
+  "pages": ["index"]
+}

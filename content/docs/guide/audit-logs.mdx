@@ -1,0 +1,123 @@
+---
+title: Audit Logs
+description: Track changes automatically using PostgreSQL triggers
+---
+
+## Overview
+
+Supasheet provides built-in audit logging that automatically tracks all database changes. When enabled, it captures who made changes, what changed, and when.
+
+## What Gets Tracked
+
+When you enable audit logging on a table, Supasheet automatically records:
+
+- **Operation** - INSERT, UPDATE, or DELETE
+- **Schema & Table** - Where the change occurred
+- **Record ID** - Which record was affected
+- **User Information** - Who made the change (`created_by`, `role`)
+- **User Type** - Whether it was a real user or system operation
+- **Old Data** - The data before the change (UPDATE/DELETE)
+- **New Data** - The data after the change (INSERT/UPDATE)
+- **Changed Fields** - List of fields that were modified (UPDATE only)
+- **Timestamp** - When the change occurred
+- **Metadata** - Additional context (trigger name, etc.)
+- **Errors** - Error tracking if something failed
+
+## Enabling Audit Logging
+
+To enable audit logging on a table, attach the audit trigger:
+
+```sql
+-- Enable auditing for INSERT, UPDATE, DELETE
+CREATE TRIGGER audit_tasks_insert
+  AFTER INSERT ON public.tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION supasheet.audit_trigger_function();
+
+CREATE TRIGGER audit_tasks_update
+  AFTER UPDATE ON public.tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION supasheet.audit_trigger_function();
+
+CREATE TRIGGER audit_tasks_delete
+  BEFORE DELETE ON public.tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION supasheet.audit_trigger_function();
+```
+
+That's it! All changes to the `tasks` table are now automatically logged in `supasheet.audit_logs`.
+
+## Viewing Audit Logs
+
+Audit logs are stored in the `supasheet.audit_logs` table. Users can view:
+- **Their own changes** - All audit logs they created
+- **All changes** - If they have the `x-admin` role
+
+### Example Queries
+
+```sql
+-- View all my changes
+SELECT * FROM supasheet.audit_logs
+WHERE created_by = auth.uid()
+ORDER BY created_at DESC;
+
+-- View changes to a specific table
+SELECT * FROM supasheet.audit_logs
+WHERE schema_name = 'public'
+  AND table_name = 'tasks'
+ORDER BY created_at DESC;
+
+-- View changes to a specific record
+SELECT * FROM supasheet.audit_logs
+WHERE table_name = 'tasks'
+  AND record_id = 'your-record-id'
+ORDER BY created_at DESC;
+
+-- See what fields changed
+SELECT
+  created_at,
+  operation,
+  changed_fields,
+  old_data,
+  new_data
+FROM supasheet.audit_logs
+WHERE table_name = 'tasks'
+  AND operation = 'UPDATE'
+ORDER BY created_at DESC;
+```
+
+## Complete Example
+
+```sql
+-- Create your table
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  name TEXT NOT NULL,
+  price DECIMAL(10,2),
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Enable audit logging
+CREATE TRIGGER audit_products_insert
+  AFTER INSERT ON products
+  FOR EACH ROW
+  EXECUTE FUNCTION supasheet.audit_trigger_function();
+
+CREATE TRIGGER audit_products_update
+  AFTER UPDATE ON products
+  FOR EACH ROW
+  EXECUTE FUNCTION supasheet.audit_trigger_function();
+
+CREATE TRIGGER audit_products_delete
+  BEFORE DELETE ON products
+  FOR EACH ROW
+  EXECUTE FUNCTION supasheet.audit_trigger_function();
+
+-- Now all changes are automatically tracked!
+```
+
+## Next Steps
+
+- **[Authorization](/docs/guide/authorization)** - Control who can view audit logs
+- **[Complete Example](/docs/guide/complete-example)** - See audit logging in action
+- **[CRUD Operations](/docs/guide/crud-operations)** - Tables being audited

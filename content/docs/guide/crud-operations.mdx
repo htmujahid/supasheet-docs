@@ -1,0 +1,350 @@
+---
+title: CRUD Operations
+description: Automatically generated interfaces from your database tables
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Supasheet automatically generates full CRUD (Create, Read, Update, Delete) interfaces for any table in your database. No configuration required!
+
+## How It Works
+
+When you create a table:
+
+```sql
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  category TEXT,
+  in_stock BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+Supasheet automatically provides:
+
+- **📋 Data Table** - With pagination, sorting, filtering
+- **➕ Create Form** - Auto-validated based on schema
+- **✏️ Edit Form** - Pre-populated with current values
+- **🗑️ Delete Action** - With confirmation dialog
+- **🎯 Filters** - Column-specific filters
+
+## Data Table Features
+
+### Pagination
+
+Automatically paginated with configurable page sizes:
+- 100 (default), 500, 1000 rows per page
+- Server-side pagination for performance
+
+### Sorting
+
+Click any column header to sort:
+- Ascending/Descending
+- Multi-column sorting (hold Shift)
+
+### Filtering
+
+Multiple filter types based on column data type:
+
+```typescript
+// Text columns
+- Contains
+- Equals
+- Starts with
+- Ends with
+
+// Number columns
+- Equals
+- Greater than
+- Less than
+- Between
+
+// Date columns
+- Before
+- After
+- Between
+- Last 7/30/90 days
+
+// Boolean columns
+- Is true
+- Is false
+- Is null
+```
+
+### Column Visibility
+
+Toggle which columns to display:
+- Hide/show columns
+- Reorder columns (drag & drop)
+- Persisted in local storage
+
+## Form Generation
+
+Forms are automatically generated based on your schema.
+
+### Field Types
+
+Different input types based on column data type:
+
+```sql
+-- Text field
+name TEXT NOT NULL
+
+-- Number input
+price DECIMAL(10,2)
+
+-- Checkbox
+in_stock BOOLEAN
+
+-- Select dropdown (with CHECK constraint)
+status TEXT CHECK (status IN ('draft', 'published', 'archived'))
+
+-- Date picker
+publish_date DATE
+
+-- Datetime picker
+created_at TIMESTAMPTZ
+
+-- Textarea (for TEXT columns without constraints)
+description TEXT
+```
+
+### Validation
+
+Automatic validation based on:
+- `NOT NULL` constraints → Required field
+- `CHECK` constraints → Enum values or range validation
+- `UNIQUE` constraints → Uniqueness check
+- Data types → Type validation
+- String length → Character limits
+
+### Default Values
+
+```sql
+CREATE TABLE products (
+  id UUID DEFAULT gen_random_uuid(),  -- Auto-generated
+  status TEXT DEFAULT 'draft',        -- Pre-filled in form
+  created_at TIMESTAMPTZ DEFAULT NOW() -- Auto-set, hidden in form
+);
+```
+
+## Relations
+
+### Foreign Keys
+
+Foreign key relationships are automatically detected and rendered as select dropdowns:
+
+```sql
+CREATE TABLE orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID REFERENCES customers(id),  -- Dropdown of customers
+  product_id UUID REFERENCES products(id),     -- Dropdown of products
+  quantity INTEGER NOT NULL
+);
+```
+
+The dropdowns show:
+- Primary display field (usually `name` or `title`)
+- Searchable
+- Paginated for large datasets
+
+### Display Fields
+
+Customize what's shown in dropdowns:
+
+```sql
+-- Supasheet looks for these columns in order:
+-- 1. name
+-- 2. title
+-- 3. email
+-- 4. id (fallback)
+
+CREATE TABLE customers (
+  id UUID PRIMARY KEY,
+  name TEXT,      -- This will be shown in dropdowns
+  email TEXT
+);
+```
+
+## Custom Column Display
+
+### JSON/JSONB Columns
+
+```sql
+CREATE TABLE products (
+  id UUID PRIMARY KEY,
+  metadata JSONB
+);
+```
+
+Rendered as:
+- Formatted JSON viewer
+- Syntax highlighting
+- Collapsible sections
+
+### Array Columns
+
+```sql
+CREATE TABLE posts (
+  id UUID PRIMARY KEY,
+  tags TEXT[]
+);
+```
+
+Rendered as:
+- Tag chips
+- Multi-select in forms
+
+### Computed Columns
+
+Use views for computed values:
+
+```sql
+CREATE VIEW products_with_total AS
+SELECT
+  p.*,
+  (p.price * (1 - p.discount)) as final_price
+FROM products p;
+```
+
+## Row Actions
+
+Every row has action buttons:
+
+### View
+
+Opens a detailed view of the row:
+- Shows all field values in a readable format
+- Displays related records from other tables via foreign keys
+- Shows relationships in both directions (parent and child records)
+
+### Edit
+
+Opens edit form with pre-filled values:
+- All fields editable (unless constrained)
+- Validation on submit
+- Optimistic updates
+
+### Delete
+
+Confirms before deletion:
+- Shows record summary
+- Checks for dependencies
+- Cascades if configured
+
+<Callout type="warn">
+  Deletes respect foreign key constraints. If a record is referenced elsewhere, deletion will fail unless you use `ON DELETE CASCADE`.
+</Callout>
+
+## Permissions
+
+All CRUD operations respect Row Level Security policies:
+
+```sql
+-- Users can only edit their own posts
+CREATE POLICY "Users edit own posts"
+  ON posts
+  FOR UPDATE
+  TO authenticated
+  USING (author_id = auth.uid())
+  WITH CHECK (author_id = auth.uid());
+
+-- Admins can edit all posts
+CREATE POLICY "Admins edit all posts"
+  ON posts
+  FOR UPDATE
+  TO authenticated
+  USING (
+    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
+  );
+```
+
+## Performance Tips
+
+### 1. Add Indexes
+
+```sql
+-- Index foreign keys
+CREATE INDEX orders_customer_id_idx ON orders(customer_id);
+
+-- Index frequently filtered columns
+CREATE INDEX products_category_idx ON products(category);
+
+-- Index frequently sorted columns
+CREATE INDEX orders_created_at_idx ON orders(created_at DESC);
+```
+
+### 2. Use Partial Indexes
+
+```sql
+-- Index only active records
+CREATE INDEX active_products_idx ON products(name)
+  WHERE in_stock = true;
+```
+
+### 3. Limit Column Count
+
+For tables with many columns, create views with only necessary columns:
+
+```sql
+CREATE VIEW products_list AS
+SELECT id, name, price, category, in_stock
+FROM products;
+```
+
+## Example: Complete E-commerce Tables
+
+```sql
+-- Products
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('electronics', 'clothing', 'books')),
+  in_stock BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Orders
+CREATE TABLE orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID REFERENCES auth.users(id),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'shipped', 'delivered')),
+  total DECIMAL(10,2),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Order Items
+CREATE TABLE order_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products(id),
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  price DECIMAL(10,2) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Anyone can view products" ON products FOR SELECT USING (true);
+CREATE POLICY "Users view own orders" ON orders FOR SELECT USING (customer_id = auth.uid());
+CREATE POLICY "Users view own order items" ON order_items FOR SELECT
+  USING (order_id IN (SELECT id FROM orders WHERE customer_id = auth.uid()));
+```
+
+All three tables now have full CRUD interfaces!
+
+## Next Steps
+
+- **[Authorization](/docs/guide/authorization)** - Secure your tables with RLS
+- **[Dashboards](/docs/guide/dashboards)** - Add dashboard metrics
+- **[Charts](/docs/guide/charts)** - Visualize your data

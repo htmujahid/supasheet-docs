@@ -1,0 +1,131 @@
+---
+title: User Management
+description: Understanding Supasheet's user and account system
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Supasheet provides a built-in user management system that automatically handles user accounts, authentication, and profile management. The system is built on top of Supabase Auth with additional account management features.
+
+## The Account System
+
+### `supasheet.accounts` Table
+
+Every user in Supasheet has an account in the `supasheet.accounts` table. This is the central user profile table that stores:
+
+- User name
+- Email address
+- Profile picture URL
+- Additional custom data (via `public_data` JSONB field)
+- Created/updated timestamps
+
+<Callout type="info">
+The `accounts.id` is **identical** to `auth.users.id`. When a user signs up, an account is automatically created with the same ID.
+</Callout>
+
+## Automatic Account Creation
+
+**When does this happen?**
+- A new user signs up through Supabase Auth
+- A database trigger automatically creates an account record
+- The account is ready to use immediately
+
+**What gets populated?**
+- **Name**: Extracted from OAuth metadata (Google, GitHub) or from the email address
+- **Email**: Synced from the auth system
+- **Picture**: Avatar URL from OAuth providers (if available)
+- **ID**: Same as the user's auth ID
+
+## Using Accounts in Your Tables
+
+**Always reference `supasheet.accounts` instead of `auth.users`** in your application tables.
+
+### Example
+
+```sql
+CREATE TABLE tasks (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+    title TEXT NOT NULL,
+
+    -- ✅ CORRECT: Reference supasheet.accounts
+    account_id UUID REFERENCES supasheet.accounts(id) ON DELETE CASCADE,
+
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Why Use `supasheet.accounts`?
+
+- **Separation of concerns** - Auth data stays separate from profile data
+- **Extensible** - Easy to add custom user fields
+- **Consistent** - Same pattern across all tables
+- **Future-proof** - Can extend to support team accounts later
+
+## Row Level Security
+
+In your RLS policies, use `account_id` to check ownership:
+
+```sql
+create policy tasks_select on tasks
+    for select to authenticated
+    using (account_id = auth.uid());
+```
+
+Since `accounts.id` equals `auth.uid()`, you can directly compare them.
+
+## Key Features
+
+### Email Synchronization
+
+When a user updates their email in the auth system, it **automatically syncs** to their account record. No manual updates needed.
+
+### Account Protection
+
+Certain fields are protected from direct modification:
+- `id` - Cannot be changed
+- `email` - Can only be updated through the auth system (syncs automatically)
+
+## User Management UI
+
+Supasheet provides a complete user management interface at `/home/user`:
+
+### Available Pages
+
+1. **Profile** - Update account details, name, and profile picture
+2. **Security** - Manage password and Multi-Factor Authentication (MFA)
+3. **Identities** - Link/unlink OAuth providers (Google, GitHub, etc.)
+4. **Preferences** - Theme settings, language, and UI customization
+5. **Roles & Permissions** - View assigned roles and permissions
+6. **Account Settings** - Account management and deletion
+
+## Profile Pictures
+
+Profile pictures are stored in the `account_image` storage bucket. Each user has their own folder with automatic RLS policies ensuring users can only access their own images.
+
+## Working with Account Data
+
+### Joining with Accounts
+
+Create views that include user information:
+
+```sql
+create view vw_tasks as
+select
+  t.*,
+  a.name as account_name,
+  a.picture_url
+from tasks t
+join supasheet.accounts a on t.account_id = a.id;
+```
+
+### Custom User Data
+
+Use the `public_data` JSONB field to store additional user information like preferences, settings, or custom metadata.
+
+## Next Steps
+
+- **[Authorization](/docs/guide/authorization)** - Learn about the permission system
+- **[Complete Example](/docs/guide/complete-example)** - See full workflow with accounts
+- **[Storage](/docs/guide/storage)** - Handle file uploads with account context

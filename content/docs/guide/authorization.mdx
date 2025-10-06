@@ -1,0 +1,435 @@
+---
+title: Authorization
+description: Role-based permissions and Row Level Security
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Supasheet uses a two-layer authorization system:
+
+1. **Permissions** - Control what resources users can see in the UI (tables, views, charts, reports)
+2. **Row Level Security (RLS)** - Control which specific rows users can access in those resources
+
+Both work together to provide complete authorization, but serve different purposes.
+
+## Permissions System
+
+### How Permissions Work
+
+Permissions control **UI visibility**. Users only see resources they have permission to access.
+
+**Permission Format:**
+```
+{schema}.{table_or_view}:{operation}
+```
+
+**Examples:**
+- `public.tasks:select` - Read tasks table
+- `public.tasks:insert` - Create tasks
+- `public.tasks:update` - Update tasks
+- `public.tasks:delete` - Delete tasks
+- `reports.task_report:select` - View task report
+- `charts.task_status_pie:select` - View task chart
+
+### Adding Permissions
+
+When creating a new table or view:
+
+```sql
+-- Step 1: Add permissions to the enum
+alter type supasheet.app_permission add value 'public.tasks:select';
+alter type supasheet.app_permission add value 'public.tasks:insert';
+alter type supasheet.app_permission add value 'public.tasks:update';
+alter type supasheet.app_permission add value 'public.tasks:delete';
+
+-- Step 2: Grant permissions to roles
+insert into supasheet.role_permissions (role, permission) values
+  ('user', 'public.tasks:select'),
+  ('user', 'public.tasks:insert'),
+  ('user', 'public.tasks:update'),
+  ('user', 'public.tasks:delete');
+```
+
+<Callout type="warn">
+**Required**: You must add permissions for every table, view, chart, dashboard, and report. Without permissions, users won't see these resources in the UI.
+</Callout>
+
+### Permissions for All Resource Types
+
+**All resource types require `:select` permission to be visible:**
+
+```sql
+-- Table permissions (all operations)
+alter type supasheet.app_permission add value 'public.tasks:select';
+alter type supasheet.app_permission add value 'public.tasks:insert';
+alter type supasheet.app_permission add value 'public.tasks:update';
+alter type supasheet.app_permission add value 'public.tasks:delete';
+
+-- View permissions (select only)
+alter type supasheet.app_permission add value 'public.vw_tasks:select';
+
+-- Report permissions (select only)
+alter type supasheet.app_permission add value 'reports.task_report:select';
+
+-- Dashboard permissions (select only)
+alter type supasheet.app_permission add value 'dashboards.task_summary:select';
+
+-- Chart permissions (select only)
+alter type supasheet.app_permission add value 'charts.task_status_pie:select';
+
+-- Grant all to user role
+insert into supasheet.role_permissions (role, permission) values
+  ('user', 'public.tasks:select'),
+  ('user', 'public.tasks:insert'),
+  ('user', 'public.tasks:update'),
+  ('user', 'public.tasks:delete'),
+  ('user', 'public.vw_tasks:select'),
+  ('user', 'reports.task_report:select'),
+  ('user', 'dashboards.task_summary:select'),
+  ('user', 'charts.task_status_pie:select');
+```
+
+<Callout type="info">
+Views, reports, dashboards, and charts only need `:select` permission since they are read-only. Tables need all four operations (select, insert, update, delete) for full CRUD functionality.
+</Callout>
+
+### Roles
+
+Supasheet comes with two built-in roles:
+
+#### User Role (Default)
+- Automatically assigned to new users
+- Grant permissions explicitly for each resource
+- Recommended for standard users
+
+#### X-Admin Role
+- Full access to all resources
+- For administrators and super users
+- Grant carefully
+
+### Adding New Roles
+
+Create custom roles by adding values to the enum:
+
+```sql
+-- Add new role type
+alter type supasheet.app_role add value 'manager';
+alter type supasheet.app_role add value 'editor';
+
+-- Grant permissions to the new role
+insert into supasheet.role_permissions (role, permission) values
+  ('manager', 'public.tasks:select'),
+  ('manager', 'public.tasks:update'),
+  ('editor', 'public.posts:select'),
+  ('editor', 'public.posts:insert');
+```
+
+### Assigning Roles to Users
+
+Users get roles through the `supasheet.user_roles` table:
+
+```sql
+-- Assign role to user
+insert into supasheet.user_roles (account_id, role)
+values ('user-uuid-here', 'manager');
+
+-- User can have multiple roles
+insert into supasheet.user_roles (account_id, role) values
+  ('user-uuid-here', 'user'),
+  ('user-uuid-here', 'editor');
+```
+
+The default role is `'user'` and is automatically assigned when a new account is created.
+
+### Changing Default Role
+
+To change what role new users get automatically, update the trigger function:
+
+```sql
+create or replace function supasheet.new_account_created_setup()
+returns trigger
+language plpgsql
+as $$
+begin
+  -- Change 'user' to your desired default role
+  insert into supasheet.user_roles (account_id, role)
+  values (new.id, 'user');
+  return new;
+end;
+$$;
+```
+
+### Permission Helper Functions
+
+Use these functions in your SQL:
+
+```sql
+-- Check if user has specific permission
+select supasheet.has_permission('public.tasks:select');
+
+-- Check if user has specific role
+select supasheet.has_role('manager');
+```
+
+## Meta Tables & Permissions
+
+Meta tables store database structure information and are automatically filtered by permissions.
+
+### What are Meta Tables?
+
+- `supasheet.tables` - All tables
+- `supasheet.columns` - All columns
+- `supasheet.views` - All views
+- `supasheet.materialized_views` - All materialized views
+
+### Permission-Based Filtering
+
+Meta table functions only return resources users have `:select` permission for:
+
+```sql
+-- Only returns tables user can access
+select * from supasheet.get_tables();
+
+-- Only returns views user can access
+select * from supasheet.get_views();
+
+-- Only returns columns from accessible tables
+select * from supasheet.get_columns();
+```
+
+This means the UI automatically hides resources users don't have permission to see.
+
+### Updating Meta Tables
+
+After creating or modifying tables/views, update meta tables:
+
+```sql
+-- Update for public schema
+INSERT INTO supasheet.columns
+SELECT * FROM supasheet.generate_columns('public')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  table_id = EXCLUDED.table_id,
+  name = EXCLUDED.name;
+
+INSERT INTO supasheet.tables
+SELECT * FROM supasheet.generate_tables('public')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  name = EXCLUDED.name,
+  rls_enabled = EXCLUDED.rls_enabled;
+
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('public')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  name = EXCLUDED.name;
+
+-- Repeat for other schemas (reports, dashboards, charts)
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('reports')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('dashboards')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('charts')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+```
+
+**Quick reset during development:**
+
+```sql
+TRUNCATE supasheet.tables CASCADE;
+TRUNCATE supasheet.columns CASCADE;
+TRUNCATE supasheet.views CASCADE;
+
+-- Regenerate all
+INSERT INTO supasheet.columns SELECT * FROM supasheet.generate_columns('public');
+INSERT INTO supasheet.tables SELECT * FROM supasheet.generate_tables('public');
+INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('public');
+INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('reports');
+INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('dashboards');
+INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('charts');
+```
+
+## Row Level Security (RLS)
+
+RLS policies control **which rows** users can access. Security is enforced at the database level.
+
+### Basic RLS Setup
+
+```sql
+-- Enable RLS
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+
+-- Create policy
+CREATE POLICY "Users view own tasks"
+  ON tasks
+  FOR SELECT
+  TO authenticated
+  USING (account_id = auth.uid());
+```
+
+<Callout type="info">
+Without policies, **no rows are accessible** when RLS is enabled. You must explicitly grant access.
+</Callout>
+
+### Using Permissions in RLS
+
+Combine permissions with RLS for complete control:
+
+```sql
+CREATE POLICY "tasks_select"
+  ON tasks
+  FOR SELECT
+  TO authenticated
+  USING (
+    account_id = auth.uid()
+    AND supasheet.has_permission('public.tasks:select')
+  );
+```
+
+This ensures:
+- User has the permission (sees table in UI)
+- User owns the row (can access specific data)
+
+### Common RLS Patterns
+
+#### User-Owned Data
+
+```sql
+-- Users see only their own data
+CREATE POLICY "own_data" ON tasks FOR SELECT
+  TO authenticated USING (account_id = auth.uid());
+
+CREATE POLICY "create_own" ON tasks FOR INSERT
+  TO authenticated WITH CHECK (account_id = auth.uid());
+
+CREATE POLICY "update_own" ON tasks FOR UPDATE
+  TO authenticated
+  USING (account_id = auth.uid())
+  WITH CHECK (account_id = auth.uid());
+
+CREATE POLICY "delete_own" ON tasks FOR DELETE
+  TO authenticated USING (account_id = auth.uid());
+```
+
+#### Role-Based Access
+
+```sql
+-- Admins see everything
+CREATE POLICY "admin_all" ON tasks FOR ALL
+  TO authenticated
+  USING (supasheet.has_role('x-admin'));
+
+-- Managers see their team's data
+CREATE POLICY "manager_access" ON tasks FOR SELECT
+  TO authenticated
+  USING (
+    supasheet.has_role('manager')
+    AND team_id IN (
+      SELECT team_id FROM team_managers
+      WHERE account_id = auth.uid()
+    )
+  );
+```
+
+#### Public + Private Data
+
+```sql
+-- Anyone can view public tasks
+CREATE POLICY "public_tasks" ON tasks FOR SELECT
+  TO authenticated USING (is_public = true);
+
+-- Users can view their own private tasks
+CREATE POLICY "own_private_tasks" ON tasks FOR SELECT
+  TO authenticated
+  USING (account_id = auth.uid() AND is_public = false);
+```
+
+### Policy Operations
+
+- `FOR SELECT` - Control who can read
+- `FOR INSERT` - Control who can create
+- `FOR UPDATE` - Control who can modify
+- `FOR DELETE` - Control who can remove
+- `FOR ALL` - Shorthand for all operations
+
+### Performance Tips
+
+```sql
+-- Add indexes for policy conditions
+CREATE INDEX tasks_account_id_idx ON tasks(account_id);
+CREATE INDEX tasks_team_id_idx ON tasks(team_id);
+
+-- Use EXISTS instead of IN
+CREATE POLICY "better_policy" ON tasks FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM team_members
+      WHERE team_id = tasks.team_id
+        AND account_id = auth.uid()
+    )
+  );
+```
+
+## Complete Workflow
+
+When adding a new resource:
+
+```sql
+-- 1. Create the table
+CREATE TABLE tasks (...);
+
+-- 2. Add permissions
+alter type supasheet.app_permission add value 'public.tasks:select';
+alter type supasheet.app_permission add value 'public.tasks:insert';
+alter type supasheet.app_permission add value 'public.tasks:update';
+alter type supasheet.app_permission add value 'public.tasks:delete';
+
+-- 3. Enable RLS
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+
+-- 4. Create RLS policies
+create policy tasks_select on tasks for select
+  to authenticated
+  using (account_id = auth.uid() and supasheet.has_permission('public.tasks:select'));
+
+create policy tasks_insert on tasks for insert
+  to authenticated
+  with check (supasheet.has_permission('public.tasks:insert'));
+
+-- 5. Grant permissions to roles
+insert into supasheet.role_permissions (role, permission) values
+  ('user', 'public.tasks:select'),
+  ('user', 'public.tasks:insert'),
+  ('user', 'public.tasks:update'),
+  ('user', 'public.tasks:delete');
+
+-- 6. Update meta tables
+INSERT INTO supasheet.tables SELECT * FROM supasheet.generate_tables('public')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+
+INSERT INTO supasheet.columns SELECT * FROM supasheet.generate_columns('public')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+```
+
+## Key Takeaways
+
+- **Permissions** control UI visibility (what resources appear)
+- **RLS** controls data access (which rows are accessible)
+- **Meta tables** are filtered by permissions automatically
+- **Default role** is `'user'`, automatically assigned to new accounts
+- **Always update meta tables** after schema changes
+- **Use `has_permission()` and `has_role()`** in your policies
+
+## Next Steps
+
+- **[Complete Example](/docs/guide/complete-example)** - See full workflow
+- **[Database Schema](/docs/guide/database-schema)** - Understand schema organization
+- **[User Management](/docs/guide/user-management)** - Learn about accounts

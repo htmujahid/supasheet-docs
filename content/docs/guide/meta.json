@@ -1,0 +1,27 @@
+{
+  "title": "Guide",
+  "description": "Learn how to use Supasheet as a framework",
+  "root": true,
+  "icon": "BookOpen",
+  "pages": [
+    "index",
+    "installation",
+    "quickstart",
+    "---Core Concepts---",
+    "sql-first-philosophy",
+    "user-management",
+    "database-schema",
+    "authorization",
+    "complete-example",
+    "---Features---",
+    "crud-operations",
+    "dashboards",
+    "charts",
+    "reports",
+    "audit-logs",
+    "storage",
+    "sql-editor",
+    "---Advanced---",
+    "data-types"
+  ]
+}

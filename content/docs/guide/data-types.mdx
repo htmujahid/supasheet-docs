@@ -1,0 +1,225 @@
+---
+title: Data Types
+description: Custom data types for enhanced functionality
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Supasheet extends PostgreSQL's standard data types with custom types that provide enhanced UI functionality and specialized handling.
+
+## FILE Type
+
+The `FILE` type enables file storage integration directly in your table columns. When you use the FILE type, Supasheet automatically renders a file upload interface with preview, progress tracking, and storage management.
+
+### Basic Usage
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  title TEXT NOT NULL,
+  cover FILE,  -- Single file column
+  attachments FILE,  -- Can also store multiple files
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Configuration via Comments
+
+Configure file upload behavior using column comments with JSON:
+
+```sql
+-- Single image with custom size limit
+comment on column tasks.cover is '{"accept":"image/*","maxSize":2097152,"maxFiles":1}';
+
+-- Multiple files with specific types
+comment on column tasks.attachments is '{"accept":".pdf,.doc,.docx","maxSize":10485760,"maxFiles":5}';
+
+-- Any file type, single file
+comment on column tasks.document is '{"accept":"*","maxSize":5242880,"maxFiles":1}';
+```
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `accept` | string | `"*"` | File types to accept (MIME type or extension) |
+| `maxSize` | number | `5242880` (5MB) | Maximum file size in bytes |
+| `maxFiles` | number | `1` | Maximum number of files allowed |
+
+### Accept Format Examples
+
+```json
+// Images only
+{"accept": "image/*"}
+
+// Specific image types
+{"accept": "image/png,image/jpeg,image/gif"}
+
+// Documents by extension
+{"accept": ".pdf,.doc,.docx,.txt"}
+
+// Video files
+{"accept": "video/*"}
+
+// Multiple MIME types
+{"accept": "image/*,video/*,application/pdf"}
+
+// Any file
+{"accept": "*"}
+```
+
+### Storage Organization
+
+Files are automatically organized in Supabase Storage with this pattern:
+
+```
+{schema}/{table}/{column}/{filename}
+```
+
+**Example:**
+- Schema: `public`
+- Table: `tasks`
+- Column: `cover`
+- Filename: `project-cover.png`
+
+**Storage path:** `public/tasks/cover/project-cover.png`
+
+### File URLs
+
+The FILE column stores the **public URL** of the uploaded file:
+
+```sql
+-- Single file (TEXT)
+cover: "https://your-project.supabase.co/storage/v1/object/public/bucket/path/file.png"
+
+-- Multiple files (TEXT[])
+attachments: [
+  "https://your-project.supabase.co/storage/v1/object/public/bucket/path/doc1.pdf",
+  "https://your-project.supabase.co/storage/v1/object/public/bucket/path/doc2.pdf"
+]
+```
+
+### Single vs Multiple Files
+
+```sql
+-- Single file - stores TEXT
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY,
+  avatar FILE
+);
+comment on column profiles.avatar is '{"accept":"image/*","maxFiles":1}';
+
+-- Multiple files - stores TEXT[]
+CREATE TABLE projects (
+  id UUID PRIMARY KEY,
+  attachments FILE
+);
+comment on column projects.attachments is '{"accept":"*","maxFiles":10}';
+```
+
+### Complete Example
+
+```sql
+-- Create table with file columns
+CREATE TABLE projects (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  name TEXT NOT NULL,
+
+  -- Single cover image
+  cover_image FILE,
+
+  -- Multiple attachments
+  attachments FILE,
+
+  -- User association
+  account_id UUID REFERENCES supasheet.accounts(id) ON DELETE CASCADE,
+
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Configure cover image (single image, max 2MB)
+comment on column projects.cover_image is '{"accept":"image/*","maxSize":2097152,"maxFiles":1}';
+
+-- Configure attachments (multiple files, max 10MB each, up to 5 files)
+comment on column projects.attachments is '{"accept":".pdf,.doc,.docx,.zip","maxSize":10485760,"maxFiles":5}';
+
+-- Enable RLS
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+
+-- Create policies
+create policy projects_select on projects
+  for select to authenticated
+  using (account_id = auth.uid());
+
+create policy projects_insert on projects
+  for insert to authenticated
+  with check (account_id = auth.uid());
+```
+
+### UI Features
+
+When using FILE type, Supasheet automatically provides:
+
+- **Drag & Drop** - Drag files onto the upload area
+- **File Browser** - Click to browse and select files
+- **Progress Tracking** - Real-time upload progress for each file
+- **Image Preview** - Thumbnail preview for image files
+- **File Info** - Shows filename, size, and type
+- **Remove Files** - Individual file removal or remove all
+- **Validation** - Automatic validation based on config (size, type, count)
+- **Error Handling** - Clear error messages for upload failures
+
+### Storage Bucket Setup
+
+FILE type automatically uses the default Supabase Storage bucket. Ensure your storage bucket has proper policies:
+
+```sql
+-- Allow authenticated users to upload
+create policy "Users can upload files"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'your-bucket' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Allow authenticated users to view files
+create policy "Users can view files"
+on storage.objects for select
+to authenticated
+using (bucket_id = 'your-bucket');
+
+-- Allow users to delete their own files
+create policy "Users can delete own files"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'your-bucket' and auth.uid()::text = (storage.foldername(name))[1]);
+```
+
+<Callout type="info">
+The FILE type is a domain type built on top of PostgreSQL TEXT (for single files) or TEXT[] (for multiple files). It stores URLs, not binary data.
+</Callout>
+
+## Size Reference
+
+Common file size limits in bytes:
+
+- **1 MB** = `1048576`
+- **2 MB** = `2097152`
+- **5 MB** = `5242880` (default)
+- **10 MB** = `10485760`
+- **50 MB** = `52428800`
+- **100 MB** = `104857600`
+
+## Best Practices
+
+1. **Set appropriate size limits** - Balance user needs with storage costs
+2. **Restrict file types** - Only accept necessary formats for security
+3. **Use descriptive column names** - `cover_image`, `profile_picture`, `attachments`
+4. **Enable RLS on storage** - Protect user files with proper policies
+5. **Clean up orphaned files** - Delete storage files when records are deleted
+
+## Next Steps
+
+- **[Storage](/docs/guide/storage)** - Learn about Supabase Storage
+- **[CRUD Operations](/docs/guide/crud-operations)** - See FILE type in CRUD interfaces
+- **[Complete Example](/docs/guide/complete-example)** - Full workflow with FILE columns

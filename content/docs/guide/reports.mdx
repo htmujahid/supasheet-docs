@@ -1,0 +1,472 @@
+---
+title: Reports
+description: Generate reports from SQL queries
+---
+
+## Overview
+
+Reports in Supasheet are SQL views in the `reports` schema that can be exported to various formats (CSV, PDF, Excel). To display a report, you need to:
+
+1. Create a view in the `reports` schema
+2. Grant permissions on the view
+3. **Register the report** in the `supasheet.reports` table
+4. Grant `:select` permission to roles
+
+## Creating Reports
+
+### Basic Report
+
+```sql
+-- Step 1: Create view
+create view reports.task_report as
+select
+  a.name as account_name,
+  t.*
+from tasks t
+join supasheet.accounts a on t.account_id = a.id;
+
+-- Step 2: Grant permissions
+revoke all on reports.task_report from authenticated, service_role;
+grant select on reports.task_report to authenticated;
+
+-- Step 3: Register report
+insert into supasheet.reports (name, description, "group", view_name, filter_field, is_active)
+values ('Task Report', 'Report of all tasks with account names', 'Tasks', 'task_report', 'created_at', true);
+
+-- Step 4: Grant permission to role
+insert into supasheet.role_permissions (role, permission)
+values ('user', 'reports.task_report:select');
+```
+
+**Report Table Columns:**
+- `name` - Display name of the report
+- `description` - Description shown in UI
+- `group` - Category/group for organization
+- `view_name` - Name of the view (without schema)
+- `filter_field` - Column used for filtering (usually date field)
+- `is_active` - Whether report is visible
+
+### Detailed Report with Joins
+
+```sql
+CREATE VIEW reports.order_details AS
+SELECT
+  o.id as order_id,
+  o.created_at as order_date,
+  u.email as customer_email,
+  u.name as customer_name,
+  p.name as product_name,
+  oi.quantity,
+  oi.price,
+  (oi.quantity * oi.price) as line_total,
+  o.status
+FROM orders o
+JOIN users u ON o.customer_id = u.id
+JOIN order_items oi ON o.id = oi.order_id
+JOIN products p ON oi.product_id = p.id
+ORDER BY o.created_at DESC;
+```
+
+## Report Types
+
+### Summary Reports
+
+Aggregated data:
+
+```sql
+CREATE VIEW reports.monthly_summary AS
+SELECT
+  DATE_TRUNC('month', created_at) as month,
+  COUNT(*) as total_orders,
+  SUM(total) as total_revenue,
+  AVG(total) as avg_order_value,
+  COUNT(DISTINCT customer_id) as unique_customers
+FROM orders
+GROUP BY month
+ORDER BY month DESC;
+```
+
+### Detail Reports
+
+Row-level data:
+
+```sql
+CREATE VIEW reports.customer_orders AS
+SELECT
+  u.id as customer_id,
+  u.email,
+  u.name,
+  u.created_at as signup_date,
+  o.id as order_id,
+  o.created_at as order_date,
+  o.total,
+  o.status
+FROM users u
+LEFT JOIN orders o ON u.id = o.customer_id
+ORDER BY u.created_at DESC, o.created_at DESC;
+```
+
+### Analytical Reports
+
+Complex analysis:
+
+```sql
+CREATE VIEW reports.customer_ltv_analysis AS
+SELECT
+  u.id,
+  u.email,
+  u.name,
+  u.created_at as signup_date,
+  COUNT(o.id) as total_orders,
+  SUM(o.total) as lifetime_value,
+  AVG(o.total) as avg_order_value,
+  MIN(o.created_at) as first_order_date,
+  MAX(o.created_at) as last_order_date,
+  MAX(o.created_at) - MIN(o.created_at) as customer_lifespan,
+  CASE
+    WHEN MAX(o.created_at) >= NOW() - INTERVAL '30 days' THEN 'Active'
+    WHEN MAX(o.created_at) >= NOW() - INTERVAL '90 days' THEN 'At Risk'
+    ELSE 'Churned'
+  END as status
+FROM users u
+LEFT JOIN orders o ON u.id = o.customer_id
+GROUP BY u.id, u.email, u.name, u.created_at
+ORDER BY lifetime_value DESC NULLS LAST;
+```
+
+## Parameterized Reports
+
+### Date Range Reports
+
+```sql
+CREATE VIEW reports.sales_by_date_range AS
+SELECT
+  DATE(created_at) as date,
+  COUNT(*) as orders,
+  SUM(total) as revenue
+FROM orders
+WHERE created_at >= COALESCE(
+  (current_setting('app.report_start_date', true))::DATE,
+  NOW() - INTERVAL '30 days'
+)
+AND created_at < COALESCE(
+  (current_setting('app.report_end_date', true))::DATE,
+  NOW()
+)
+GROUP BY date
+ORDER BY date;
+
+-- Usage:
+-- SET app.report_start_date = '2024-01-01';
+-- SET app.report_end_date = '2024-01-31';
+```
+
+### Filtered Reports
+
+```sql
+CREATE VIEW reports.orders_by_status AS
+SELECT
+  o.id,
+  o.created_at,
+  u.email as customer,
+  o.total,
+  o.status
+FROM orders o
+JOIN users u ON o.customer_id = u.id
+WHERE o.status = COALESCE(
+  current_setting('app.filter_status', true),
+  o.status
+)
+ORDER BY o.created_at DESC;
+
+-- Usage:
+-- SET app.filter_status = 'completed';
+```
+
+## User-Specific Reports
+
+### Personal Reports
+
+```sql
+CREATE VIEW reports.my_orders AS
+SELECT
+  id,
+  created_at,
+  total,
+  status
+FROM orders
+WHERE customer_id = auth.uid()
+ORDER BY created_at DESC;
+```
+
+### Role-Based Reports
+
+```sql
+CREATE VIEW reports.sales_rep_performance AS
+SELECT
+  sr.id as rep_id,
+  sr.name as rep_name,
+  COUNT(o.id) as total_orders,
+  SUM(o.total) as total_revenue,
+  AVG(o.total) as avg_order_value
+FROM users sr
+LEFT JOIN orders o ON sr.id = o.sales_rep_id
+WHERE sr.role = 'sales_rep'
+  AND (
+    sr.id = auth.uid()  -- Own data
+    OR (SELECT role FROM users WHERE id = auth.uid()) = 'admin'  -- Or admin
+  )
+GROUP BY sr.id, sr.name
+ORDER BY total_revenue DESC NULLS LAST;
+```
+
+## Financial Reports
+
+### Revenue Reports
+
+```sql
+CREATE VIEW reports.revenue_breakdown AS
+SELECT
+  DATE_TRUNC('month', created_at) as month,
+  SUM(total) as gross_revenue,
+  SUM(total * 0.03) as processing_fees,  -- 3% fee example
+  SUM(cost) as cost_of_goods,
+  SUM(total - (total * 0.03) - cost) as net_profit
+FROM orders
+WHERE created_at >= NOW() - INTERVAL '12 months'
+GROUP BY month
+ORDER BY month DESC;
+```
+
+### Invoice Report
+
+```sql
+CREATE VIEW reports.invoices AS
+SELECT
+  i.invoice_number,
+  i.created_at as invoice_date,
+  i.due_date,
+  c.name as customer_name,
+  c.email as customer_email,
+  c.billing_address,
+  i.subtotal,
+  i.tax_amount,
+  i.total,
+  i.status,
+  CASE
+    WHEN i.status = 'paid' THEN i.paid_at
+    WHEN i.due_date < NOW() THEN 'OVERDUE'
+    ELSE NULL
+  END as payment_info
+FROM invoices i
+JOIN customers c ON i.customer_id = c.id
+ORDER BY i.created_at DESC;
+```
+
+## Inventory Reports
+
+```sql
+CREATE VIEW reports.inventory_status AS
+SELECT
+  p.id,
+  p.name,
+  p.sku,
+  p.category,
+  p.stock_quantity,
+  p.reorder_level,
+  CASE
+    WHEN p.stock_quantity = 0 THEN 'Out of Stock'
+    WHEN p.stock_quantity <= p.reorder_level THEN 'Low Stock'
+    ELSE 'In Stock'
+  END as status,
+  p.unit_cost,
+  (p.stock_quantity * p.unit_cost) as inventory_value
+FROM products p
+ORDER BY
+  CASE
+    WHEN p.stock_quantity = 0 THEN 1
+    WHEN p.stock_quantity <= p.reorder_level THEN 2
+    ELSE 3
+  END,
+  p.name;
+```
+
+## Customer Reports
+
+### Cohort Analysis
+
+```sql
+CREATE VIEW reports.cohort_analysis AS
+SELECT
+  DATE_TRUNC('month', u.created_at) as cohort_month,
+  DATE_TRUNC('month', o.created_at) as order_month,
+  EXTRACT(MONTH FROM AGE(o.created_at, u.created_at)) as months_since_signup,
+  COUNT(DISTINCT o.customer_id) as customers,
+  SUM(o.total) as revenue
+FROM users u
+LEFT JOIN orders o ON u.id = o.customer_id
+WHERE u.created_at >= NOW() - INTERVAL '12 months'
+GROUP BY cohort_month, order_month
+ORDER BY cohort_month, order_month;
+```
+
+### Customer Segmentation
+
+```sql
+CREATE VIEW reports.customer_segments AS
+SELECT
+  u.id,
+  u.email,
+  u.name,
+  COUNT(o.id) as order_count,
+  SUM(o.total) as lifetime_value,
+  MAX(o.created_at) as last_order_date,
+  CASE
+    WHEN SUM(o.total) >= 5000 THEN 'VIP'
+    WHEN SUM(o.total) >= 1000 THEN 'Premium'
+    WHEN SUM(o.total) >= 100 THEN 'Regular'
+    ELSE 'Bronze'
+  END as segment,
+  CASE
+    WHEN MAX(o.created_at) >= NOW() - INTERVAL '30 days' THEN 'Active'
+    WHEN MAX(o.created_at) >= NOW() - INTERVAL '90 days' THEN 'At Risk'
+    ELSE 'Inactive'
+  END as activity_status
+FROM users u
+LEFT JOIN orders o ON u.id = o.customer_id
+GROUP BY u.id, u.email, u.name;
+```
+
+## Performance Reports
+
+### Product Performance
+
+```sql
+CREATE VIEW reports.product_performance AS
+SELECT
+  p.id,
+  p.name,
+  p.category,
+  COUNT(DISTINCT oi.order_id) as times_ordered,
+  SUM(oi.quantity) as units_sold,
+  SUM(oi.quantity * oi.price) as gross_revenue,
+  SUM(oi.quantity * p.cost) as cost,
+  SUM(oi.quantity * (oi.price - p.cost)) as gross_profit,
+  ROUND(
+    SUM(oi.quantity * (oi.price - p.cost))::NUMERIC /
+    NULLIF(SUM(oi.quantity * oi.price), 0) * 100,
+    2
+  ) as profit_margin_pct
+FROM products p
+LEFT JOIN order_items oi ON p.id = oi.product_id
+LEFT JOIN orders o ON oi.order_id = o.id
+WHERE o.created_at >= NOW() - INTERVAL '90 days' OR o.created_at IS NULL
+GROUP BY p.id, p.name, p.category
+ORDER BY gross_revenue DESC NULLS LAST;
+```
+
+## Export Formats
+
+Reports can be exported in multiple formats:
+
+### CSV Export
+```sql
+-- Optimized for CSV export
+CREATE VIEW reports.csv_export_orders AS
+SELECT
+  id::TEXT,
+  created_at::TEXT,
+  customer_email,
+  total::TEXT,
+  status
+FROM orders
+ORDER BY created_at DESC;
+```
+
+### Excel-Friendly Format
+```sql
+-- Formatted for Excel
+CREATE VIEW reports.excel_sales AS
+SELECT
+  TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS') as "Order Date",
+  customer_email as "Customer Email",
+  TO_CHAR(total, 'FM$999,999,990.00') as "Order Total",
+  INITCAP(status) as "Status"
+FROM orders;
+```
+
+## Scheduled Reports
+
+### Daily Summary
+
+```sql
+CREATE VIEW reports.daily_summary AS
+SELECT
+  CURRENT_DATE as report_date,
+  COUNT(*) as total_orders,
+  SUM(total) as total_revenue,
+  AVG(total) as avg_order_value,
+  COUNT(DISTINCT customer_id) as unique_customers
+FROM orders
+WHERE DATE(created_at) = CURRENT_DATE;
+```
+
+## Performance Tips
+
+### Use Indexes
+
+```sql
+CREATE INDEX orders_created_at_idx ON orders(created_at);
+CREATE INDEX orders_customer_id_idx ON orders(customer_id);
+CREATE INDEX order_items_order_id_idx ON order_items(order_id);
+```
+
+### Limit Results
+
+```sql
+CREATE VIEW reports.recent_1000_orders AS
+SELECT *
+FROM orders
+ORDER BY created_at DESC
+LIMIT 1000;
+```
+
+### Materialized Views
+
+```sql
+CREATE MATERIALIZED VIEW reports.monthly_stats AS
+SELECT
+  DATE_TRUNC('month', created_at) as month,
+  COUNT(*) as orders,
+  SUM(total) as revenue
+FROM orders
+GROUP BY month;
+
+-- Refresh daily
+REFRESH MATERIALIZED VIEW reports.monthly_stats;
+```
+
+## Report Permissions
+
+```sql
+-- Admin-only reports
+CREATE POLICY "Admins access all reports"
+  ON reports.financial_summary
+  FOR SELECT
+  TO authenticated
+  USING (
+    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
+  );
+
+-- User-specific reports
+CREATE VIEW reports.my_purchase_history AS
+SELECT *
+FROM orders
+WHERE customer_id = auth.uid();
+```
+
+## Next Steps
+
+- **[Dashboards](/docs/guide/dashboards)** - Create visual dashboards
+- **[Charts](/docs/guide/charts)** - Add visualizations
+- **[Authorization](/docs/guide/authorization)** - Secure your reports

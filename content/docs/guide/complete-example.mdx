@@ -1,0 +1,707 @@
+---
+title: Complete Example
+description: Step-by-step guide to creating a full feature in Supasheet
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+## Overview
+
+This guide shows you how to create a complete feature in Supasheet from scratch. We'll build a **Task Management** system with:
+- CRUD operations for tasks
+- Dashboard widgets (cards and tables)
+- Charts for visualization
+- Reports for data analysis
+- Audit logging
+- File attachments
+
+<Callout type="info">
+This example is based on the actual `tasks` migration in the Supasheet source code.
+</Callout>
+
+## The Complete Workflow
+
+<Steps>
+
+<Step>
+### Step 1: Create Custom Types
+
+First, create any custom enum types your table needs:
+
+```sql
+-- supabase/migrations/YYYYMMDDHHMMSS_tasks_types.sql
+
+create type task_status as enum ('pending', 'in_progress', 'completed', 'archived');
+create type task_priority as enum ('low', 'medium', 'high', 'urgent');
+```
+
+</Step>
+
+<Step>
+### Step 2: Add Permissions to the System
+
+Add permission values for ALL operations you'll need:
+
+```sql
+-- Permissions for the table (CRUD operations)
+alter type supasheet.app_permission add value 'public.tasks:select';
+alter type supasheet.app_permission add value 'public.tasks:insert';
+alter type supasheet.app_permission add value 'public.tasks:update';
+alter type supasheet.app_permission add value 'public.tasks:delete';
+
+-- Permissions for views
+alter type supasheet.app_permission add value 'public.vw_tasks:select';
+
+-- Permissions for reports
+alter type supasheet.app_permission add value 'reports.task_report:select';
+
+-- Permissions for dashboards
+alter type supasheet.app_permission add value 'dashboards.task_summary:select';
+alter type supasheet.app_permission add value 'dashboards.task_completion_rate:select';
+alter type supasheet.app_permission add value 'dashboards.tasks_by_status:select';
+alter type supasheet.app_permission add value 'dashboards.task_urgent_count:select';
+alter type supasheet.app_permission add value 'dashboards.task_list_simple:select';
+alter type supasheet.app_permission add value 'dashboards.active_tasks_simple:select';
+alter type supasheet.app_permission add value 'dashboards.task_list_detailed:select';
+alter type supasheet.app_permission add value 'dashboards.task_analytics_detailed:select';
+
+-- Permissions for charts
+alter type supasheet.app_permission add value 'charts.task_trend_area:select';
+alter type supasheet.app_permission add value 'charts.task_priority_bar:select';
+alter type supasheet.app_permission add value 'charts.task_completion_line:select';
+alter type supasheet.app_permission add value 'charts.task_status_pie:select';
+alter type supasheet.app_permission add value 'charts.task_metrics_radar:select';
+```
+
+<Callout type="warn">
+**IMPORTANT**: You must add permissions for EVERY table, view, dashboard, chart, and report you create. Without these permissions, users won't be able to access the data even if they have the right role.
+</Callout>
+
+</Step>
+
+<Step>
+### Step 3: Create the Table
+
+Create your main table with proper structure:
+
+```sql
+CREATE TABLE tasks (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+    title VARCHAR(500) NOT NULL,
+    description TEXT,
+    status task_status DEFAULT 'pending',
+    priority task_priority DEFAULT 'medium',
+    cover FILE,  -- Special FILE type for storage integration
+
+    -- User association
+    account_id UUID REFERENCES supasheet.accounts(id) ON DELETE CASCADE,
+
+    -- Dates
+    due_date TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+
+    -- Organization
+    tags TEXT[],
+    is_important BOOLEAN DEFAULT false,
+
+    -- Audit fields
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add comment for FILE type configuration
+comment on column tasks.cover is '{"accept":"image/*"}';
+
+-- Create indexes for performance
+create index idx_tasks_account_id on tasks (account_id);
+create index idx_tasks_status on tasks (status);
+create index idx_tasks_priority on tasks (priority);
+```
+
+<Callout type="info">
+The `FILE` type enables file uploads. The comment specifies accepted file types (e.g., `image/*`, `application/pdf`, etc.).
+</Callout>
+
+</Step>
+
+<Step>
+### Step 4: Set Up Row Level Security (RLS)
+
+Enable RLS and create policies:
+
+```sql
+-- Enable RLS
+alter table tasks enable row level security;
+
+-- Revoke default permissions
+revoke all on table tasks from authenticated, service_role;
+
+-- Grant basic permissions
+grant select, insert, update, delete on table tasks to authenticated;
+
+-- Create RLS policies
+create policy tasks_select on tasks
+    for select
+    to authenticated
+    using (account_id = auth.uid() and supasheet.has_permission('public.tasks:select'));
+
+create policy tasks_insert on tasks
+    for insert
+    to authenticated
+    with check (supasheet.has_permission('public.tasks:insert'));
+
+create policy tasks_update on tasks
+    for update
+    to authenticated
+    using (account_id = auth.uid() and supasheet.has_permission('public.tasks:update'))
+    with check (account_id = auth.uid() and supasheet.has_permission('public.tasks:update'));
+
+create policy tasks_delete on tasks
+    for delete
+    to authenticated
+    using (account_id = auth.uid() and supasheet.has_permission('public.tasks:delete'));
+```
+
+</Step>
+
+<Step>
+### Step 5: Create Views (Optional)
+
+Create views for enhanced querying:
+
+```sql
+-- Create a view with joined data
+create or replace view public.vw_tasks
+with(security_invoker = true) as
+select
+    a.name as account_name,
+    t.*
+from tasks t
+join supasheet.accounts a on t.account_id = a.id;
+
+-- Grant permissions on view
+revoke all on public.vw_tasks from authenticated, service_role;
+grant select on public.vw_tasks to authenticated;
+```
+
+</Step>
+
+<Step>
+### Step 6: Create Dashboard Widgets
+
+Dashboard widgets come in different types. Create views for each widget type you need:
+
+#### Card Type 1: Simple Metric Card
+```sql
+create or replace view dashboards.task_summary as
+select
+    count(*) as value,
+    'list-todo' as icon,
+    'active tasks' as label
+from tasks t
+where t.status != 'completed';
+
+revoke all on dashboards.task_summary from authenticated, service_role;
+grant select on dashboards.task_summary to authenticated;
+```
+
+#### Card Type 2: Split Layout Card
+```sql
+create or replace view dashboards.task_completion_rate as
+select
+    count(*) filter (where status = 'completed') as primary,
+    count(*) filter (where status != 'completed') as secondary,
+    'Completed' as primary_label,
+    'Active' as secondary_label
+from tasks t;
+
+revoke all on dashboards.task_completion_rate from authenticated, service_role;
+grant select on dashboards.task_completion_rate to authenticated;
+```
+
+#### Card Type 3: Value and Percent Card
+```sql
+create or replace view dashboards.tasks_by_status as
+select
+    count(*) filter (where status = 'completed') as value,
+    case
+        when count(*) > 0
+        then round((count(*) filter (where status = 'completed')::numeric / count(*)::numeric) * 100, 1)
+        else 0
+    end as percent
+from tasks t;
+
+revoke all on dashboards.tasks_by_status from authenticated, service_role;
+grant select on dashboards.tasks_by_status to authenticated;
+```
+
+#### Card Type 4: Progress Card
+```sql
+create or replace view dashboards.task_urgent_count as
+select
+    count(*) filter (where status != 'completed' and priority IN ('high', 'urgent')) as current,
+    count(*) filter (where status != 'completed') as total,
+    json_build_array(
+        json_build_object('label', 'Urgent', 'value', count(*) filter (where priority = 'urgent' and status != 'completed')),
+        json_build_object('label', 'High', 'value', count(*) filter (where priority = 'high' and status != 'completed')),
+        json_build_object('label', 'Overdue', 'value', count(*) filter (where due_date < CURRENT_TIMESTAMP and status != 'completed'))
+    ) as segments
+from tasks;
+
+revoke all on dashboards.task_urgent_count from authenticated, service_role;
+grant select on dashboards.task_urgent_count to authenticated;
+```
+
+#### Table Type 1: Simple Table (2-3 columns)
+```sql
+create or replace view dashboards.task_list_simple as
+select
+    title,
+    status,
+    priority
+from tasks
+order by created_at desc
+limit 10;
+
+revoke all on dashboards.task_list_simple from authenticated, service_role;
+grant select on dashboards.task_list_simple to authenticated;
+```
+
+#### Table Type 2: Detailed Table (4-5 columns)
+```sql
+create or replace view dashboards.task_list_detailed as
+select
+    title,
+    status,
+    priority,
+    to_char(created_at, 'MM/DD HH24:MI') as created,
+    CASE
+        WHEN due_date < CURRENT_TIMESTAMP AND status != 'completed' THEN 'Overdue'
+        WHEN due_date IS NULL THEN '-'
+        ELSE to_char(due_date, 'MM/DD')
+    END as due
+from tasks
+order by created_at desc
+limit 10;
+
+revoke all on dashboards.task_list_detailed from authenticated, service_role;
+grant select on dashboards.task_list_detailed to authenticated;
+```
+
+</Step>
+
+<Step>
+### Step 7: Register Dashboard Widgets
+
+Insert widget metadata into the `supasheet.dashboards` table:
+
+```sql
+-- Grant permissions to roles
+insert into supasheet.role_permissions (role, permission) values
+    ('user', 'dashboards.task_summary:select'),
+    ('user', 'dashboards.task_completion_rate:select'),
+    ('user', 'dashboards.tasks_by_status:select'),
+    ('user', 'dashboards.task_urgent_count:select'),
+    ('user', 'dashboards.task_list_simple:select'),
+    ('user', 'dashboards.task_list_detailed:select');
+
+-- Register dashboard widgets
+insert into supasheet.dashboards (name, description, caption, "group", widget_type, view_name, is_active) values
+    ('Task Summary', 'Summary of active tasks', '', 'Tasks', 'card_1', 'task_summary', true),
+    ('Task Overview', 'Completed vs Active tasks', '', 'Tasks', 'card_2', 'task_completion_rate', true),
+    ('Status Breakdown', 'Tasks by current status', 'Completed Tasks', 'Tasks', 'card_3', 'tasks_by_status', true),
+    ('Priority Alert', 'High priority items', '', 'Tasks', 'card_4', 'task_urgent_count', true),
+    ('Recent Tasks', 'Latest tasks in the system', 'Last 10 tasks', 'Tasks', 'table_1', 'task_list_simple', true),
+    ('Task Overview', 'Detailed task listing', 'Recent activity', 'Tasks', 'table_2', 'task_list_detailed', true);
+```
+
+**Available Widget Types:**
+- `card_1` - Single metric with icon
+- `card_2` - Split layout (primary/secondary values)
+- `card_3` - Value with percentage
+- `card_4` - Progress bar with segments
+- `table_1` - Simple table (2-3 columns)
+- `table_2` - Detailed table (4-5 columns)
+
+</Step>
+
+<Step>
+### Step 8: Create Charts
+
+Create views for different chart types:
+
+#### Area Chart
+```sql
+create or replace view charts.task_trend_area as
+select
+    to_char(date_trunc('day', created_at), 'Mon DD') as date,
+    count(*) filter (where status = 'completed') as completed,
+    count(*) filter (where status = 'pending') as pending,
+    count(*) filter (where status = 'in_progress') as active
+from tasks
+where created_at >= CURRENT_DATE - INTERVAL '7 days'
+group by date_trunc('day', created_at)
+order by date_trunc('day', created_at);
+
+revoke all on charts.task_trend_area from authenticated, service_role;
+grant select on charts.task_trend_area to authenticated;
+```
+
+#### Bar Chart
+```sql
+create or replace view charts.task_priority_bar as
+select
+    priority as label,
+    count(*) as total,
+    count(*) filter (where status = 'completed') as completed
+from tasks
+group by priority
+order by
+    case priority
+        when 'urgent' then 1
+        when 'high' then 2
+        when 'medium' then 3
+        when 'low' then 4
+    end;
+
+revoke all on charts.task_priority_bar from authenticated, service_role;
+grant select on charts.task_priority_bar to authenticated;
+```
+
+#### Pie Chart
+```sql
+create or replace view charts.task_status_pie as
+select
+    status as label,
+    count(*) as value
+from tasks
+group by status;
+
+revoke all on charts.task_status_pie from authenticated, service_role;
+grant select on charts.task_status_pie to authenticated;
+```
+
+#### Line Chart
+```sql
+create or replace view charts.task_completion_line as
+select
+    to_char(date_trunc('day', created_at), 'Mon DD') as date,
+    count(*) as created,
+    count(*) filter (where status = 'completed') as completed
+from tasks
+where created_at >= CURRENT_DATE - INTERVAL '14 days'
+group by date_trunc('day', created_at)
+order by date_trunc('day', created_at);
+
+revoke all on charts.task_completion_line from authenticated, service_role;
+grant select on charts.task_completion_line to authenticated;
+```
+
+#### Radar Chart
+```sql
+create or replace view charts.task_metrics_radar as
+select
+    priority as metric,
+    count(*) as total,
+    count(*) filter (where status = 'completed') as completed,
+    count(*) filter (where due_date < CURRENT_TIMESTAMP and status != 'completed') as overdue
+from tasks
+group by priority;
+
+revoke all on charts.task_metrics_radar from authenticated, service_role;
+grant select on charts.task_metrics_radar to authenticated;
+```
+
+</Step>
+
+<Step>
+### Step 9: Register Charts
+
+Insert chart metadata:
+
+```sql
+-- Grant permissions
+insert into supasheet.role_permissions (role, permission) values
+    ('user', 'charts.task_trend_area:select'),
+    ('user', 'charts.task_priority_bar:select'),
+    ('user', 'charts.task_completion_line:select'),
+    ('user', 'charts.task_status_pie:select'),
+    ('user', 'charts.task_metrics_radar:select');
+
+-- Register charts
+insert into supasheet.charts (name, description, caption, "group", chart_type, view_name, is_active) values
+    ('Task Trend', 'Task creation trend over last 7 days', '', 'Tasks', 'area', 'task_trend_area', true),
+    ('Priority Breakdown', 'Tasks grouped by priority level', '', 'Tasks', 'bar', 'task_priority_bar', true),
+    ('Completion Rate', 'Daily task completion over 2 weeks', '', 'Tasks', 'line', 'task_completion_line', true),
+    ('Status Distribution', 'Current task status breakdown', '', 'Tasks', 'pie', 'task_status_pie', true),
+    ('Priority Metrics', 'Task metrics across priorities', '', 'Tasks', 'radar', 'task_metrics_radar', true);
+```
+
+**Available Chart Types:**
+- `area` - Area chart
+- `bar` - Bar chart
+- `line` - Line chart
+- `pie` - Pie chart
+- `radar` - Radar chart
+
+</Step>
+
+<Step>
+### Step 10: Create Reports
+
+Create report views:
+
+```sql
+create or replace view reports.task_report
+with(security_invoker = true) as
+select
+    a.name as account_name,
+    t.*
+from tasks t
+join supasheet.accounts a on t.account_id = a.id;
+
+revoke all on reports.task_report from authenticated, service_role;
+grant select on reports.task_report to authenticated;
+```
+
+</Step>
+
+<Step>
+### Step 11: Register Reports
+
+Insert report metadata:
+
+```sql
+-- Grant permissions
+insert into supasheet.role_permissions (role, permission) values
+    ('user', 'reports.task_report:select');
+
+-- Register report
+insert into supasheet.reports (name, description, "group", view_name, filter_field, is_active) values
+    ('Task Report', 'Report of all tasks with account names', 'Tasks', 'task_report', 'created_at', true);
+```
+
+</Step>
+
+<Step>
+### Step 12: Set Up Audit Logging
+
+Add triggers to automatically track changes:
+
+```sql
+CREATE TRIGGER audit_tasks_insert
+    AFTER INSERT
+    ON public.tasks
+    FOR EACH ROW
+EXECUTE FUNCTION supasheet.audit_trigger_function();
+
+CREATE TRIGGER audit_tasks_update
+    AFTER UPDATE
+    ON public.tasks
+    FOR EACH ROW
+EXECUTE FUNCTION supasheet.audit_trigger_function();
+
+CREATE TRIGGER audit_tasks_delete
+    BEFORE DELETE
+    ON public.tasks
+    FOR EACH ROW
+EXECUTE FUNCTION supasheet.audit_trigger_function();
+```
+
+</Step>
+
+<Step>
+### Step 13: Grant Table Permissions to Roles
+
+Finally, grant the CRUD permissions to appropriate roles:
+
+```sql
+insert into supasheet.role_permissions (role, permission) values
+    ('user', 'public.tasks:select'),
+    ('user', 'public.tasks:insert'),
+    ('user', 'public.tasks:update'),
+    ('user', 'public.tasks:delete'),
+    ('user', 'public.vw_tasks:select');
+```
+
+</Step>
+
+<Step>
+### Step 14: Update Meta Tables
+
+**IMPORTANT**: After creating or modifying tables, views, or schemas, you must update the Supasheet meta tables. This allows the UI to discover your new resources.
+
+Add this to your migration or run it separately:
+
+```sql
+-- Update meta tables for the 'public' schema
+INSERT INTO supasheet.columns
+SELECT * FROM supasheet.generate_columns('public')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  table_id = EXCLUDED.table_id,
+  name = EXCLUDED.name,
+  ordinal_position = EXCLUDED.ordinal_position,
+  is_nullable = EXCLUDED.is_nullable,
+  data_type = EXCLUDED.data_type,
+  is_updatable = EXCLUDED.is_updatable,
+  enums = EXCLUDED.enums,
+  check = EXCLUDED.check,
+  is_identity = EXCLUDED.is_identity,
+  identity_generation = EXCLUDED.identity_generation,
+  is_generated = EXCLUDED.is_generated,
+  default_value = EXCLUDED.default_value,
+  comment = EXCLUDED.comment;
+
+INSERT INTO supasheet.tables
+SELECT * FROM supasheet.generate_tables('public')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  name = EXCLUDED.name,
+  rls_enabled = EXCLUDED.rls_enabled,
+  rls_forced = EXCLUDED.rls_forced,
+  replica_identity = EXCLUDED.replica_identity,
+  bytes = EXCLUDED.bytes,
+  size = EXCLUDED.size,
+  live_rows_estimate = EXCLUDED.live_rows_estimate,
+  dead_rows_estimate = EXCLUDED.dead_rows_estimate,
+  comment = EXCLUDED.comment,
+  primary_keys = EXCLUDED.primary_keys,
+  relationships = EXCLUDED.relationships;
+
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('public')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  name = EXCLUDED.name,
+  comment = EXCLUDED.comment;
+
+-- If using reports schema
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('reports')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  name = EXCLUDED.name,
+  comment = EXCLUDED.comment;
+
+-- If using dashboards schema
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('dashboards')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  name = EXCLUDED.name,
+  comment = EXCLUDED.comment;
+
+-- If using charts schema
+INSERT INTO supasheet.views
+SELECT * FROM supasheet.generate_views('charts')
+ON CONFLICT (id) DO UPDATE SET
+  schema = EXCLUDED.schema,
+  name = EXCLUDED.name,
+  comment = EXCLUDED.comment;
+```
+
+<Callout type="warn">
+Without updating the meta tables, your new tables/views won't appear in the Supasheet UI. This step is **required** after every schema change.
+</Callout>
+
+</Step>
+
+</Steps>
+
+## Key Takeaways
+
+1. **Permissions First**: Always add permissions to `supasheet.app_permission` enum before creating resources
+2. **RLS is Required**: Every table must have RLS policies that check permissions using `supasheet.has_permission()`
+3. **Revoke Then Grant**: Always revoke all permissions first, then explicitly grant what's needed
+4. **Register Metadata**: Dashboards, charts, and reports must be registered in their respective `supasheet.*` tables
+5. **Grant to Roles**: Assign permissions to roles in `supasheet.role_permissions` table
+6. **Security Invoker**: Use `with(security_invoker = true)` for views to respect RLS policies
+7. **Audit Everything**: Add audit triggers for INSERT, UPDATE, and DELETE operations
+8. **Update Meta Tables**: After creating/modifying tables or views, run the `generate_*` functions to update meta tables
+
+## Complete Migration Template
+
+Here's a complete migration template you can use:
+
+```sql
+-- 1. Create types
+create type [your_type] as enum ('value1', 'value2');
+
+-- 2. Add all permissions
+alter type supasheet.app_permission add value 'public.[table]:select';
+alter type supasheet.app_permission add value 'public.[table]:insert';
+alter type supasheet.app_permission add value 'public.[table]:update';
+alter type supasheet.app_permission add value 'public.[table]:delete';
+-- ... add permissions for views, dashboards, charts, reports
+
+-- 3. Create table
+CREATE TABLE [table] (...);
+
+-- 4. Enable RLS and create policies
+alter table [table] enable row level security;
+revoke all on table [table] from authenticated, service_role;
+grant select, insert, update, delete on table [table] to authenticated;
+create policy [table]_select on [table] for select ...;
+-- ... other policies
+
+-- 5. Create views
+create or replace view public.vw_[table] ...;
+
+-- 6. Create dashboard views
+create or replace view dashboards.[widget_name] ...;
+
+-- 7. Create chart views
+create or replace view charts.[chart_name] ...;
+
+-- 8. Create report views
+create or replace view reports.[report_name] ...;
+
+-- 9. Register dashboards
+insert into supasheet.dashboards (name, "group", widget_type, view_name, is_active) values (...);
+
+-- 10. Register charts
+insert into supasheet.charts (name, "group", chart_type, view_name, is_active) values (...);
+
+-- 11. Register reports
+insert into supasheet.reports (name, "group", view_name, filter_field, is_active) values (...);
+
+-- 12. Add audit triggers
+CREATE TRIGGER audit_[table]_insert AFTER INSERT ON [table] FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
+CREATE TRIGGER audit_[table]_update AFTER UPDATE ON [table] FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
+CREATE TRIGGER audit_[table]_delete BEFORE DELETE ON [table] FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
+
+-- 13. Grant permissions to roles
+insert into supasheet.role_permissions (role, permission) values
+    ('user', 'public.[table]:select'),
+    ('user', 'public.[table]:insert');
+    -- ... all other permissions
+
+-- 14. Update meta tables (IMPORTANT!)
+INSERT INTO supasheet.columns SELECT * FROM supasheet.generate_columns('public')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, table_id = EXCLUDED.table_id, name = EXCLUDED.name;
+
+INSERT INTO supasheet.tables SELECT * FROM supasheet.generate_tables('public')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name, rls_enabled = EXCLUDED.rls_enabled;
+
+INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('public')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+
+INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('reports')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+
+INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('dashboards')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+
+INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('charts')
+ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+```
+
+## Next Steps
+
+- **[Authorization](/docs/guide/authorization)** - Understanding the permission system
+- **[Dashboards](/docs/guide/dashboards)** - Learn more about widget types
+- **[Charts](/docs/guide/charts)** - Explore chart types in detail
+- **[Reports](/docs/guide/reports)** - Advanced report features
+- **[Audit Logs](/docs/guide/audit-logs)** - Viewing and filtering audit logs

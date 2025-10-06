@@ -1,0 +1,76 @@
+---
+title: SQL Editor
+description: Built-in SQL editor for database management
+---
+
+## Overview
+
+Supasheet includes a built-in SQL editor that allows you to write and execute SQL queries directly against your database. The editor provides a powerful interface for database management and data analysis.
+
+## Key Features
+
+- **Syntax Highlighting** - Color-coded SQL syntax for better readability
+- **Autocomplete** - Intelligent suggestions for tables, columns, and SQL keywords
+- **Query History** - Access and re-run previously executed queries
+- **Multiple Tabs** - Work on multiple queries simultaneously
+- **Export Results** - Download query results as CSV or JSON
+- **Saved Queries** - Save and organize frequently used queries
+
+## Row Level Security (RLS)
+
+All queries executed through the SQL editor **respect Row Level Security policies**. This means:
+
+- You only see data you're authorized to access
+- RLS policies are automatically applied to your queries
+- Queries run with your current user's permissions
+- No special privileges are granted through the SQL editor
+
+This ensures data security even when using the SQL editor directly.
+
+## Query Support
+
+The SQL editor **only supports SELECT queries** for data retrieval and analysis.
+
+You can:
+- Query tables and views in the `public` schema
+- Run analytical queries with joins, aggregations, and filters
+- Export query results as CSV or JSON
+
+You cannot:
+- INSERT, UPDATE, or DELETE records (use CRUD interfaces instead)
+- CREATE or ALTER tables (use migrations instead)
+- Execute DDL or administrative commands
+
+## Schema Access
+
+Currently, the SQL editor works with the **`public` schema only**.
+
+Other schemas (like `supasheet`, `reports`, `dashboards`, `charts`) are accessed through their respective UI interfaces.
+
+## Common Use Cases
+
+### Data Analysis
+Run analytical queries to understand your data, generate insights, and identify trends.
+
+### Data Export
+Extract specific datasets by running custom SELECT queries and exporting results.
+
+### Testing Queries
+Test and refine SELECT queries before using them in views or reports.
+
+### Ad-hoc Reporting
+Create custom data views and reports without creating permanent database objects.
+
+## Security & Best Practices
+
+- **SELECT only** - Only SELECT queries are supported for safety
+- **RLS is enforced** - Your queries respect all security policies
+- **Limited to public schema** - Only query tables in the public schema
+- **No admin privileges** - SQL editor runs with your user permissions, not elevated access
+- **Use CRUD for modifications** - For INSERT, UPDATE, DELETE operations, use the auto-generated CRUD interfaces
+
+## Next Steps
+
+- **[Database Schema](/docs/guide/database-schema)** - Learn about schema organization
+- **[CRUD Operations](/docs/guide/crud-operations)** - Use auto-generated interfaces
+- **[Authorization](/docs/guide/authorization)** - Understand RLS policies
