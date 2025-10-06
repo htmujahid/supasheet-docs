@@ -1,5 +1,6 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import { Grid2X2PlusIcon } from 'lucide-react';
+import { siteConfig } from './config';
 
 /**
  * Shared layout configurations
@@ -18,6 +19,7 @@ export function baseOptions(): BaseLayoutProps {
         </>
       ),
     },
+    githubUrl: siteConfig.links.github,
     links: [],
   };
 }

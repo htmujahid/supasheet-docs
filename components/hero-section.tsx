@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { Database, Github, Zap } from "lucide-react";
+import { BookIcon, Database, Github, Zap } from "lucide-react";
 import { buttonVariants } from "fumadocs-ui/components/ui/button";
 
 import Image from "next/image";
@@ -41,10 +41,10 @@ export function HeroSection() {
                 Start Demo
               </button>
             </Link>
-            <Link href="https://github.com/htmujahid/supasheet" target="_blank" rel="noreferrer">
+            <Link href="/docs">
               <button className={buttonVariants({ size: "icon", variant: "outline" }) + " w-36 gap-2"}>
-                <Github className="h-4 w-4" />
-                GitHub
+                <BookIcon className="h-4 w-4" />
+                Documentation
               </button>
             </Link>
           </div>
