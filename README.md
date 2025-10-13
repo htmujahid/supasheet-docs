@@ -1,6 +1,6 @@
 # Supasheet Documentation
 
-Official documentation for [Supasheet](https://github.com/supasheet/supasheet) - a SQL-based admin panel and CMS built on top of Supabase.
+Official documentation for [Supasheet](https://github.com/htmujahid/supasheet) - a SQL-based admin panel and CMS built on top of Supabase.
 
 ## About Supasheet
 
@@ -78,6 +78,6 @@ Deploy Supasheet on your own infrastructure:
 
 ## Learn More
 
-- [Supasheet Repository](https://github.com/supasheet/supasheet)
+- [Supasheet Repository](https://github.com/htmujahid/supasheet)
 - [Fumadocs Documentation](https://fumadocs.dev)
 - [Next.js Documentation](https://nextjs.org/docs)
