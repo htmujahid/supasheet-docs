@@ -5,12 +5,13 @@ description: Build data dashboards using SQL views
 
 ## Overview
 
-Dashboards in Supasheet are powered by SQL views in the `dashboards` schema. To display a dashboard widget, you need to:
+Dashboards in Supasheet are powered by SQL views in the `public` schema with JSON metadata in comments. To display a dashboard widget, you need to:
 
-1. Create a view in the `dashboards` schema
-2. Grant permissions on the view
-3. **Register the widget** in the `supasheet.dashboards` table
-4. Grant `:select` permission to roles
+1. Add permission value to `supasheet.app_permission` enum (if needed)
+2. Create a view in the `public` schema
+3. Add JSON metadata comment with `type: "dashboard_widget"` and `widget_type`
+4. Grant permissions on the view (revoke all, then grant select)
+5. Grant `:select` permission to roles via `supasheet.role_permissions`
 
 ## Widget Types
 
@@ -28,8 +29,12 @@ Supasheet supports these dashboard widget types:
 ### Card 1 - Simple Metric
 
 ```sql
--- Step 1: Create view
-create view dashboards.task_summary as
+-- Step 1: Add permission to enum (if not exists)
+alter type supasheet.app_permission add value if not exists 'public.task_summary:select';
+
+-- Step 2: Create view
+create or replace view public.task_summary
+with(security_invoker = true) as
 select
   count(*) as value,
   'list-todo' as icon,
@@ -37,24 +42,23 @@ select
 from tasks
 where status != 'completed';
 
--- Step 2: Grant permissions
-revoke all on dashboards.task_summary from authenticated, service_role;
-grant select on dashboards.task_summary to authenticated;
+-- Step 3: Grant permissions
+revoke all on public.task_summary from authenticated, service_role;
+grant select on public.task_summary to authenticated;
 
--- Step 3: Register widget
-insert into supasheet.dashboards (name, description, "group", widget_type, view_name, is_active)
-values ('Task Summary', 'Summary of active tasks', 'Tasks', 'card_1', 'task_summary', true);
+-- Step 4: Add metadata comment
+comment on view public.task_summary is '{"type": "dashboard_widget", "name": "Task Summary", "description": "Summary of active tasks", "widget_type": "card_1"}';
 
--- Step 4: Grant permission to role
+-- Step 5: Grant permission to role
 insert into supasheet.role_permissions (role, permission)
-values ('user', 'dashboards.task_summary:select');
+values ('user', 'public.task_summary:select');
 ```
 
 ### Card 2 - Split Layout
 
 ```sql
--- View for card_2 (primary/secondary values)
-create view dashboards.task_completion_rate as
+-- Create view for card_2 (primary/secondary values)
+create or replace view public.task_completion_rate as
 select
   count(*) filter (where status = 'completed') as primary,
   count(*) filter (where status != 'completed') as secondary,
@@ -62,17 +66,23 @@ select
   'Active' as secondary_label
 from tasks;
 
-grant select on dashboards.task_completion_rate to authenticated;
+-- Grant permissions
+revoke all on public.task_completion_rate from authenticated, service_role;
+grant select on public.task_completion_rate to authenticated;
 
-insert into supasheet.dashboards (name, description, "group", widget_type, view_name, is_active)
-values ('Task Overview', 'Completed vs Active tasks', 'Tasks', 'card_2', 'task_completion_rate', true);
+-- Add metadata comment
+comment on view public.task_completion_rate is '{"type": "dashboard_widget", "name": "Task Completion Rate", "description": "Completed vs Active tasks", "widget_type": "card_2"}';
+
+-- Grant permission to role
+insert into supasheet.role_permissions (role, permission)
+values ('user', 'public.task_completion_rate:select');
 ```
 
 ### Card 3 - Value with Percentage
 
 ```sql
--- View for card_3 (value and percent)
-create view dashboards.tasks_by_status as
+-- Create view for card_3 (value and percent)
+create or replace view public.tasks_by_status as
 select
   count(*) filter (where status = 'completed') as value,
   case
@@ -82,17 +92,23 @@ select
   end as percent
 from tasks;
 
-grant select on dashboards.tasks_by_status to authenticated;
+-- Grant permissions
+revoke all on public.tasks_by_status from authenticated, service_role;
+grant select on public.tasks_by_status to authenticated;
 
-insert into supasheet.dashboards (name, description, caption, "group", widget_type, view_name, is_active)
-values ('Status Breakdown', 'Tasks by current status', 'Completed Tasks', 'Tasks', 'card_3', 'tasks_by_status', true);
+-- Add metadata comment
+comment on view public.tasks_by_status is '{"type": "dashboard_widget", "name": "Tasks by Status", "description": "Completed tasks stats", "widget_type": "card_3"}';
+
+-- Grant permission to role
+insert into supasheet.role_permissions (role, permission)
+values ('user', 'public.tasks_by_status:select');
 ```
 
 ### Card 4 - Progress with Segments
 
 ```sql
--- View for card_4 (progress layout)
-create view dashboards.task_urgent_count as
+-- Create view for card_4 (progress layout)
+create or replace view public.task_urgent_count as
 select
   count(*) filter (where status != 'completed' and priority in ('high', 'urgent')) as current,
   count(*) filter (where status != 'completed') as total,
@@ -103,40 +119,55 @@ select
   ) as segments
 from tasks;
 
-grant select on dashboards.task_urgent_count to authenticated;
+-- Grant permissions
+revoke all on public.task_urgent_count from authenticated, service_role;
+grant select on public.task_urgent_count to authenticated;
 
-insert into supasheet.dashboards (name, description, "group", widget_type, view_name, is_active)
-values ('Priority Alert', 'High priority items', 'Tasks', 'card_4', 'task_urgent_count', true);
+-- Add metadata comment
+comment on view public.task_urgent_count is '{"type": "dashboard_widget", "name": "Task Urgent Count", "description": "High priority tasks", "widget_type": "card_4"}';
+
+-- Grant permission to role
+insert into supasheet.role_permissions (role, permission)
+values ('user', 'public.task_urgent_count:select');
 ```
 
 ### Table 1 - Simple Table
 
 ```sql
--- View for table_1 (2-3 columns)
-create view dashboards.task_list_simple as
+-- Create view for table_1 (2-3 columns)
+create or replace view public.task_list_simple as
 select
   title,
   status,
-  priority
+  priority,
+  completion
 from tasks
 order by created_at desc
 limit 10;
 
-grant select on dashboards.task_list_simple to authenticated;
+-- Grant permissions
+revoke all on public.task_list_simple from authenticated, service_role;
+grant select on public.task_list_simple to authenticated;
 
-insert into supasheet.dashboards (name, description, caption, "group", widget_type, view_name, is_active)
-values ('Recent Tasks', 'Latest tasks in the system', 'Last 10 tasks', 'Tasks', 'table_1', 'task_list_simple', true);
+-- Add metadata comment
+comment on view public.task_list_simple is '{"type": "dashboard_widget", "name": "Recent Tasks", "description": "Latest tasks in the system", "widget_type": "table_1"}';
+
+-- Grant permission to role
+insert into supasheet.role_permissions (role, permission)
+values ('user', 'public.task_list_simple:select');
 ```
 
 ### Table 2 - Detailed Table
 
 ```sql
--- View for table_2 (4-5 columns)
-create view dashboards.task_list_detailed as
+-- Create view for table_2 (4-5 columns)
+create or replace view public.task_list_detailed as
 select
   title,
   status,
   priority,
+  completion,
+  duration,
   to_char(created_at, 'MM/DD HH24:MI') as created,
   case
     when due_date < current_timestamp and status != 'completed' then 'Overdue'
@@ -147,10 +178,16 @@ from tasks
 order by created_at desc
 limit 10;
 
-grant select on dashboards.task_list_detailed to authenticated;
+-- Grant permissions
+revoke all on public.task_list_detailed from authenticated, service_role;
+grant select on public.task_list_detailed to authenticated;
 
-insert into supasheet.dashboards (name, description, caption, "group", widget_type, view_name, is_active)
-values ('Task Overview', 'Detailed task listing', 'Recent activity', 'Tasks', 'table_2', 'task_list_detailed', true);
+-- Add metadata comment
+comment on view public.task_list_detailed is '{"type": "dashboard_widget", "name": "Task Overview", "description": "Detailed task listing", "widget_type": "table_2"}';
+
+-- Grant permission to role
+insert into supasheet.role_permissions (role, permission)
+values ('user', 'public.task_list_detailed:select');
 ```
 
 ## Dashboard Types
@@ -160,13 +197,15 @@ values ('Task Overview', 'Detailed task listing', 'Recent activity', 'Tasks', 't
 Single metric displays:
 
 ```sql
-CREATE VIEW dashboards.revenue_today AS
+CREATE VIEW public.revenue_today AS
 SELECT
   COALESCE(SUM(total), 0) as amount,
   'Today''s Revenue' as label,
   'currency' as format
 FROM orders
 WHERE DATE(created_at) = CURRENT_DATE;
+
+COMMENT ON VIEW public.revenue_today IS '{"type": "dashboard_widget", "name": "Today''s Revenue", "description": "Revenue for current day", "widget_type": "card_1"}';
 ```
 
 ### Lists
@@ -174,7 +213,7 @@ WHERE DATE(created_at) = CURRENT_DATE;
 Recent activity or top items:
 
 ```sql
-CREATE VIEW dashboards.recent_orders AS
+CREATE VIEW public.recent_orders AS
 SELECT
   o.id,
   o.created_at,
@@ -185,6 +224,8 @@ FROM orders o
 JOIN users u ON o.user_id = u.id
 ORDER BY o.created_at DESC
 LIMIT 10;
+
+COMMENT ON VIEW public.recent_orders IS '{"type": "dashboard_widget", "name": "Recent Orders", "description": "Latest orders in the system", "widget_type": "table_1"}';
 ```
 
 ### Aggregations
@@ -192,7 +233,7 @@ LIMIT 10;
 Grouped data:
 
 ```sql
-CREATE VIEW dashboards.sales_by_category AS
+CREATE VIEW public.sales_by_category AS
 SELECT
   p.category,
   COUNT(oi.id) as items_sold,
@@ -201,15 +242,17 @@ FROM order_items oi
 JOIN products p ON oi.product_id = p.id
 GROUP BY p.category
 ORDER BY revenue DESC;
+
+COMMENT ON VIEW public.sales_by_category IS '{"type": "dashboard_widget", "name": "Sales by Category", "description": "Revenue breakdown by product category", "widget_type": "table_2"}';
 ```
 
 ## User-Specific Dashboards
 
-Use RLS to show personalized dashboards:
+Use `auth.uid()` to show personalized dashboards:
 
 ```sql
 -- Sales rep dashboard
-CREATE VIEW dashboards.my_sales AS
+CREATE VIEW public.my_sales AS
 SELECT
   COUNT(*) as my_orders,
   SUM(total) as my_revenue,
@@ -217,14 +260,18 @@ SELECT
 FROM orders
 WHERE sales_rep_id = auth.uid();
 
+COMMENT ON VIEW public.my_sales IS '{"type": "dashboard_widget", "name": "My Sales", "description": "Personal sales metrics", "widget_type": "card_2"}';
+
 -- Customer dashboard
-CREATE VIEW dashboards.my_account AS
+CREATE VIEW public.my_account AS
 SELECT
   COUNT(*) as total_orders,
   SUM(total) as total_spent,
   MAX(created_at) as last_order_date
 FROM orders
 WHERE customer_id = auth.uid();
+
+COMMENT ON VIEW public.my_account IS '{"type": "dashboard_widget", "name": "My Account", "description": "Personal account summary", "widget_type": "card_3"}';
 ```
 
 ## Conditional Formatting
@@ -232,7 +279,7 @@ WHERE customer_id = auth.uid();
 Add context columns for UI styling:
 
 ```sql
-CREATE VIEW dashboards.stock_alerts AS
+CREATE VIEW public.stock_alerts AS
 SELECT
   name,
   stock_quantity,
@@ -245,6 +292,8 @@ SELECT
 FROM products
 WHERE stock_quantity <= reorder_level
 ORDER BY stock_quantity ASC;
+
+COMMENT ON VIEW public.stock_alerts IS '{"type": "dashboard_widget", "name": "Stock Alerts", "description": "Low stock inventory alerts", "widget_type": "table_2"}';
 ```
 
 ## Real-Time Dashboards
@@ -256,7 +305,7 @@ For real-time updates, use Supabase Realtime:
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 
 -- Create view
-CREATE VIEW dashboards.live_orders AS
+CREATE VIEW public.live_orders AS
 SELECT
   id,
   customer_id,
@@ -273,7 +322,7 @@ ORDER BY created_at DESC;
 Compare periods:
 
 ```sql
-CREATE VIEW dashboards.revenue_comparison AS
+CREATE VIEW public.revenue_comparison AS
 SELECT
   -- This week
   (SELECT COALESCE(SUM(total), 0)
@@ -301,7 +350,7 @@ SELECT
 For expensive queries:
 
 ```sql
-CREATE MATERIALIZED VIEW dashboards.complex_metrics AS
+CREATE MATERIALIZED VIEW public.complex_metrics AS
 SELECT
   -- expensive aggregations
   category,
@@ -314,7 +363,7 @@ GROUP BY category;
 CREATE OR REPLACE FUNCTION refresh_dashboard_metrics()
 RETURNS void AS $$
 BEGIN
-  REFRESH MATERIALIZED VIEW dashboards.complex_metrics;
+  REFRESH MATERIALIZED VIEW public.complex_metrics;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -336,7 +385,7 @@ CREATE INDEX order_items_product_idx ON order_items(product_id);
 
 ```sql
 -- Only last 90 days
-CREATE VIEW dashboards.recent_metrics AS
+CREATE VIEW public.recent_metrics AS
 SELECT
   DATE(created_at) as date,
   COUNT(*) as orders,
@@ -349,13 +398,8 @@ GROUP BY date;
 ## Complete Dashboard Example
 
 ```sql
--- Create schema
-CREATE SCHEMA IF NOT EXISTS dashboards;
-GRANT USAGE ON SCHEMA dashboards TO authenticated;
-GRANT SELECT ON ALL TABLES IN SCHEMA dashboards TO authenticated;
-
 -- Overview metrics
-CREATE VIEW dashboards.overview AS
+CREATE VIEW public.overview AS
 SELECT
   (SELECT COUNT(*) FROM users) as total_users,
   (SELECT COUNT(*) FROM orders) as total_orders,
@@ -363,7 +407,7 @@ SELECT
   (SELECT COUNT(DISTINCT customer_id) FROM orders WHERE created_at >= NOW() - INTERVAL '30 days') as active_customers;
 
 -- Revenue trend (last 30 days)
-CREATE VIEW dashboards.revenue_trend AS
+CREATE VIEW public.revenue_trend AS
 SELECT
   DATE(created_at) as date,
   SUM(total) as revenue,
@@ -374,7 +418,7 @@ GROUP BY date
 ORDER BY date;
 
 -- Top products
-CREATE VIEW dashboards.top_products AS
+CREATE VIEW public.top_products AS
 SELECT
   p.name,
   COUNT(oi.id) as orders,
@@ -389,7 +433,7 @@ ORDER BY revenue DESC
 LIMIT 10;
 
 -- Recent orders
-CREATE VIEW dashboards.recent_orders AS
+CREATE VIEW public.recent_orders_dashboard AS
 SELECT
   o.id,
   o.created_at,
@@ -402,7 +446,7 @@ ORDER BY o.created_at DESC
 LIMIT 10;
 
 -- Customer segments
-CREATE VIEW dashboards.customer_segments AS
+CREATE VIEW public.customer_segments AS
 SELECT
   CASE
     WHEN total_spent >= 1000 THEN 'VIP'
@@ -425,20 +469,11 @@ ORDER BY segment_revenue DESC;
 
 ## Dashboard Permissions
 
-Control who sees what:
+Control who sees what using RLS policies or view filtering:
 
 ```sql
--- Admins see all data
-CREATE POLICY "Admins view dashboards"
-  ON dashboards.overview
-  FOR SELECT
-  TO authenticated
-  USING (
-    (SELECT role FROM users WHERE id = auth.uid()) = 'admin'
-  );
-
 -- Users see their own data
-CREATE VIEW dashboards.my_stats AS
+CREATE VIEW public.my_stats AS
 SELECT
   COUNT(*) as my_orders,
   SUM(total) as my_spent

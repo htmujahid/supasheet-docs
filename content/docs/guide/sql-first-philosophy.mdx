@@ -34,42 +34,46 @@ This immediately gives you:
 - Delete confirmation dialogs
 - All styled and ready to use
 
-### 2. Custom Schemas for Features
+### 2. JSON Comments for Feature Metadata
 
-Supasheet uses PostgreSQL schemas to organize different features:
+Supasheet uses JSON comments on views to define features like charts, dashboards, and reports:
 
-#### `charts` Schema
-Create views here for chart data:
+#### Charts
+Create views with chart metadata in comments:
 
 ```sql
-CREATE VIEW charts.monthly_revenue AS
+CREATE VIEW public.monthly_revenue AS
 SELECT
   DATE_TRUNC('month', created_at) as month,
   SUM(total) as revenue
 FROM orders
 GROUP BY month;
+
+COMMENT ON VIEW public.monthly_revenue IS '{"type": "chart", "name": "Monthly Revenue", "description": "Revenue trend by month", "chart_type": "line"}';
 ```
 
 This view automatically appears in your Charts interface.
 
-#### `dashboards` Schema
-Define dashboard data aggregations:
+#### Dashboard Widgets
+Define dashboard widgets with JSON metadata:
 
 ```sql
-CREATE VIEW dashboards.sales_overview AS
+CREATE VIEW public.sales_overview AS
 SELECT
   COUNT(*) as total_orders,
   SUM(total) as revenue,
   AVG(total) as avg_order_value
 FROM orders
 WHERE created_at >= NOW() - INTERVAL '30 days';
+
+COMMENT ON VIEW public.sales_overview IS '{"type": "dashboard_widget", "name": "Sales Overview", "description": "30-day sales summary", "widget_type": "card_1"}';
 ```
 
-#### `reports` Schema
-SQL queries for report generation:
+#### Reports
+SQL views for report generation with type metadata:
 
 ```sql
-CREATE VIEW reports.customer_purchases AS
+CREATE VIEW public.customer_purchases AS
 SELECT
   c.email,
   c.name,
@@ -78,6 +82,8 @@ SELECT
 FROM customers c
 LEFT JOIN orders o ON c.id = o.customer_id
 GROUP BY c.id, c.email, c.name;
+
+COMMENT ON VIEW public.customer_purchases IS '{"type": "report", "name": "Customer Purchases", "description": "Customer lifetime value report"}';
 ```
 
 ### 3. RLS-Based Authorization
@@ -233,16 +239,18 @@ CREATE POLICY "Customers see own orders"
   ON orders FOR SELECT
   USING (customer_id = auth.uid() OR auth.jwt() ->> 'role' = 'admin');
 
--- Dashboard view
-CREATE VIEW dashboards.order_stats AS
+-- Dashboard widget view
+CREATE VIEW public.order_stats AS
 SELECT
   COUNT(*) as total_orders,
   SUM(total) as revenue,
   COUNT(*) FILTER (WHERE status = 'pending') as pending_count
 FROM orders;
 
+COMMENT ON VIEW public.order_stats IS '{"type": "dashboard_widget", "name": "Order Stats", "description": "Order statistics overview", "widget_type": "card_1"}';
+
 -- Chart view
-CREATE VIEW charts.daily_orders AS
+CREATE VIEW public.daily_orders AS
 SELECT
   DATE_TRUNC('day', created_at) as day,
   COUNT(*) as order_count
@@ -250,6 +258,9 @@ FROM orders
 GROUP BY day
 ORDER BY day DESC
 LIMIT 30;
+
+COMMENT ON VIEW public.daily_orders IS '{"type": "chart", "name": "Daily Orders", "description": "Daily order trend", "chart_type": "line"}';
+
 
 -- Audit trigger
 CREATE TRIGGER orders_audit

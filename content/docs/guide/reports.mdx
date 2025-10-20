@@ -5,51 +5,52 @@ description: Generate reports from SQL queries
 
 ## Overview
 
-Reports in Supasheet are SQL views in the `reports` schema that can be exported to various formats (CSV, PDF, Excel). To display a report, you need to:
+Reports in Supasheet are SQL views in the `public` schema with JSON metadata in comments. To display a report, you need to:
 
-1. Create a view in the `reports` schema
-2. Grant permissions on the view
-3. **Register the report** in the `supasheet.reports` table
-4. Grant `:select` permission to roles
+1. Add permission value to `supasheet.app_permission` enum (if needed)
+2. Create a view in the `public` schema
+3. Add JSON metadata comment with `type: "report"`
+4. Grant permissions on the view (revoke all, then grant select)
+5. Grant `:select` permission to roles via `supasheet.role_permissions`
 
 ## Creating Reports
 
 ### Basic Report
 
 ```sql
--- Step 1: Create view
-create view reports.task_report as
+-- Step 1: Add permission to enum (if not exists)
+alter type supasheet.app_permission add value if not exists 'public.task_report:select';
+
+-- Step 2: Create view
+create or replace view public.task_report
+with(security_invoker = true) as
 select
   a.name as account_name,
   t.*
 from tasks t
 join supasheet.accounts a on t.account_id = a.id;
 
--- Step 2: Grant permissions
-revoke all on reports.task_report from authenticated, service_role;
-grant select on reports.task_report to authenticated;
+-- Step 3: Grant permissions
+revoke all on public.task_report from authenticated, service_role;
+grant select on public.task_report to authenticated;
 
--- Step 3: Register report
-insert into supasheet.reports (name, description, "group", view_name, filter_field, is_active)
-values ('Task Report', 'Report of all tasks with account names', 'Tasks', 'task_report', 'created_at', true);
+-- Step 4: Add metadata comment
+comment on view public.task_report is '{"type": "report", "name": "Task Summary", "description": "Summary of active tasks"}';
 
--- Step 4: Grant permission to role
+-- Step 5: Grant permission to role
 insert into supasheet.role_permissions (role, permission)
-values ('user', 'reports.task_report:select');
+values ('user', 'public.task_report:select');
 ```
 
-**Report Table Columns:**
+**Report Comment Metadata:**
+- `type` - Must be "report"
 - `name` - Display name of the report
 - `description` - Description shown in UI
-- `group` - Category/group for organization
-- `view_name` - Name of the view (without schema)
-- `filter_field` - Column used for filtering (usually date field)
-- `is_active` - Whether report is visible
 
 ### Detailed Report with Joins
 
 ```sql
-CREATE VIEW reports.order_details AS
+CREATE VIEW public.order_details AS
 SELECT
   o.id as order_id,
   o.created_at as order_date,
@@ -74,7 +75,7 @@ ORDER BY o.created_at DESC;
 Aggregated data:
 
 ```sql
-CREATE VIEW reports.monthly_summary AS
+CREATE VIEW public.monthly_summary AS
 SELECT
   DATE_TRUNC('month', created_at) as month,
   COUNT(*) as total_orders,
@@ -91,7 +92,7 @@ ORDER BY month DESC;
 Row-level data:
 
 ```sql
-CREATE VIEW reports.customer_orders AS
+CREATE VIEW public.customer_orders AS
 SELECT
   u.id as customer_id,
   u.email,
@@ -111,7 +112,7 @@ ORDER BY u.created_at DESC, o.created_at DESC;
 Complex analysis:
 
 ```sql
-CREATE VIEW reports.customer_ltv_analysis AS
+CREATE VIEW public.customer_ltv_analysis AS
 SELECT
   u.id,
   u.email,
@@ -139,7 +140,7 @@ ORDER BY lifetime_value DESC NULLS LAST;
 ### Date Range Reports
 
 ```sql
-CREATE VIEW reports.sales_by_date_range AS
+CREATE VIEW public.sales_by_date_range AS
 SELECT
   DATE(created_at) as date,
   COUNT(*) as orders,
@@ -164,7 +165,7 @@ ORDER BY date;
 ### Filtered Reports
 
 ```sql
-CREATE VIEW reports.orders_by_status AS
+CREATE VIEW public.orders_by_status AS
 SELECT
   o.id,
   o.created_at,
@@ -188,7 +189,7 @@ ORDER BY o.created_at DESC;
 ### Personal Reports
 
 ```sql
-CREATE VIEW reports.my_orders AS
+CREATE VIEW public.my_orders AS
 SELECT
   id,
   created_at,
@@ -202,7 +203,7 @@ ORDER BY created_at DESC;
 ### Role-Based Reports
 
 ```sql
-CREATE VIEW reports.sales_rep_performance AS
+CREATE VIEW public.sales_rep_performance AS
 SELECT
   sr.id as rep_id,
   sr.name as rep_name,
@@ -225,7 +226,7 @@ ORDER BY total_revenue DESC NULLS LAST;
 ### Revenue Reports
 
 ```sql
-CREATE VIEW reports.revenue_breakdown AS
+CREATE VIEW public.revenue_breakdown AS
 SELECT
   DATE_TRUNC('month', created_at) as month,
   SUM(total) as gross_revenue,
@@ -241,7 +242,7 @@ ORDER BY month DESC;
 ### Invoice Report
 
 ```sql
-CREATE VIEW reports.invoices AS
+CREATE VIEW public.invoices AS
 SELECT
   i.invoice_number,
   i.created_at as invoice_date,
@@ -266,7 +267,7 @@ ORDER BY i.created_at DESC;
 ## Inventory Reports
 
 ```sql
-CREATE VIEW reports.inventory_status AS
+CREATE VIEW public.inventory_status AS
 SELECT
   p.id,
   p.name,
@@ -296,7 +297,7 @@ ORDER BY
 ### Cohort Analysis
 
 ```sql
-CREATE VIEW reports.cohort_analysis AS
+CREATE VIEW public.cohort_analysis AS
 SELECT
   DATE_TRUNC('month', u.created_at) as cohort_month,
   DATE_TRUNC('month', o.created_at) as order_month,
@@ -313,7 +314,7 @@ ORDER BY cohort_month, order_month;
 ### Customer Segmentation
 
 ```sql
-CREATE VIEW reports.customer_segments AS
+CREATE VIEW public.customer_segments AS
 SELECT
   u.id,
   u.email,
@@ -342,7 +343,7 @@ GROUP BY u.id, u.email, u.name;
 ### Product Performance
 
 ```sql
-CREATE VIEW reports.product_performance AS
+CREATE VIEW public.product_performance AS
 SELECT
   p.id,
   p.name,
@@ -372,7 +373,7 @@ Reports can be exported in multiple formats:
 ### CSV Export
 ```sql
 -- Optimized for CSV export
-CREATE VIEW reports.csv_export_orders AS
+CREATE VIEW public.csv_export_orders AS
 SELECT
   id::TEXT,
   created_at::TEXT,
@@ -386,7 +387,7 @@ ORDER BY created_at DESC;
 ### Excel-Friendly Format
 ```sql
 -- Formatted for Excel
-CREATE VIEW reports.excel_sales AS
+CREATE VIEW public.excel_sales AS
 SELECT
   TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS') as "Order Date",
   customer_email as "Customer Email",
@@ -400,7 +401,7 @@ FROM orders;
 ### Daily Summary
 
 ```sql
-CREATE VIEW reports.daily_summary AS
+CREATE VIEW public.daily_summary AS
 SELECT
   CURRENT_DATE as report_date,
   COUNT(*) as total_orders,
@@ -424,7 +425,7 @@ CREATE INDEX order_items_order_id_idx ON order_items(order_id);
 ### Limit Results
 
 ```sql
-CREATE VIEW reports.recent_1000_orders AS
+CREATE VIEW public.recent_1000_orders AS
 SELECT *
 FROM orders
 ORDER BY created_at DESC
@@ -434,7 +435,7 @@ LIMIT 1000;
 ### Materialized Views
 
 ```sql
-CREATE MATERIALIZED VIEW reports.monthly_stats AS
+CREATE MATERIALIZED VIEW public.monthly_stats AS
 SELECT
   DATE_TRUNC('month', created_at) as month,
   COUNT(*) as orders,
@@ -443,7 +444,7 @@ FROM orders
 GROUP BY month;
 
 -- Refresh daily
-REFRESH MATERIALIZED VIEW reports.monthly_stats;
+REFRESH MATERIALIZED VIEW public.monthly_stats;
 ```
 
 ## Report Permissions
@@ -451,7 +452,7 @@ REFRESH MATERIALIZED VIEW reports.monthly_stats;
 ```sql
 -- Admin-only reports
 CREATE POLICY "Admins access all reports"
-  ON reports.financial_summary
+  ON public.financial_summary
   FOR SELECT
   TO authenticated
   USING (
@@ -459,7 +460,7 @@ CREATE POLICY "Admins access all reports"
   );
 
 -- User-specific reports
-CREATE VIEW reports.my_purchase_history AS
+CREATE VIEW public.my_purchase_history AS
 SELECT *
 FROM orders
 WHERE customer_id = auth.uid();

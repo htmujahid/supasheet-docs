@@ -41,70 +41,80 @@ Contains Supasheet's internal tables and metadata:
 - `supasheet.role_permissions` - Permission assignments
 - `supasheet.tables` - Metadata about your tables
 - `supasheet.columns` - Metadata about table columns
-- `supasheet.views` - Metadata about database views
-- `supasheet.dashboards` - Dashboard widget registry
-- `supasheet.charts` - Chart registry
-- `supasheet.reports` - Report registry
+- `supasheet.views` - Metadata about database views (including dashboards, charts, reports via JSON comments)
 
-## Feature Schemas
+## Feature Views with JSON Metadata
 
-### `charts` Schema
+Instead of separate schemas, Supasheet uses JSON comments to identify special view types:
 
-Create views here for data visualizations:
+### Charts
+
+Create views in `public` schema with chart metadata:
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS charts;
-GRANT USAGE ON SCHEMA charts TO authenticated;
-
 -- Example: Task status distribution (pie chart)
-CREATE VIEW charts.task_status_pie AS
+CREATE VIEW public.task_status_pie AS
 SELECT
   status::text as label,
   COUNT(*) as value
 FROM tasks
 GROUP BY status;
+
+-- Add metadata comment
+COMMENT ON VIEW public.task_status_pie IS '{"type": "chart", "name": "Task Status Pie", "description": "Current task status breakdown", "chart_type": "pie"}';
+
+-- Grant permissions
+REVOKE ALL ON public.task_status_pie FROM authenticated, service_role;
+GRANT SELECT ON public.task_status_pie TO authenticated;
+
+-- Assign permissions to roles
+INSERT INTO supasheet.role_permissions (role, permission)
+VALUES ('user', 'public.task_status_pie:select');
 ```
 
-After creating charts, you must:
-1. Grant permissions on the view
-2. Register the chart in `supasheet.charts` table
-3. Assign permissions to roles
+### Dashboard Widgets
 
-### `dashboards` Schema
-
-Create views for dashboard widgets:
+Create views with dashboard widget metadata:
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS dashboards;
-GRANT USAGE ON SCHEMA dashboards TO authenticated;
-
 -- Example: Active tasks card
-CREATE VIEW dashboards.task_summary AS
+CREATE VIEW public.task_summary AS
 SELECT
   COUNT(*) as value,
   'list-todo' as icon,
   'active tasks' as label
 FROM tasks
 WHERE status != 'completed';
+
+-- Add metadata comment
+COMMENT ON VIEW public.task_summary IS '{"type": "dashboard_widget", "name": "Task Summary", "description": "Summary of active tasks", "widget_type": "card_1"}';
+
+-- Grant permissions
+REVOKE ALL ON public.task_summary FROM authenticated, service_role;
+GRANT SELECT ON public.task_summary TO authenticated;
 ```
 
 Dashboard views support different widget types: `card_1`, `card_2`, `card_3`, `card_4`, `table_1`, `table_2`.
 
-### `reports` Schema
+### Reports
 
-Define views for reports:
+Define views with report metadata:
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS reports;
-GRANT USAGE ON SCHEMA reports TO authenticated;
-
 -- Example: Task report with user details
-CREATE VIEW reports.task_report AS
+CREATE VIEW public.task_report AS
 SELECT
   a.name as account_name,
   t.*
 FROM tasks t
 JOIN supasheet.accounts a ON t.account_id = a.id;
+
+-- Add metadata comment
+COMMENT ON VIEW public.task_report IS '{"type": "report", "name": "Task Summary", "description": "Summary of active tasks"}';
+
+-- Grant permissions
+REVOKE ALL ON public.task_report FROM authenticated, service_role;
+GRANT SELECT ON public.task_report TO authenticated;
 ```
 
 ## Updating Meta Tables
@@ -144,18 +154,8 @@ ON CONFLICT (id) DO UPDATE SET
   schema = EXCLUDED.schema,
   name = EXCLUDED.name;
 
--- Repeat for other schemas (reports, dashboards, charts)
-INSERT INTO supasheet.views
-SELECT * FROM supasheet.generate_views('reports')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
-
-INSERT INTO supasheet.views
-SELECT * FROM supasheet.generate_views('dashboards')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
-
-INSERT INTO supasheet.views
-SELECT * FROM supasheet.generate_views('charts')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+-- Views include all types (regular, dashboard widgets, charts, reports)
+-- The system identifies them by the JSON comment metadata
 ```
 
 <Callout type="warn">
@@ -168,10 +168,10 @@ Schemas are exposed via PostgREST API in `/supabase/config.toml`:
 
 ```toml
 [api]
-schemas = ["public", "supasheet", "reports", "dashboards", "charts"]
+schemas = ["public", "supasheet"]
 ```
 
-This is already configured in Supasheet.
+The `public` schema contains all your application tables and views (including those for dashboards, charts, and reports). The system identifies special view types through JSON comment metadata.
 
 ## Next Steps
 

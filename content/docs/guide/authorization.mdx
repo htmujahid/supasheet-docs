@@ -30,8 +30,8 @@ Permissions control **UI visibility**. Users only see resources they have permis
 - `public.tasks:insert` - Create tasks
 - `public.tasks:update` - Update tasks
 - `public.tasks:delete` - Delete tasks
-- `reports.task_report:select` - View task report
-- `charts.task_status_pie:select` - View task chart
+- `public.task_report:select` - View task report
+- `public.task_status_pie:select` - View task chart
 
 ### Adding Permissions
 
@@ -71,13 +71,13 @@ alter type supasheet.app_permission add value 'public.tasks:delete';
 alter type supasheet.app_permission add value 'public.vw_tasks:select';
 
 -- Report permissions (select only)
-alter type supasheet.app_permission add value 'reports.task_report:select';
+alter type supasheet.app_permission add value 'public.task_report:select';
 
 -- Dashboard permissions (select only)
-alter type supasheet.app_permission add value 'dashboards.task_summary:select';
+alter type supasheet.app_permission add value 'public.task_summary:select';
 
 -- Chart permissions (select only)
-alter type supasheet.app_permission add value 'charts.task_status_pie:select';
+alter type supasheet.app_permission add value 'public.task_status_pie:select';
 
 -- Grant all to user role
 insert into supasheet.role_permissions (role, permission) values
@@ -86,9 +86,9 @@ insert into supasheet.role_permissions (role, permission) values
   ('user', 'public.tasks:update'),
   ('user', 'public.tasks:delete'),
   ('user', 'public.vw_tasks:select'),
-  ('user', 'reports.task_report:select'),
-  ('user', 'dashboards.task_summary:select'),
-  ('user', 'charts.task_status_pie:select');
+  ('user', 'public.task_report:select'),
+  ('user', 'public.task_summary:select'),
+  ('user', 'public.task_status_pie:select');
 ```
 
 <Callout type="info">
@@ -227,18 +227,8 @@ ON CONFLICT (id) DO UPDATE SET
   schema = EXCLUDED.schema,
   name = EXCLUDED.name;
 
--- Repeat for other schemas (reports, dashboards, charts)
-INSERT INTO supasheet.views
-SELECT * FROM supasheet.generate_views('reports')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
-
-INSERT INTO supasheet.views
-SELECT * FROM supasheet.generate_views('dashboards')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
-
-INSERT INTO supasheet.views
-SELECT * FROM supasheet.generate_views('charts')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
+-- Views include all types (regular, dashboard widgets, charts, reports)
+-- The system identifies them by the JSON comment metadata
 ```
 
 **Quick reset during development:**
@@ -252,9 +242,6 @@ TRUNCATE supasheet.views CASCADE;
 INSERT INTO supasheet.columns SELECT * FROM supasheet.generate_columns('public');
 INSERT INTO supasheet.tables SELECT * FROM supasheet.generate_tables('public');
 INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('public');
-INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('reports');
-INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('dashboards');
-INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('charts');
 ```
 
 ## Row Level Security (RLS)
