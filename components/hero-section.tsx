@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { BookIcon, Database, Github, Zap } from "lucide-react";
+import { BookIcon, Database, Zap } from "lucide-react";
 import { buttonVariants } from "fumadocs-ui/components/ui/button";
 
 import Image from "next/image";
@@ -11,39 +11,38 @@ export function HeroSection() {
   return (
     <div className="w-full overflow-hidden">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="flex flex-col items-center justify-center gap-8 py-20 lg:py-40">
-          <div>
-            <button className={buttonVariants({ size: "sm", variant: "secondary" })}>
+        <div className="flex flex-col items-center justify-center gap-8 py-16 md:py-32 lg:py-40">
+          <div className="inline-flex">
+            <div className={buttonVariants({ size: "sm", variant: "secondary" }) + " pointer-events-none"}>
               <Database className="h-4 w-4" />
-              Open source • SQL-based
-            </button>
+              Open source • Full-fledged CMS
+            </div>
           </div>
-          <div className="flex flex-col gap-6">
-            <h1 className="font-regular max-w-3xl text-center text-5xl tracking-tighter md:text-7xl">
-              <span className="font-semibold">The admin panel</span>
+          <div className="flex flex-col gap-6 max-w-5xl">
+            <h1 className="text-center text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
+              Complete CMS Platform
               <br />
               <span className="text-spektr-cyan-50">
-                you&apos;ve been waiting for
+                built on Supabase
               </span>
             </h1>
 
-            <p className="text-muted-foreground max-w-2xl text-center text-lg leading-relaxed tracking-tight md:text-xl">
-              Open source admin panel that connects to your Supabase
-              automatically. Just add your connection details and start managing
-              your data instantly. No complex setup required - just connect and
-              go.
+            <p className="text-muted-foreground mx-auto max-w-3xl text-center text-lg leading-relaxed md:text-xl">
+              An opinionated, full-fledged open-source CMS with everything included.
+              Go beyond basic admin panels with built-in authentication, dashboards,
+              charts, reports, file management, and comprehensive data tools.
             </p>
           </div>
-          <div className="flex flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Link href={"https://demo.supasheet.app/"} target="_blank" rel="noreferrer">
-              <button className={buttonVariants({ size: "icon", variant: "primary" }) + " w-36 gap-2"}>
-                <Zap className="h-4 w-4" />
+              <button className={buttonVariants({ variant: "primary" }) + " h-11 px-6 gap-2 w-full sm:w-auto"}>
+                <Zap className="h-5 w-5" />
                 Start Demo
               </button>
             </Link>
             <Link href="/docs">
-              <button className={buttonVariants({ size: "icon", variant: "outline" }) + " w-36 gap-2"}>
-                <BookIcon className="h-4 w-4" />
+              <button className={buttonVariants({ variant: "outline" }) + " h-11 px-6 gap-2 w-full sm:w-auto"}>
+                <BookIcon className="h-5 w-5" />
                 Documentation
               </button>
             </Link>
