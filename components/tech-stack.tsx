@@ -25,32 +25,21 @@ const techFeatures = [
 
 export function TechStack() {
   return (
-    <section className="py-16 md:py-32 bg-background">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="text-center space-y-4 mb-16">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-              Built for Developers
-            </h2>
-            <p className="mx-auto max-w-2xl text-muted-foreground text-lg md:text-xl leading-relaxed">
-              An opinionated architecture with modern tools and best practices,
-              designed to help you ship faster.
-            </p>
-          </div>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+    <section className="py-24">
+      <div className="container mx-auto px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="rounded-xl border shadow-sm bg-card text-card-foreground divide-y lg:divide-y-0 lg:divide-x lg:grid lg:grid-cols-4">
             {techFeatures.map((feature) => {
               const IconComponent = feature.icon;
               return (
-                <div key={feature.title} className="space-y-3 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border bg-background">
-                    <IconComponent className="h-6 w-6 text-primary" />
+                <div key={feature.title} className="p-6">
+                  <div className="mx-auto size-8 rounded-md bg-gradient-to-br from-muted/50 to-muted/30 flex items-center justify-center">
+                    <IconComponent className="size-6 text-primary" />
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold">{feature.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {feature.description}
-                    </p>
-                  </div>
+                  <h3 className="font-medium text-foreground mt-4">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                    {feature.description}
+                  </p>
                 </div>
               );
             })}

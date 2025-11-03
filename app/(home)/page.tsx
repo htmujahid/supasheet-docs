@@ -7,7 +7,6 @@ import { WhyChoose } from '@/components/why-choose';
 import { GettingStarted } from '@/components/getting-started';
 import { FinalCTA } from '@/components/final-cta';
 import { Integrations } from '@/components/integrations';
-import { FAQSection } from '@/components/faq-section';
 import { FooterSection } from '@/components/footer-section';
 import { StatsSection } from '@/components/stats-section';
 
@@ -19,12 +18,11 @@ export default function HomePage() {
         <StatsSection />
         <FeaturesSection />
         <CMSHighlights />
-        <WhyChoose />
         <UseCases />
+        <WhyChoose />
         <TechStack />
         <Integrations />
         <GettingStarted />
-        <FAQSection />
         <FinalCTA />
       </main>
       <FooterSection />

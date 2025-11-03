@@ -1,4 +1,4 @@
-import { Clock, Blocks, Sparkles, Heart } from 'lucide-react';
+import { Clock, Blocks, Sparkles, Heart, Shield, Zap } from 'lucide-react';
 
 const reasons = [
   {
@@ -21,64 +21,41 @@ const reasons = [
     title: 'Built for Supabase',
     description: 'Designed specifically for Supabase. Leverages its full power while adding the features and UI you need for complete applications.',
   },
+  {
+    icon: Shield,
+    title: 'Production Ready',
+    description: 'Security, performance, and best practices built-in. Deploy with confidence knowing your app is enterprise-grade.',
+  },
+  {
+    icon: Zap,
+    title: 'No Vendor Lock-in',
+    description: 'Built on open source Supabase, deploy anywhere. Full control over your data and infrastructure.',
+  },
 ];
 
 export function WhyChoose() {
   return (
-    <section className="py-16 md:py-32 bg-muted/30">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
-            <div className="space-y-6">
-              <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
-                Why Choose Supasheet?
-              </h2>
-              <p className="text-muted-foreground text-lg leading-relaxed">
-                Building admin panels and internal tools is time-consuming and repetitive.
-                Supasheet gives you a complete, production-ready CMS so you can focus on
-                what makes your product unique.
-              </p>
-              <div className="pt-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full border-2 border-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-primary" />
-                  </div>
-                  <p className="text-base leading-relaxed">
-                    <strong>No vendor lock-in</strong> - Built on open source Supabase, deploy anywhere
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full border-2 border-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-primary" />
-                  </div>
-                  <p className="text-base leading-relaxed">
-                    <strong>Fully customizable</strong> - Extend and modify everything to match your needs
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="h-6 w-6 rounded-full border-2 border-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-primary" />
-                  </div>
-                  <p className="text-base leading-relaxed">
-                    <strong>Production ready</strong> - Security, performance, and best practices built-in
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-6">
+    <section className="py-24">
+      <div className="container mx-auto px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-8">
+            <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Why Supasheet?</h2>
+          </div>
+          <div className="border-t pt-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {reasons.map((reason) => {
                 const IconComponent = reason.icon;
                 return (
-                  <div key={reason.title} className="flex gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border bg-background flex-shrink-0">
-                      <IconComponent className="h-5 w-5 text-primary" />
+                  <div key={reason.title} className="space-y-2">
+                    <div className="flex gap-2 items-center">
+                      <div className="*:size-4 flex-shrink-0">
+                        <IconComponent className="text-foreground fill-foreground/10" />
+                      </div>
+                      <h3 className="font-medium text-foreground text-sm sm:text-base">{reason.title}</h3>
                     </div>
-                    <div className="space-y-1 text-left">
-                      <h3 className="font-semibold text-lg">{reason.title}</h3>
-                      <p className="text-muted-foreground text-base leading-relaxed">
-                        {reason.description}
-                      </p>
-                    </div>
+                    <p className="text-sm text-left text-muted-foreground leading-relaxed">
+                      {reason.description}
+                    </p>
                   </div>
                 );
               })}

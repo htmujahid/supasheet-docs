@@ -1,74 +1,61 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
 
 const steps = [
   {
-    number: '01',
-    title: 'Clone & Install',
-    description: 'Clone the repository and install dependencies with your favorite package manager.',
-    code: 'git clone https://github.com/supasheet/supasheet.git',
+    title: 'Clone the repository',
+    code: '$ git clone https://github.com/htmujahid/supasheet.git\n$ cd supasheet\n$ npm install',
   },
   {
-    number: '02',
-    title: 'Configure Supabase',
-    description: 'Add your Supabase connection details to the environment variables.',
-    code: 'SUPABASE_URL=your-project-url; SUPABASE_ANON_KEY=your-anon-key;',
+    title: 'Configure environment variables',
+    code: '# Update .env file with your Supabase credentials\nSUPABASE_URL=your-project-url\nSUPABASE_ANON_KEY=your-anon-key',
   },
   {
-    number: '03',
-    title: 'Start Building',
-    description: 'Launch the development server and start customizing for your needs.',
-    code: 'pnpm dev',
+    title: 'Start the development server',
+    code: '$ npm run dev\n\n> supasheet@1.0.0 dev\n> next dev\n\n  ▲ Next.js 16.0.0\n  - Local:        http://localhost:3000',
   },
 ];
 
 export function GettingStarted() {
   return (
-    <section className="py-16 md:py-32 bg-background">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="mx-auto max-w-5xl">
+    <section className="py-24">
+      <div className="container mx-auto px-6">
+        <div className="mx-auto max-w-6xl">
           <div className="text-center space-y-4 mb-16">
-            <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
+            <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl text-foreground">
               Get Started in Minutes
             </h2>
-            <p className="mx-auto max-w-3xl text-muted-foreground text-lg md:text-xl leading-relaxed">
+            <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
               Start building with Supasheet in three simple steps. No complex setup or configuration needed.
             </p>
           </div>
           <div className="space-y-8">
             {steps.map((step, index) => (
-              <div
-                key={step.number}
-                className="relative grid gap-6 md:grid-cols-[1fr_2fr] items-center"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 justify-center">
-                    <span className="text-4xl font-bold text-primary/20">{step.number}</span>
+              <div key={index} className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Terminal className="h-4 w-4" />
                   </div>
-                  <h3 className="text-xl font-semibold">{step.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {step.description}
-                  </p>
+                  <h3 className="text-lg font-semibold text-foreground">{step.title}</h3>
                 </div>
-                <div className="rounded-lg border bg-muted/50 p-4">
-                  <code className="text-sm font-mono">{step.code}</code>
+                <div className="rounded-2xl border bg-zinc-950 dark:bg-zinc-950 p-6 overflow-x-auto">
+                  <pre className="text-sm font-mono text-zinc-50 text-left whitespace-pre">
+                    <code className="block">{step.code}</code>
+                  </pre>
                 </div>
-                {index < steps.length - 1 && (
-                  <div className="absolute left-8 top-20 h-full w-px bg-border md:hidden" />
-                )}
               </div>
             ))}
           </div>
-          <div className="flex justify-center gap-4 mt-12">
+          <div className="flex flex-col sm:flex-row justify-center gap-4 mt-16">
             <Link href="/docs">
-              <button className={buttonVariants({ variant: 'primary' }) + ' gap-2'}>
+              <button className={buttonVariants({ variant: 'primary' }) + ' gap-2 rounded-2xl h-11 px-6'}>
                 Read Documentation
                 <ArrowRight className="h-4 w-4" />
               </button>
             </Link>
             <Link href="https://demo.supasheet.app/" target="_blank" rel="noreferrer">
-              <button className={buttonVariants({ variant: 'outline' })}>
+              <button className={buttonVariants({ variant: 'outline' }) + ' rounded-2xl h-11 px-6'}>
                 View Live Demo
               </button>
             </Link>
