@@ -1,5 +1,3 @@
-import { Star, Download, Users, Code } from 'lucide-react';
-
 const stats = [
   {
     value: '10+',

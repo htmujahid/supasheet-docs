@@ -37,7 +37,7 @@ export function UseCases() {
               Built for Any Use Case
             </h2>
             <p className="mx-auto max-w-3xl text-muted-foreground text-base sm:text-lg leading-relaxed">
-              Whether you're building internal tools, customer portals, or content platforms,
+              Whether you&quot;re building internal tools, customer portals, or content platforms,
               Supasheet provides everything you need out of the box.
             </p>
           </div>

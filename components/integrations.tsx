@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 const technologies = [
   {
     name: 'Next.js',
@@ -33,9 +35,11 @@ export function Integrations() {
                   key={tech.name}
                   className="flex flex-col items-center justify-center space-y-3"
                 >
-                  <img
+                  <Image
                     src={tech.logo}
                     alt={tech.name}
+                    width={32}
+                    height={32}
                     className="h-8 w-auto"
                   />
                   <h3 className="text-xs sm:text-sm font-medium text-foreground text-center">{tech.name}</h3>
