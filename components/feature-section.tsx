@@ -4,7 +4,7 @@ const features = [
   {
     icon: Layout,
     title: 'Dashboard',
-    description: 'Comprehensive dashboards with real-time analytics and customizable widgets to monitor your data.',
+    description: 'Comprehensive dashboards with analytics and customizable widgets to monitor your data.',
   },
   {
     icon: BarChart3,
@@ -19,7 +19,7 @@ const features = [
   {
     icon: Database,
     title: 'Resource Management',
-    description: 'Complete CRUD operations with role-based authorization. Multiple resource views including gallery, calendar, sheet, table, and kanban. Advanced filtering, sorting, bulk operations, and data export capabilities.',
+    description: 'CRUD operations with RBAC. Advanced filtering, sorting, and data export capabilities.',
   },
   {
     icon: Shield,
