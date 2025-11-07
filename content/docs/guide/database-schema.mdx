@@ -117,50 +117,12 @@ REVOKE ALL ON public.task_report FROM authenticated, service_role;
 GRANT SELECT ON public.task_report TO authenticated;
 ```
 
-## Updating Meta Tables
-
-**Critical Step**: After creating or modifying tables/views, you must update Supasheet's meta tables so the UI can discover your new resources.
-
 ### Why Meta Tables?
 
 Supasheet maintains metadata about your database in these tables:
 - `supasheet.tables` - Information about all tables
 - `supasheet.columns` - Information about all columns
 - `supasheet.views` - Information about all views
-
-Without updating these, **your new tables/views won't appear in the Supasheet UI**.
-
-### How to Update
-
-After any schema changes, add this to your migration:
-
-```sql
--- Update meta tables for public schema
-INSERT INTO supasheet.columns
-SELECT * FROM supasheet.generate_columns('public')
-ON CONFLICT (id) DO UPDATE SET
-  schema = EXCLUDED.schema,
-  name = EXCLUDED.name;
-
-INSERT INTO supasheet.tables
-SELECT * FROM supasheet.generate_tables('public')
-ON CONFLICT (id) DO UPDATE SET
-  schema = EXCLUDED.schema,
-  name = EXCLUDED.name;
-
-INSERT INTO supasheet.views
-SELECT * FROM supasheet.generate_views('public')
-ON CONFLICT (id) DO UPDATE SET
-  schema = EXCLUDED.schema,
-  name = EXCLUDED.name;
-
--- Views include all types (regular, dashboard widgets, charts, reports)
--- The system identifies them by the JSON comment metadata
-```
-
-<Callout type="warn">
-This step is **required** after every migration that creates or modifies tables/views. Without it, the Supasheet UI won't show your new resources.
-</Callout>
 
 ## Schema Configuration
 

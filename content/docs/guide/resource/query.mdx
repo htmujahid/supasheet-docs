@@ -1,0 +1,501 @@
+---
+title: Query Configuration
+description: Configure default sorting, filtering, and joins for your tables
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Supasheet allows you to configure default queries for your tables using JSON metadata in table comments. This lets you set default sorting, filtering, and join behavior that users see when they first open a resource.
+
+## Configuration via Comments
+
+Add query configuration to your table comment using the `query` property:
+
+```sql
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "display": "block",
+  "query": {
+    "sort": [...],
+    "filter": [...],
+    "join": [...]
+  }
+}';
+```
+
+## Default Sorting
+
+Configure which columns should be sorted by default and in which direction.
+
+### Structure
+
+```typescript
+"sort": [
+  {
+    "id": "column_name",
+    "desc": false  // true for descending, false for ascending
+  }
+]
+```
+
+### Example
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY,
+  title TEXT NOT NULL,
+  priority TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "query": {
+    "sort": [
+      {"id": "priority", "desc": false},
+      {"id": "created_at", "desc": true}
+    ]
+  }
+}';
+```
+
+This will:
+1. Sort by priority (ascending: low → medium → high → urgent)
+2. Then by created_at (descending: newest first)
+
+### Common Use Cases
+
+```sql
+-- Sort by creation date (newest first)
+"sort": [{"id": "created_at", "desc": true}]
+
+-- Sort by name alphabetically
+"sort": [{"id": "name", "desc": false}]
+
+-- Sort by status, then priority
+"sort": [
+  {"id": "status", "desc": false},
+  {"id": "priority", "desc": false}
+]
+```
+
+## Default Filters
+
+Pre-filter your data to show specific records by default.
+
+### Structure
+
+```typescript
+"filter": [
+  {
+    "id": "column_name",
+    "value": "filter_value",     // string or array of strings
+    "variant": "text",            // text, number, date, dateRange, boolean, select, multiSelect, range
+    "operator": "eq"              // comparison operator
+  }
+]
+```
+
+**Available Variants:**
+- `text` - For text/string columns
+- `number` - For numeric columns (integer, decimal, etc.)
+- `date` - For single date values
+- `dateRange` - For date range filtering
+- `boolean` - For boolean columns
+- `select` - For enum or single-select columns
+- `multiSelect` - For array columns
+- `range` - For numeric range filtering
+
+### Operators by Variant
+
+**Text Operators:**
+- `ilike` - Contains (case-insensitive)
+- `not.ilike` - Does not contain
+- `eq` - Is
+- `not.eq` - Is not
+- `empty` - Is empty
+- `not.empty` - Is not empty
+
+**Number Operators:**
+- `eq` - Is
+- `not.eq` - Is not
+- `lt` - Is less than
+- `lte` - Is less than or equal to
+- `gt` - Is greater than
+- `gte` - Is greater than or equal to
+- `between` - Is between (requires two values)
+- `empty` - Is empty
+- `not.empty` - Is not empty
+
+**Date Operators:**
+- `eq` - Is
+- `not.eq` - Is not
+- `lt` - Is before
+- `gt` - Is after
+- `lte` - Is on or before
+- `gte` - Is on or after
+- `between` - Is between (requires two values)
+- `empty` - Is empty
+- `not.empty` - Is not empty
+
+**Boolean Operators:**
+- `eq` - Is
+- `not.eq` - Is not
+
+**Multi-Select Operators (for enum/foreign key columns):**
+- `eq` - Is
+- `not.eq` - Is not
+- `empty` - Is empty
+- `not.empty` - Is not empty
+
+### Examples
+
+```sql
+-- Filter by status equals "active"
+COMMENT ON TABLE tasks IS '{
+  "query": {
+    "filter": [
+      {
+        "id": "status",
+        "value": "active",
+        "variant": "text",
+        "operator": "eq"
+      }
+    ]
+  }
+}';
+
+-- Filter by color contains orange
+COMMENT ON TABLE tasks IS '{
+  "query": {
+    "filter": [
+      {
+        "id": "color",
+        "value": "#f59e0b",
+        "variant": "text",
+        "operator": "ilike"
+      }
+    ]
+  }
+}';
+
+-- Filter by price greater than 100
+COMMENT ON TABLE products IS '{
+  "query": {
+    "filter": [
+      {
+        "id": "price",
+        "value": "100",
+        "variant": "number",
+        "operator": "gt"
+      }
+    ]
+  }
+}';
+
+-- Filter by multiple conditions
+COMMENT ON TABLE tasks IS '{
+  "query": {
+    "filter": [
+      {
+        "id": "status",
+        "value": "active",
+        "variant": "text",
+        "operator": "eq"
+      },
+      {
+        "id": "is_important",
+        "value": "true",
+        "variant": "boolean",
+        "operator": "eq"
+      }
+    ]
+  }
+}';
+
+-- Filter by date range (between two dates)
+COMMENT ON TABLE tasks IS '{
+  "query": {
+    "filter": [
+      {
+        "id": "created_at",
+        "value": ["2024-01-01", "2024-12-31"],
+        "variant": "date",
+        "operator": "between"
+      }
+    ]
+  }
+}';
+
+-- Filter excluding a value (not equal)
+COMMENT ON TABLE tasks IS '{
+  "query": {
+    "filter": [
+      {
+        "id": "status",
+        "value": "archived",
+        "variant": "text",
+        "operator": "not.eq"
+      }
+    ]
+  }
+}';
+
+-- Filter by array column (has any of)
+COMMENT ON TABLE tasks IS '{
+  "query": {
+    "filter": [
+      {
+        "id": "tags",
+        "value": ["urgent", "bug"],
+        "variant": "multiSelect",
+        "operator": "in"
+      }
+    ]
+  }
+}';
+
+-- Filter by empty values
+COMMENT ON TABLE tasks IS '{
+  "query": {
+    "filter": [
+      {
+        "id": "notes",
+        "value": "",
+        "variant": "text",
+        "operator": "empty"
+      }
+    ]
+  }
+}';
+```
+
+## Default Joins
+
+Automatically join related tables to display additional columns in your data view.
+
+### Structure
+
+```typescript
+"join": [
+  {
+    "table": "related_table_name",
+    "on": "foreign_key_column",
+    "columns": ["column1", "column2"]
+  }
+]
+```
+
+### Example
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY,
+  title TEXT NOT NULL,
+  account_id UUID REFERENCES supasheet.accounts(id)
+);
+
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "query": {
+    "join": [
+      {
+        "table": "accounts",
+        "on": "account_id",
+        "columns": ["name", "email"]
+      }
+    ]
+  }
+}';
+```
+
+This will:
+- Join the `accounts` table on `account_id`
+- Include `name` and `email` columns from accounts in the task list
+- Display as `accounts.name` and `accounts.email` columns
+
+### Multiple Joins
+
+```sql
+CREATE TABLE orders (
+  id UUID PRIMARY KEY,
+  customer_id UUID REFERENCES customers(id),
+  product_id UUID REFERENCES products(id),
+  status TEXT
+);
+
+COMMENT ON TABLE orders IS '{
+  "query": {
+    "join": [
+      {
+        "table": "customers",
+        "on": "customer_id",
+        "columns": ["name", "email"]
+      },
+      {
+        "table": "products",
+        "on": "product_id",
+        "columns": ["name", "price"]
+      }
+    ]
+  }
+}';
+```
+
+### Cross-Schema Joins
+
+<Callout type="warn">
+**Schema Limitation**: Due to PostgREST limitations, joins can only be performed within the same schema. You cannot directly join tables from different schemas.
+</Callout>
+
+If you need to join a table from another schema (e.g., `supasheet.accounts`), create a view in your working schema:
+
+```sql
+-- Create a view in the public schema that references supasheet.accounts
+CREATE OR REPLACE VIEW public.accounts
+WITH (security_invoker = true) AS
+SELECT * FROM supasheet.accounts;
+
+-- Grant permissions
+REVOKE ALL ON public.accounts FROM authenticated, service_role;
+GRANT SELECT ON public.accounts TO authenticated;
+
+-- Now you can join it in your tasks table
+CREATE TABLE public.tasks (
+  id UUID PRIMARY KEY,
+  title TEXT NOT NULL,
+  account_id UUID REFERENCES supasheet.accounts(id)
+);
+
+COMMENT ON TABLE public.tasks IS '{
+  "query": {
+    "join": [
+      {
+        "table": "accounts",
+        "on": "account_id",
+        "columns": ["name", "email"]
+      }
+    ]
+  }
+}';
+```
+
+**Key Points:**
+- Use `WITH (security_invoker = true)` to ensure RLS policies are applied based on the current user
+- The view must be in the same schema as the table you're querying
+- Grant appropriate permissions to the view
+- Reference the view by its name in the `table` property of the join configuration
+
+<Callout type="info">
+Joins respect Row Level Security policies. Users will only see joined data they have permission to access.
+</Callout>
+
+## Complete Example
+
+Combining all query configuration options:
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  title VARCHAR(500) NOT NULL,
+  description TEXT,
+  status TEXT DEFAULT 'pending',
+  priority TEXT DEFAULT 'medium',
+  account_id UUID REFERENCES supasheet.accounts(id),
+  color TEXT,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "display": "block",
+  "query": {
+    "sort": [
+      {"id": "title", "desc": false}
+    ],
+    "filter": [
+      {
+        "id": "color",
+        "value": "#f59e0b",
+        "variant": "text",
+        "operator": "ilike"
+      }
+    ],
+    "join": [
+      {
+        "table": "accounts",
+        "on": "account_id",
+        "columns": ["name", "email"]
+      }
+    ]
+  }
+}';
+```
+
+When users first open the tasks resource, they will see:
+- Tasks sorted alphabetically by title
+- Filtered to show only tasks with orange color
+- With account name and email displayed from the joined accounts table
+
+## User Overrides
+
+Users can always modify the query configuration through the UI:
+- Change sorting by clicking column headers
+- Add/remove filters using the filter panel
+- Show/hide joined columns in the column visibility menu
+
+Their preferences are saved in local storage and persist across sessions.
+
+## Performance Considerations
+
+### Indexing
+
+Add indexes for columns used in default queries:
+
+```sql
+-- Index for sort column
+CREATE INDEX idx_tasks_title ON tasks(title);
+
+-- Index for filter column
+CREATE INDEX idx_tasks_color ON tasks(color);
+
+-- Index for join column
+CREATE INDEX idx_tasks_account_id ON tasks(account_id);
+```
+
+### Join Performance
+
+- Only include necessary columns in joins
+- Ensure foreign key columns are indexed
+- Consider creating a view for complex joins:
+
+```sql
+CREATE VIEW tasks_with_accounts AS
+SELECT
+  t.*,
+  a.name as account_name,
+  a.email as account_email
+FROM tasks t
+LEFT JOIN supasheet.accounts a ON t.account_id = a.id;
+
+-- Use the view as a resource instead
+COMMENT ON VIEW tasks_with_accounts IS '{
+  "icon": "ListTodo"
+}';
+```
+
+## Best Practices
+
+1. **Set sensible defaults** - Choose sorting and filtering that matches the most common use case
+2. **Keep filters simple** - Avoid too many default filters that might confuse users
+3. **Index everything** - Always add indexes for columns used in queries
+4. **Test with data** - Verify query performance with realistic data volumes
+5. **Document choices** - Use the table description to explain why certain defaults are set
+
+## Next Steps
+
+- **[Views](/docs/guide/resource/views)** - Configure multiple view types (Sheet, Kanban, Calendar, Gallery)
+- **[Basic Resources](/docs/guide/resource/basic)** - Learn about CRUD interfaces
+- **[Data Types](/docs/guide/resource/data-types)** - Use custom data types

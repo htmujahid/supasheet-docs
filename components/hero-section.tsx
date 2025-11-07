@@ -49,27 +49,21 @@ export function HeroSection() {
           </div>
         </div>
       </div>
-      <div className="mx-auto -mt-16 max-w-7xl [mask-image:linear-gradient(to_bottom,black_50%,transparent_100%)]">
-        <div className="-mr-16 [mask-image:linear-gradient(to_right,black_50%,transparent_100%)] pl-16 [perspective:1200px] lg:-mr-36 lg:pl-36">
-          <div className="[transform:rotateX(20deg);]">
-            <div className="relative skew-x-[.36rad] lg:h-[44rem]">
-              <Image
-                className="relative z-[2] rounded-2xl border dark:hidden"
-                src="/images/bg-light.png"
-                alt="Supasheet hero section"
-                width={2880}
-                height={2074}
-              />
-              <Image
-                className="relative z-[2] hidden rounded-2xl border dark:block"
-                src="/images/bg-dark.png"
-                alt="Supasheet hero section"
-                width={2880}
-                height={2074}
-              />
-            </div>
-          </div>
-        </div>
+      <div className="mask-b-from-55% relative mx-auto mt-16 max-w-6xl overflow-hidden px-4">
+        <Image
+          className="z-2 border-border/25 relative hidden rounded-2xl border dark:block"
+          src="/images/bg-dark.png"
+          alt="app screen"
+          width={2796}
+          height={2008}
+        />
+        <Image
+          className="z-2 border-border/25 relative rounded-2xl border dark:hidden"
+          src="/images/bg-light.png"
+          alt="app screen"
+          width={2796}
+          height={2008}
+        />
       </div>
     </section>
   );

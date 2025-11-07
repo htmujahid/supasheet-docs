@@ -1,5 +1,5 @@
 ---
-title: CRUD Operations
+title: Basic
 description: Automatically generated interfaces from your database tables
 ---
 
@@ -68,7 +68,6 @@ Multiple filter types based on column data type:
 - Before
 - After
 - Between
-- Last 7/30/90 days
 
 // Boolean columns
 - Is true
@@ -343,8 +342,66 @@ CREATE POLICY "Users view own order items" ON order_items FOR SELECT
 
 All three tables now have full CRUD interfaces!
 
+## Table Configuration via Comments
+
+You can customize how tables are displayed in Supasheet using JSON metadata in table comments.
+
+### Custom Icon
+
+Set a custom icon for your table using Lucide icon names:
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY,
+  title TEXT NOT NULL
+);
+
+COMMENT ON TABLE tasks IS '{"icon": "ListTodo"}';
+```
+
+**Available Icons:** Any icon name from [Lucide Icons](https://lucide.dev/icons/) (e.g., `"ListTodo"`, `"Package"`, `"Users"`, `"ShoppingCart"`)
+
+### Display Mode
+
+Control whether a table appears in the resources list:
+
+```sql
+-- Hide table from resources (default: "block")
+COMMENT ON TABLE internal_logs IS '{"display": "none"}';
+
+-- Show table in resources
+COMMENT ON TABLE products IS '{"display": "block"}';
+```
+
+**Options:**
+- `"block"` - Table appears in resources sidebar (default)
+- `"none"` - Table is hidden from UI but still accessible via direct URL
+
+### Complete Configuration
+
+Combine all options:
+
+```sql
+CREATE TABLE projects (
+  id UUID PRIMARY KEY,
+  project_name TEXT NOT NULL,
+  description TEXT,
+  status TEXT
+);
+
+COMMENT ON TABLE projects IS '{
+  "icon": "Folder",
+  "display": "block"
+}';
+```
+
+This configuration:
+- Uses folder icon in the sidebar
+- Shows table in resources list
+
 ## Next Steps
 
+- **[Query Configuration](/docs/guide/resource/query)** - Set default sorting and filters
+- **[Views](/docs/guide/resource/views)** - Multiple view types (Sheet, Kanban, Calendar, Gallery)
+- **[Data Types](/docs/guide/resource/data-types)** - Use custom data types
 - **[Authorization](/docs/guide/authorization)** - Secure your tables with RLS
-- **[Dashboards](/docs/guide/dashboards)** - Add dashboard metrics
-- **[Charts](/docs/guide/charts)** - Visualize your data

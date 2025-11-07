@@ -98,27 +98,11 @@ Supasheet provides a complete user management interface at `/home/user`:
 3. **Identities** - Link/unlink OAuth providers (Google, GitHub, etc.)
 4. **Preferences** - Theme settings, language, and UI customization
 5. **Roles & Permissions** - View assigned roles and permissions
-6. **Account Settings** - Account management and deletion
+6. **Accounts** - Manage all users in the system (view, create, update, delete) if you have the required permissions: `supasheet.accounts:select`, `supasheet.accounts:insert`, `supasheet.accounts:update`, and `supasheet.accounts:delete`
 
 ## Profile Pictures
 
 Profile pictures are stored in the `account_image` storage bucket. Each user has their own folder with automatic RLS policies ensuring users can only access their own images.
-
-## Working with Account Data
-
-### Joining with Accounts
-
-Create views that include user information:
-
-```sql
-create view vw_tasks as
-select
-  t.*,
-  a.name as account_name,
-  a.picture_url
-from tasks t
-join supasheet.accounts a on t.account_id = a.id;
-```
 
 ### Custom User Data
 

@@ -19,10 +19,10 @@ While Supasheet auto-generates most UI, you may need custom components for:
 
 ```tsx
 // app/home/custom-feature/page.tsx
-import { createServerClient } from '@/lib/supabase/clients/server-client';
+import { getSupabaseServerClient } from '@/lib/supabase/clients/server-client';
 
 export default async function CustomFeaturePage() {
-  const supabase = createServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data: products } = await supabase
     .from('products')
@@ -48,11 +48,11 @@ export default async function CustomFeaturePage() {
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/clients/client-client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/clients/browser-client';
 
 export function InteractiveComponent() {
   const [data, setData] = useState([]);
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
 
   async function loadData() {
     const { data } = await supabase
@@ -82,7 +82,7 @@ export function InteractiveComponent() {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/clients/client-client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/clients/browser-client';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -93,7 +93,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export function CustomOrderForm() {
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
@@ -245,10 +245,10 @@ export function CustomDataTable({ data }: { data: any[] }) {
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/clients/client-client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/clients/browser-client';
 
 export function RevenueChart() {
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
 
   const { data } = useQuery({
     queryKey: ['revenue-chart'],
@@ -280,11 +280,11 @@ export function RevenueChart() {
 ```tsx
 'use server';
 
-import { createServerClient } from '@/lib/supabase/clients/server-client';
+import { getSupabaseServerClient } from '@/lib/supabase/clients/server-client';
 import { revalidatePath } from 'next/cache';
 
 export async function createProduct(formData: FormData) {
-  const supabase = createServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const name = formData.get('name') as string;
   const price = parseFloat(formData.get('price') as string);
@@ -334,113 +334,6 @@ export function ProductForm() {
 }
 ```
 
-## Realtime Features
-
-### Subscribe to Changes
-
-```tsx
-'use client';
-
-import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/clients/client-client';
-
-export function RealtimeOrders() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const supabase = createClient();
-
-  useEffect(() => {
-    // Initial load
-    supabase
-      .from('orders')
-      .select('*')
-      .then(({ data }) => setOrders(data || []));
-
-    // Subscribe to changes
-    const channel = supabase
-      .channel('orders-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setOrders((prev) => [payload.new, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            setOrders((prev) =>
-              prev.map((order) =>
-                order.id === payload.new.id ? payload.new : order
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setOrders((prev) =>
-              prev.filter((order) => order.id !== payload.old.id)
-            );
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
-
-  return (
-    <div>
-      <h2>Live Orders ({orders.length})</h2>
-      {orders.map((order) => (
-        <div key={order.id}>{order.status}</div>
-      ))}
-    </div>
-  );
-}
-```
-
-## Integration with Third-Party APIs
-
-### Payment Integration
-
-```tsx
-'use server';
-
-import { createServerClient } from '@/lib/supabase/clients/server-client';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-export async function createCheckoutSession(orderId: string) {
-  const supabase = createServerClient();
-
-  // Get order details
-  const { data: order } = await supabase
-    .from('orders')
-    .select('*, order_items(*)')
-    .eq('id', orderId)
-    .single();
-
-  if (!order) throw new Error('Order not found');
-
-  // Create Stripe session
-  const session = await stripe.checkout.sessions.create({
-    line_items: order.order_items.map((item: any) => ({
-      price_data: {
-        currency: 'usd',
-        product_data: { name: item.name },
-        unit_amount: item.price * 100,
-      },
-      quantity: item.quantity,
-    })),
-    mode: 'payment',
-    success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/success`,
-    cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/cancel`,
-  });
-
-  return { sessionId: session.id };
-}
-```
 
 ## Styling Custom Components
 
@@ -485,24 +378,59 @@ export function ShippingForm() {
 
 ## Adding to Navigation
 
-Update the sidebar:
+To add custom pages to the navigation, modify `components/layouts/default-sidebar.tsx`:
 
 ```tsx
-// components/layouts/primary-sidebar.tsx
-import { Package, BarChart, FileText, Settings, CustomIcon } from 'lucide-react';
+// components/layouts/default-sidebar.tsx
+import { Package } from 'lucide-react'; // Add your icon
 
-const navigationItems = [
-  // ... existing items
-  {
-    label: 'Custom Feature',
-    path: '/home/custom-feature',
-    icon: <CustomIcon className="w-4 h-4" />,
-  },
-];
+const data = {
+  navMain: [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: HomeIcon,
+    },
+    {
+      title: "Chart",
+      url: "/chart",
+      icon: ChartBarIcon,
+    },
+    {
+      title: "Report",
+      url: "/report",
+      icon: FileChartColumnIcon,
+    },
+  ],
+  navSecondary: [
+    {
+      title: "Storage",
+      url: "/home/storage",
+      icon: FolderIcon,
+    },
+    {
+      title: "Audit Logs",
+      url: "/home/audit-log",
+      icon: ScrollTextIcon,
+    },
+    // Add your custom navigation item here
+    {
+      title: "Custom Feature",
+      url: "/home/custom-feature",
+      icon: Package,
+    },
+  ],
+};
 ```
+
+The sidebar is structured with:
+- **NavMain**: Primary navigation items (Dashboard, Chart, Report) - shown in header
+- **NavResources**: Auto-generated resource navigation - shown in content
+- **NavSecondary**: Secondary navigation items (Storage, Audit Logs) - shown in footer
+
+Add your custom pages to `navSecondary` to display them in the sidebar footer.
 
 ## Next Steps
 
-- **[Internationalization](/docs/guide/internationalization)** - Add translations
 - **[Theming](/docs/guide/theming)** - Customize appearance
 - **[CRUD Operations](/docs/guide/crud-operations)** - Leverage auto-generated UI

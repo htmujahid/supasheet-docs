@@ -94,16 +94,6 @@ insert into supasheet.role_permissions (role, permission) values
   ('user', 'public.tasks:insert'),
   ('user', 'public.tasks:update'),
   ('user', 'public.tasks:delete');
-
--- Step 6: Update meta tables (required for UI discovery)
-INSERT INTO supasheet.columns SELECT * FROM supasheet.generate_columns('public')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, table_id = EXCLUDED.table_id, name = EXCLUDED.name;
-
-INSERT INTO supasheet.tables SELECT * FROM supasheet.generate_tables('public')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name, rls_enabled = EXCLUDED.rls_enabled;
-
-INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('public')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
 ```
 </Step>
 
@@ -131,7 +121,7 @@ This creates TypeScript types from your new schema.
 ### View Your Admin Interface
 
 That's it! Supasheet automatically:
-- ✅ Creates a CRUD interface at `/home/resource/tasks`
+- ✅ Creates a CRUD interface at `/home/public/resource/tasks`
 - ✅ Generates forms based on your schema
 - ✅ Applies your RLS policies for security
 - ✅ Handles pagination, filtering, and sorting
@@ -140,67 +130,6 @@ That's it! Supasheet automatically:
 Navigate to the Resources section in Supasheet and select "tasks" to see your new interface.
 </Step>
 </Steps>
-
-## Schema Exposure (Configuration)
-
-For Supasheet to work with your database, certain schemas must be exposed via the PostgREST API. This is already configured in `/supabase/config.toml`:
-
-```toml
-[api]
-schemas = ["public", "supasheet", "reports", "dashboards", "charts"]
-```
-
-**What this means:**
-- `public` - Your application tables (automatically available)
-- `supasheet` - Internal Supasheet tables (accounts, roles, permissions, etc.)
-- `reports` - Views for report generation
-- `dashboards` - Views for dashboard widgets
-- `charts` - Views for data visualizations
-
-<Callout type="info">
-This configuration is **already set up** in Supasheet. You don't need to modify it unless you're adding custom schemas.
-</Callout>
-
-## Add a View (Optional)
-
-You can create a view to show tasks with enhanced data:
-
-```sql
--- Create a view with joined account information
-create or replace view public.vw_tasks
-with(security_invoker = true) as
-select
-  a.name as account_name,
-  t.*
-from tasks t
-join supasheet.accounts a on t.account_id = a.id;
-
--- Grant permissions
-revoke all on public.vw_tasks from authenticated, service_role;
-grant select on public.vw_tasks to authenticated;
-
--- Update meta tables for the view
-INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('public')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
-```
-
-Apply the changes:
-
-```bash
-npx supabase db push
-npm run typegen
-```
-
-## What Just Happened?
-
-With just SQL, you:
-
-1. **Added permissions** - Defined access control at the database level
-2. **Created a full CRUD interface** - No React components needed
-3. **Implemented authorization** - Using PostgreSQL RLS policies with permission checks
-4. **Got type safety** - Automatically generated TypeScript types
-
-This is the power of Supasheet's SQL-first philosophy!
 
 ## Next Steps
 

@@ -1,0 +1,305 @@
+---
+title: Data Types (Advanced)
+description: Custom data types for enhanced functionality
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Supasheet extends PostgreSQL's standard data types with custom domain types that provide enhanced UI functionality and specialized handling.
+
+## Custom Domain Types
+
+Supasheet provides the following custom domain types:
+
+### EMAIL
+
+Domain for email addresses with enhanced validation and rendering.
+
+```sql
+CREATE DOMAIN EMAIL AS TEXT;
+
+-- Usage
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  email EMAIL NOT NULL UNIQUE
+);
+```
+
+**UI Features:**
+- Email input field with validation
+- Clickable mailto: links in data tables
+- Email format validation
+
+### TEL
+
+Domain for telephone numbers.
+
+```sql
+CREATE DOMAIN TEL AS TEXT;
+
+-- Usage
+CREATE TABLE contacts (
+  id UUID PRIMARY KEY,
+  phone TEL
+);
+```
+
+**UI Features:**
+- Phone number input field
+- Clickable tel: links
+- International format support
+
+### RATING
+
+Domain for star ratings (0-5 scale).
+
+```sql
+CREATE DOMAIN RATING AS REAL CHECK (VALUE >= 0 AND VALUE <= 5);
+
+-- Usage
+CREATE TABLE reviews (
+  id UUID PRIMARY KEY,
+  product_rating RATING DEFAULT 0
+);
+```
+
+**UI Features:**
+- Star rating input (interactive)
+- Visual star display in tables
+- Decimal ratings supported (e.g., 4.5 stars)
+
+### PERCENTAGE
+
+Domain for percentage values.
+
+```sql
+CREATE DOMAIN PERCENTAGE AS REAL;
+
+-- Usage
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY,
+  completion PERCENTAGE DEFAULT 0
+);
+```
+
+**UI Features:**
+- Progress bar visualization
+- Percentage input field
+- Displays as "75%" in tables
+
+### URL
+
+Domain for web URLs.
+
+```sql
+CREATE DOMAIN URL AS TEXT;
+
+-- Usage
+CREATE TABLE projects (
+  id UUID PRIMARY KEY,
+  website URL
+);
+```
+
+**UI Features:**
+- URL input field with validation
+- Clickable links in data tables
+- Opens in new tab
+
+### DURATION
+
+Domain for time duration in milliseconds.
+
+```sql
+CREATE DOMAIN DURATION AS BIGINT;
+
+-- Usage
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY,
+  duration DURATION
+);
+```
+
+**UI Features:**
+- Human-readable display (e.g., "2h 30m")
+- Duration picker input
+- Stored as milliseconds for calculations
+
+### COLOR
+
+Domain for color values (hex codes).
+
+```sql
+CREATE DOMAIN COLOR AS VARCHAR(16);
+
+-- Usage
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY,
+  color COLOR
+);
+```
+
+**UI Features:**
+- Color picker input
+- Visual color preview in tables
+- Supports hex format (#RRGGBB)
+
+### AVATAR
+
+Domain for avatar/profile image URLs.
+
+```sql
+CREATE DOMAIN AVATAR AS TEXT;
+
+-- Usage
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY,
+  avatar AVATAR
+);
+```
+
+**UI Features:**
+- Image upload interface
+- Circular avatar preview
+- Automatic image optimization
+
+### RICH_TEXT
+
+Domain for rich text content (HTML/Markdown).
+
+```sql
+CREATE DOMAIN RICH_TEXT AS TEXT;
+
+-- Usage
+CREATE TABLE posts (
+  id UUID PRIMARY KEY,
+  content RICH_TEXT
+);
+```
+
+**UI Features:**
+- Rich text editor (WYSIWYG)
+- Markdown support
+- HTML rendering in view mode
+- Formatting toolbar
+
+## FILE Type
+
+The `FILE` type enables file storage integration directly in your table columns.
+
+### Basic Usage
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  title TEXT NOT NULL,
+  cover FILE,
+  attachments FILE,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Configuration via Comments
+
+Configure file upload behavior using column comments with JSON:
+
+```sql
+-- Single image
+COMMENT ON COLUMN tasks.cover IS '{"accept":"image/*"}';
+
+-- Multiple files
+COMMENT ON COLUMN tasks.attachments IS '{"accept":"*"}';
+
+-- With size limit
+COMMENT ON COLUMN tasks.document IS '{"accept":".pdf","maxSize":10485760,"maxFiles":1}';
+```
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `accept` | string | `"*"` | File types to accept (MIME type or extension) |
+| `maxSize` | number | `5242880` (5MB) | Maximum file size in bytes |
+| `maxFiles` | number | `1` | Maximum number of files allowed |
+
+### Accept Format Examples
+
+```json
+// Images only
+{"accept": "image/*"}
+
+// Specific image types
+{"accept": "image/png,image/jpeg"}
+
+// Documents
+{"accept": ".pdf,.doc,.docx"}
+
+// Any file
+{"accept": "*"}
+```
+
+### UI Features
+
+- Drag & drop file upload
+- Progress tracking
+- Image preview
+- File info display
+- Validation (size, type, count)
+
+## Complete Example
+
+```sql
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  name TEXT NOT NULL,
+  description RICH_TEXT,
+  price DECIMAL(10,2) NOT NULL,
+
+  -- Contact
+  website URL,
+  support_email EMAIL,
+  phone TEL,
+
+  -- Metrics
+  rating RATING DEFAULT 0,
+  completion PERCENTAGE,
+
+  -- Media
+  cover FILE,
+  logo AVATAR,
+
+  -- Customization
+  brand_color COLOR,
+
+  -- Metadata
+  processing_time DURATION,
+
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Configure file columns
+COMMENT ON COLUMN products.cover IS '{"accept":"image/*","maxSize":2097152}';
+COMMENT ON COLUMN products.logo IS '{"accept":"image/*","maxSize":1048576}';
+```
+
+## Size Reference
+
+Common file size limits in bytes:
+
+- **1 MB** = `1048576`
+- **2 MB** = `2097152`
+- **5 MB** = `5242880` (default)
+- **10 MB** = `10485760`
+- **50 MB** = `52428800`
+
+<Callout type="info">
+All custom domain types are built on top of PostgreSQL standard types and work seamlessly with standard SQL operations.
+</Callout>
+
+## Next Steps
+
+- **[Basic Resources](/docs/guide/resource/basic)** - Learn about CRUD interfaces
+- **[Query Configuration](/docs/guide/resource/query)** - Configure default queries
+- **[Views](/docs/guide/resource/views)** - Multiple view types for data

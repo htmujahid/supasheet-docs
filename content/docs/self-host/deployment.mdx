@@ -68,7 +68,15 @@ For containerized deployments.
 **Build and run:**
 ```bash
 docker build -t supasheet .
-docker run -p 3000:3000 --env-file .env supasheet
+docker run supasheet
+```
+
+**next.config.js**
+```bash
+module.exports = {
+  // ... rest of the configuration.
+  output: "standalone",
+};
 ```
 
 ### Railway

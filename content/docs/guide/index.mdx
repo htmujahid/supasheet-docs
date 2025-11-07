@@ -1,36 +1,50 @@
 ---
 title: Welcome to Supasheet
-description: A SQL-based admin panel and CMS built on top of Supabase
+description: Complete CMS Platform built on Supabase
 ---
 
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 ## What is Supasheet?
 
-Supasheet is a **SQL-based admin panel and CMS built on top of Supabase**. It provides a powerful, code-first approach to building admin interfaces where you primarily write SQL to define your entire application.
+Supasheet is a **complete CMS platform built on Supabase**. It's an opinionated, full-fledged open-source CMS with everything included. Go beyond basic admin panels with built-in authentication, dashboards, charts, reports, file management, and comprehensive data tools.
+
+It provides a powerful, SQL-first approach where you primarily write SQL to define your application, and Supasheet handles the UI layer automatically.
 
 ### Key Features
 
-- **CRUD Operations**: Define tables and views in SQL, and Supasheet automatically generates the UI
-- **Authentication & Authorization**: Leverage Supabase Auth and PostgreSQL Row Level Security (RLS)
-- **Charts & Dashboards**: Create visualizations using SQL views in dedicated schemas
-- **Reports**: Generate reports from SQL queries
-- **Audit Logs**: Track changes automatically using PostgreSQL triggers
-- **Widgets**: Build custom widgets powered by SQL
-- **Storage Management**: File upload and management with Supabase Storage
-- **SQL Editor**: Built-in SQL editor for database management
+- **Authentication**: Complete user authentication system with Supabase Auth
+- **User Management**: Comprehensive user administration and profile management
+- **Authorization (RBAC)**: Role-based access control with PostgreSQL Row Level Security
+- **Resource (CRUD)**: Auto-generated CRUD interfaces from your database schema
+- **Data Views**: Multiple view types - Sheet, Kanban, Calendar, and Gallery
+- **Customizable UI**: Flexible theming and component customization
+- **SQL Editor**: Built-in SQL editor for direct database management
+- **Dashboard**: Customizable dashboards for data visualization
+- **Analytics**: Built-in analytics and metrics tracking
+- **Reports**: Generate custom reports from SQL queries
+- **Charts**: Create visualizations using SQL views
+- **File Storage**: Complete file upload and management with Supabase Storage
+- **Audit Logs**: Automatic change tracking using PostgreSQL triggers
 
 ### How It Works
 
-Supasheet leverages Supabase's core features:
+Supasheet is built on top of Supabase's powerful features:
 
 - **PostgREST**: Automatic REST API from your PostgreSQL database
-- **Supabase Auth**: Built-in authentication with JWT
-- **Supabase Storage**: File storage management
-- **Row Level Security (RLS)**: PostgreSQL policies for authorization
-- **Realtime**: Real-time subscriptions (where applicable)
+- **Supabase Auth**: Built-in authentication with JWT and social providers
+- **Supabase Storage**: Complete file storage and CDN management
+- **Row Level Security (RLS)**: PostgreSQL policies for fine-grained authorization
+- **Realtime**: Real-time subscriptions for live data updates
 
-The frontend (Next.js 15 + React 19) dynamically renders interfaces based on your database schema. You define the data model and business logic in SQL, and Supasheet handles the UI layer.
+The frontend (Next.js 16 + React 19) dynamically renders a complete CMS interface based on your database schema. You define your data model and business logic in SQL, and Supasheet automatically generates:
+
+- CRUD interfaces for all tables
+- Multiple data view types (Sheet, Kanban, Calendar, Gallery)
+- Dashboards and analytics
+- Reports and charts
+- File management UI
+- User administration
 
 ## Getting Started
 
@@ -39,7 +53,6 @@ The frontend (Next.js 15 + React 19) dynamically renders interfaces based on you
 ### Choose Your Path
 
 - **[Guide](/docs/guide)** - Learn how to use Supasheet as a framework
-- **[Platform](/docs/platform)** - Use Supasheet as a hosted platform (coming soon)
 - **[Self-Hosting](/docs/self-host)** - Deploy Supasheet on your own infrastructure
 </Step>
 
@@ -52,19 +65,20 @@ Follow the [installation guide](/docs/guide/installation) to get started with Su
 <Step>
 ### Learn the SQL-First Philosophy
 
-Understand how [SQL-first development](/docs/guide/sql-first-philosophy) makes building admin panels effortless.
+Understand how [SQL-first development](/docs/guide/sql-first-philosophy) makes building complete CMS platforms effortless.
 </Step>
 </Steps>
 
 ## Technology Stack
 
-- **Frontend**: Next.js 15 (App Router), React 19, TypeScript
-- **Styling**: Tailwind CSS 4, Shadcn UI
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript
+- **Styling**: Tailwind CSS 4, Shadcn UI, Diceui
 - **Backend**: Supabase (PostgreSQL, Auth, Storage)
-- **State Management**: TanStack Query
+- **State Management**: TanStack Query (React Query)
+- **Data Tables**: TanStack Table
 - **Forms**: React Hook Form + Zod
 - **Internationalization**: i18next
-- **Data Tables**: TanStack Table
+- **Deployment**: Vercel (frontend), Supabase (backend)
 
 ## Community & Support
 
@@ -82,7 +96,7 @@ Understand how [SQL-first development](/docs/guide/sql-first-philosophy) makes b
     Learn the core concepts behind Supasheet
   </Card>
   <Card title="CRUD Operations" href="/docs/guide/crud-operations">
-    Create your first admin interface
+    Create your first auto-generated interface
   </Card>
   <Card title="Self-Hosting" href="/docs/self-host">
     Deploy Supasheet on your infrastructure

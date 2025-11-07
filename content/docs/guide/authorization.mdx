@@ -141,11 +141,9 @@ insert into supasheet.user_roles (account_id, role) values
   ('user-uuid-here', 'editor');
 ```
 
-The default role is `'user'` and is automatically assigned when a new account is created.
+### Assign Default Role
 
-### Changing Default Role
-
-To change what role new users get automatically, update the trigger function:
+To change what role new users get automatically, uncomment the trigger function in accounts.sql migration:
 
 ```sql
 create or replace function supasheet.new_account_created_setup()
@@ -200,49 +198,6 @@ select * from supasheet.get_columns();
 ```
 
 This means the UI automatically hides resources users don't have permission to see.
-
-### Updating Meta Tables
-
-After creating or modifying tables/views, update meta tables:
-
-```sql
--- Update for public schema
-INSERT INTO supasheet.columns
-SELECT * FROM supasheet.generate_columns('public')
-ON CONFLICT (id) DO UPDATE SET
-  schema = EXCLUDED.schema,
-  table_id = EXCLUDED.table_id,
-  name = EXCLUDED.name;
-
-INSERT INTO supasheet.tables
-SELECT * FROM supasheet.generate_tables('public')
-ON CONFLICT (id) DO UPDATE SET
-  schema = EXCLUDED.schema,
-  name = EXCLUDED.name,
-  rls_enabled = EXCLUDED.rls_enabled;
-
-INSERT INTO supasheet.views
-SELECT * FROM supasheet.generate_views('public')
-ON CONFLICT (id) DO UPDATE SET
-  schema = EXCLUDED.schema,
-  name = EXCLUDED.name;
-
--- Views include all types (regular, dashboard widgets, charts, reports)
--- The system identifies them by the JSON comment metadata
-```
-
-**Quick reset during development:**
-
-```sql
-TRUNCATE supasheet.tables CASCADE;
-TRUNCATE supasheet.columns CASCADE;
-TRUNCATE supasheet.views CASCADE;
-
--- Regenerate all
-INSERT INTO supasheet.columns SELECT * FROM supasheet.generate_columns('public');
-INSERT INTO supasheet.tables SELECT * FROM supasheet.generate_tables('public');
-INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('public');
-```
 
 ## Row Level Security (RLS)
 
@@ -411,8 +366,6 @@ ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
 - **Permissions** control UI visibility (what resources appear)
 - **RLS** controls data access (which rows are accessible)
 - **Meta tables** are filtered by permissions automatically
-- **Default role** is `'user'`, automatically assigned to new accounts
-- **Always update meta tables** after schema changes
 - **Use `has_permission()` and `has_role()`** in your policies
 
 ## Next Steps

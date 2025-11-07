@@ -14,14 +14,12 @@
     "authorization",
     "complete-example",
     "---Features---",
-    "crud-operations",
+    "resource",
     "dashboards",
     "charts",
     "reports",
     "audit-logs",
     "storage",
-    "sql-editor",
-    "---Advanced---",
-    "data-types"
+    "sql-editor"
   ]
 }

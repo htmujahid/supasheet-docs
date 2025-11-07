@@ -21,71 +21,160 @@ NEXT_PUBLIC_THEME_COLOR_DARK=#2563eb  # Dark mode primary color
 
 ### CSS Variables
 
-Colors are defined in `/app/global.css`:
+Supasheet uses **OKLCH color space** for better perceptual uniformity and color manipulation. Colors are defined in `/styles/globals.css`:
 
 ```css
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: var(--color-blue-300);
+  --chart-2: var(--color-blue-500);
+  --chart-3: var(--color-blue-600);
+  --chart-4: var(--color-blue-700);
+  --chart-5: var(--color-blue-800);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --surface: oklch(0.98 0 0);
+  --surface-foreground: var(--foreground);
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: oklch(0.96 0 0);
+  --code-number: oklch(0.56 0 0);
+  --selection: oklch(0.145 0 0);
+  --selection-foreground: oklch(1 0 0);
+}
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-  }
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.269 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.371 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: var(--color-blue-300);
+  --chart-2: var(--color-blue-500);
+  --chart-3: var(--color-blue-600);
+  --chart-4: var(--color-blue-700);
+  --chart-5: var(--color-blue-800);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.439 0 0);
+  --surface: oklch(0.2 0 0);
+  --surface-foreground: oklch(0.708 0 0);
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: oklch(0.27 0 0);
+  --code-number: oklch(0.72 0 0);
+  --selection: oklch(0.922 0 0);
+  --selection-foreground: oklch(0.205 0 0);
 }
 ```
+
+### Understanding OKLCH
+
+OKLCH provides better perceptual uniformity compared to HSL:
+- **L (Lightness)**: 0 (black) to 1 (white)
+- **C (Chroma)**: Color intensity, typically 0 to 0.4
+- **H (Hue)**: Angle in degrees (0-360)
+
+```css
+/* Examples */
+oklch(0.5 0.2 240)    /* Medium blue */
+oklch(0.8 0.15 120)   /* Light green */
+oklch(0.3 0.1 0)      /* Dark gray */
+```
+
+### Color Categories
+
+Supasheet includes several color categories:
+
+**Base Colors**
+- `background`, `foreground` - Main page colors
+- `card`, `card-foreground` - Card component colors
+- `popover`, `popover-foreground` - Popover/dropdown colors
+
+**Interactive Colors**
+- `primary`, `primary-foreground` - Primary actions and CTAs
+- `secondary`, `secondary-foreground` - Secondary actions
+- `accent`, `accent-foreground` - Highlighted elements
+- `destructive` - Destructive actions (delete, remove)
+
+**UI Elements**
+- `border` - Border colors
+- `input` - Input field borders
+- `ring` - Focus ring colors
+- `muted`, `muted-foreground` - Muted/disabled states
+
+**Sidebar Colors**
+- `sidebar`, `sidebar-foreground` - Sidebar background
+- `sidebar-primary`, `sidebar-primary-foreground` - Sidebar primary actions
+- `sidebar-accent`, `sidebar-accent-foreground` - Sidebar highlights
+- `sidebar-border`, `sidebar-ring` - Sidebar borders and focus
+
+**Code & Surface Colors**
+- `surface`, `surface-foreground` - Secondary surface colors
+- `code`, `code-foreground` - Code block background
+- `code-highlight` - Code line highlights
+- `code-number` - Line numbers
+- `selection`, `selection-foreground` - Text selection
+
+**Chart Colors**
+- `chart-1` through `chart-5` - Data visualization colors
 
 ### Customizing Colors
 
 ```css
-/* Custom brand colors */
+/* Custom brand colors using OKLCH */
 :root {
-  --brand-primary: 210 100% 50%;
-  --brand-secondary: 280 100% 50%;
-  --brand-accent: 150 100% 45%;
+  --brand-primary: oklch(0.55 0.25 240);    /* Vibrant blue */
+  --brand-secondary: oklch(0.6 0.22 280);   /* Purple */
+  --brand-accent: oklch(0.65 0.2 150);      /* Green */
 }
 
 .dark {
-  --brand-primary: 210 100% 60%;
-  --brand-secondary: 280 100% 60%;
-  --brand-accent: 150 100% 55%;
+  --brand-primary: oklch(0.65 0.25 240);    /* Lighter blue for dark mode */
+  --brand-secondary: oklch(0.7 0.22 280);   /* Lighter purple */
+  --brand-accent: oklch(0.75 0.2 150);      /* Lighter green */
 }
 ```
 
@@ -105,454 +194,199 @@ Colors are defined in `/app/global.css`:
 <button className="bg-destructive text-destructive-foreground">
   Delete
 </button>
+
+<aside className="bg-sidebar text-sidebar-foreground">
+  Sidebar content
+</aside>
+
+<div className="bg-surface text-surface-foreground">
+  Secondary surface
+</div>
+
+<pre className="bg-code text-code-foreground">
+  Code block
+</pre>
 ```
 
 ### Custom Color Utilities
 
+Supasheet's color system is integrated into Tailwind through the `@theme inline` block:
+
 ```tsx
-// Using brand colors
-<div className="bg-[hsl(var(--brand-primary))]">
-  Brand primary
+// Using standard theme colors
+<div className="bg-background text-foreground">
+  Page content
+</div>
+
+// Using sidebar colors
+<nav className="bg-sidebar border-sidebar-border">
+  Navigation
+</nav>
+
+// Using surface colors
+<div className="bg-surface text-surface-foreground">
+  Card or panel
+</div>
+
+// Using custom OKLCH colors directly
+<div className="bg-[oklch(0.55_0.25_240)]">
+  Custom color
 </div>
 ```
 
-## Theme Switcher
 
-### Basic Theme Toggle
 
-```tsx
-'use client';
+## Customizing Your Theme
 
-import { useTheme } from 'next-themes';
-import { Moon, Sun } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-
-export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-
-  return (
-    <Button
-      variant="outline"
-      size="icon"
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-    >
-      <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-    </Button>
-  );
-}
-```
-
-### Dropdown Theme Selector
-
-```tsx
-'use client';
-
-import { useTheme } from 'next-themes';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Moon, Sun, Monitor } from 'lucide-react';
-
-export function ThemeSelector() {
-  const { theme, setTheme } = useTheme();
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          {theme === 'light' && <Sun className="w-4 h-4" />}
-          {theme === 'dark' && <Moon className="w-4 h-4" />}
-          {theme === 'system' && <Monitor className="w-4 h-4" />}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuItem onClick={() => setTheme('light')}>
-          <Sun className="w-4 h-4 mr-2" /> Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('dark')}>
-          <Moon className="w-4 h-4 mr-2" /> Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('system')}>
-          <Monitor className="w-4 h-4 mr-2" /> System
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-```
-
-## Typography
-
-### Font Configuration
-
-```tsx
-// app/layout.tsx
-import { Inter, JetBrains_Mono } from 'next/font/google';
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-});
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body>{children}</body>
-    </html>
-  );
-}
-```
-
-### Tailwind Configuration
-
-```js
-// tailwind.config.js
-module.exports = {
-  theme: {
-    extend: {
-      fontFamily: {
-        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-mono)', 'monospace'],
-      },
-    },
-  },
-};
-```
-
-## Custom Themes
-
-### Create Theme Preset
+To customize the theme, modify the CSS variables in `styles/globals.css`. You can adjust colors by changing the OKLCH values:
 
 ```css
-/* global.css */
-[data-theme='ocean'] {
-  --background: 210 100% 97%;
-  --foreground: 210 100% 10%;
-  --primary: 200 100% 45%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 190 100% 40%;
-  --accent: 170 100% 35%;
-  --muted: 210 40% 96%;
-  --border: 210 40% 90%;
+/* Example: Customizing primary color */
+:root {
+  --primary: oklch(0.5 0.2 240);  /* Custom blue */
 }
 
-[data-theme='forest'] {
-  --background: 120 20% 97%;
-  --foreground: 120 20% 10%;
-  --primary: 140 60% 40%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 100 60% 35%;
-  --accent: 80 70% 45%;
-  --muted: 120 20% 96%;
-  --border: 120 20% 90%;
+.dark {
+  --primary: oklch(0.65 0.2 240); /* Lighter for dark mode */
 }
 ```
 
-### Theme Switcher with Presets
 
-```tsx
-'use client';
 
-import { useState } from 'react';
+## Tailwind CSS 4 Configuration
 
-const themes = ['default', 'ocean', 'forest', 'sunset'];
-
-export function ThemePresetSelector() {
-  const [selectedTheme, setSelectedTheme] = useState('default');
-
-  function applyTheme(theme: string) {
-    document.documentElement.setAttribute('data-theme', theme);
-    setSelectedTheme(theme);
-  }
-
-  return (
-    <div className="flex gap-2">
-      {themes.map((theme) => (
-        <button
-          key={theme}
-          onClick={() => applyTheme(theme)}
-          className={`px-4 py-2 rounded ${
-            selectedTheme === theme ? 'bg-primary text-primary-foreground' : 'bg-secondary'
-          }`}
-        >
-          {theme}
-        </button>
-      ))}
-    </div>
-  );
-}
-```
-
-## Component Styling
-
-### Using Variants
-
-```tsx
-import { cn } from '@/lib/utils';
-import { cva, type VariantProps } from 'class-variance-authority';
-
-const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md font-medium transition-colors',
-  {
-    variants: {
-      variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border border-input bg-background hover:bg-accent',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-      },
-      size: {
-        sm: 'h-9 px-3 text-sm',
-        md: 'h-10 px-4',
-        lg: 'h-11 px-8',
-      },
-    },
-    defaultVariants: {
-      variant: 'default',
-      size: 'md',
-    },
-  }
-);
-
-export function CustomButton({
-  variant,
-  size,
-  className,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>) {
-  return (
-    <button
-      className={cn(buttonVariants({ variant, size }), className)}
-      {...props}
-    />
-  );
-}
-```
-
-## Spacing and Layout
-
-### Custom Spacing
-
-```js
-// tailwind.config.js
-module.exports = {
-  theme: {
-    extend: {
-      spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
-        '128': '32rem',
-      },
-    },
-  },
-};
-```
-
-### Container Sizes
+Supasheet uses Tailwind CSS 4 with the new `@theme inline` directive:
 
 ```css
-.container {
-  @apply mx-auto px-4 sm:px-6 lg:px-8;
-  max-width: 1280px;
-}
+/* styles/globals.css */
+@import "tailwindcss";
 
-.container-sm {
-  @apply mx-auto px-4;
-  max-width: 640px;
-}
-
-.container-lg {
-  @apply mx-auto px-4;
-  max-width: 1536px;
+@theme inline {
+  --breakpoint-3xl: 1600px;
+  --breakpoint-4xl: 2000px;
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* ... other color mappings */
 }
 ```
 
-## Animations
-
-### Custom Animations
-
-```js
-// tailwind.config.js
-module.exports = {
-  theme: {
-    extend: {
-      keyframes: {
-        'fade-in': {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        'slide-up': {
-          '0%': { transform: 'translateY(10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-      },
-      animation: {
-        'fade-in': 'fade-in 0.3s ease-out',
-        'slide-up': 'slide-up 0.3s ease-out',
-      },
-    },
-  },
-};
-```
-
-### Usage
+This allows you to use theme colors directly in Tailwind classes:
 
 ```tsx
-<div className="animate-fade-in">
-  Fades in on mount
-</div>
-
-<div className="animate-slide-up">
-  Slides up on mount
+<div className="bg-background text-foreground rounded-lg">
+  Content with theme colors and radius
 </div>
 ```
 
-## Responsive Design
+## Custom Variants
 
-### Breakpoints
+Supasheet includes custom Tailwind variants:
 
-```js
-// tailwind.config.js
-module.exports = {
-  theme: {
-    screens: {
-      'sm': '640px',
-      'md': '768px',
-      'lg': '1024px',
-      'xl': '1280px',
-      '2xl': '1536px',
-    },
-  },
-};
+```css
+@custom-variant dark (&:is(.dark *));
+@custom-variant fixed (&:is(.layout-fixed *));
 ```
 
-### Responsive Utilities
+Use them in your components:
 
 ```tsx
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  {/* Responsive grid */}
+<div className="bg-white dark:bg-gray-900">
+  Responsive to dark mode
 </div>
 
-<div className="text-sm md:text-base lg:text-lg">
-  {/* Responsive text */}
+<div className="relative fixed:absolute">
+  Changes based on layout type
 </div>
-
-<div className="p-4 md:p-6 lg:p-8">
-  {/* Responsive padding */}
-</div>
-```
-
-## Dark Mode Images
-
-### Conditional Images
-
-```tsx
-import Image from 'next/image';
-
-export function Logo() {
-  return (
-    <>
-      <Image
-        src="/logo-light.png"
-        alt="Logo"
-        className="block dark:hidden"
-        width={200}
-        height={50}
-      />
-      <Image
-        src="/logo-dark.png"
-        alt="Logo"
-        className="hidden dark:block"
-        width={200}
-        height={50}
-      />
-    </>
-  );
-}
-```
-
-## Custom Shadcn Components
-
-### Override Component Styles
-
-```tsx
-// components/ui/custom-button.tsx
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-
-export function BrandButton({ className, ...props }: React.ComponentProps<typeof Button>) {
-  return (
-    <Button
-      className={cn(
-        'bg-[hsl(var(--brand-primary))] hover:bg-[hsl(var(--brand-primary))]/90',
-        className
-      )}
-      {...props}
-    />
-  );
-}
 ```
 
 ## Best Practices
 
-### 1. Use CSS Variables
+### 1. Use OKLCH for Better Color Manipulation
 
 ```css
-/* Good ✅ */
+/* Good ✅ - OKLCH provides better perceptual uniformity */
 :root {
-  --spacing-unit: 0.25rem;
-  --border-radius: 0.5rem;
+  --brand-color: oklch(0.55 0.2 240);
+  --brand-hover: oklch(0.45 0.2 240);  /* Darker, same hue */
+  --brand-light: oklch(0.75 0.15 240); /* Lighter, reduced chroma */
 }
 
-.card {
-  padding: calc(var(--spacing-unit) * 4);
-  border-radius: var(--border-radius);
+/* Less ideal - RGB/Hex harder to adjust perceptually */
+:root {
+  --brand-color: #3b82f6;
+  --brand-hover: #2563eb;
 }
 ```
 
-### 2. Consistent Naming
+### 2. Consistent Naming Convention
 
 ```css
-/* Good ✅ */
+/* Good ✅ - Semantic naming with foreground pairs */
 --primary
 --primary-foreground
 --secondary
 --secondary-foreground
+--sidebar
+--sidebar-foreground
 
-/* Bad ❌ */
+/* Bad ❌ - Color-based naming */
 --blue
 --text-on-blue
---green
---green-text
+--light-gray
+--dark-text
 ```
 
-### 3. Theme Scoping
+### 3. Theme Scoping with Data Attributes
 
 ```css
 /* Good ✅ - Scoped to data attribute */
 [data-theme='custom'] {
-  --primary: 200 100% 50%;
+  --primary: oklch(0.5 0.2 240);
 }
 
-/* Bad ❌ - Global override */
+/* Bad ❌ - Class-based global override */
 .custom-theme {
   background: blue;
+}
+```
+
+### 4. Maintain Accessibility
+
+```css
+/* Good ✅ - Sufficient contrast between background and foreground */
+:root {
+  --background: oklch(1 0 0);        /* White */
+  --foreground: oklch(0.145 0 0);    /* Very dark gray */
+}
+
+/* Bad ❌ - Insufficient contrast */
+:root {
+  --background: oklch(0.8 0 0);      /* Light gray */
+  --foreground: oklch(0.6 0 0);      /* Medium gray */
+}
+```
+
+### 5. Use Alpha Channel for Transparency
+
+```css
+/* Good ✅ - OKLCH with alpha */
+:root {
+  --overlay: oklch(0 0 0 / 50%);
+  --border: oklch(1 0 0 / 10%);
+}
+
+.dark {
+  --border: oklch(1 0 0 / 15%);
 }
 ```
 
 ## Next Steps
 
 - **[Custom Components](/docs/guide/custom-components)** - Build themed components
-- **[Internationalization](/docs/guide/internationalization)** - Multi-language support
 - **[CRUD Operations](/docs/guide/crud-operations)** - Themed auto-generated UI

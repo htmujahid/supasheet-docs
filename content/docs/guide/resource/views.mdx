@@ -1,0 +1,572 @@
+---
+title: Views
+description: Multiple visualization types for your data - Sheet, Kanban, Calendar, and Gallery
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Supasheet provides four different view types to visualize your data: Sheet, Kanban, Calendar, and Gallery. You can configure multiple views for any table, and users can switch between them.
+
+## Configuration via Comments
+
+Define available views in your table comment using the `items` array:
+
+```sql
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "display": "block",
+  "items": [
+    {"id": "sheet", "name": "Sheet View", "type": "sheet"},
+    {"id": "kanban", "name": "Kanban View", "type": "kanban", ...},
+    {"id": "calendar", "name": "Calendar View", "type": "calendar", ...},
+    {"id": "gallery", "name": "Gallery View", "type": "gallery", ...}
+  ]
+}';
+```
+
+## Primary Item
+
+The `primaryItem` configuration specifies which column to use when displaying records in view cards, dropdowns, and relationships.
+
+### Configuration
+
+```sql
+CREATE TABLE customers (
+  id UUID PRIMARY KEY,
+  email TEXT,
+  full_name TEXT,
+  company TEXT
+);
+
+-- Use full_name instead of default
+COMMENT ON TABLE customers IS '{
+  "icon": "Users",
+  "primaryItem": "full_name"
+}';
+```
+
+**Default Priority:** If not specified, Supasheet looks for columns in this order:
+1. `name`
+2. `title`
+3. `email`
+4. `id` (fallback)
+
+### Where Primary Item is Used
+
+The primary item column is displayed in:
+
+**View Cards (Kanban, Gallery, Calendar):**
+- Card titles in Kanban view
+- Image captions in Gallery view
+- Event titles in Calendar view
+
+**Relationships:**
+- Foreign key dropdown selections
+- Related record displays
+- Reference field previews
+
+**Example:**
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY,
+  title TEXT NOT NULL,
+  customer_id UUID REFERENCES customers(id)
+);
+
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "items": [
+    {
+      "id": "kanban",
+      "name": "Board",
+      "type": "kanban",
+      "group": "status",
+      "title": "title"  // Uses the title column for card display
+    }
+  ]
+}';
+```
+
+When you configure `"title": "title"` in a view, it uses the column specified. If you want to override which column is shown in relationships and references throughout the application, use `primaryItem`:
+
+```sql
+COMMENT ON TABLE customers IS '{
+  "primaryItem": "full_name"
+}';
+```
+
+Now when selecting a customer in a foreign key dropdown, it will show the `full_name` instead of the default (`name`, `title`, `email`, or `id`).
+
+<Callout type="info">
+The `primaryItem` setting is global for the table, while view-specific `title` properties only affect that particular view's display.
+</Callout>
+
+## View Types
+
+### Sheet View
+
+The default table view with rows and columns. Best for viewing and editing structured data.
+
+```sql
+{
+  "id": "sheet",
+  "name": "Sheet View",
+  "type": "sheet"
+}
+```
+
+**Features:**
+- Sortable columns
+- Filterable data
+- Inline editing
+- Pagination
+- Column visibility controls
+- Export to CSV
+
+**When to Use:**
+- Viewing all data in a structured format
+- Bulk editing operations
+- Detailed data analysis
+- Default view for most resources
+
+### Kanban View
+
+Card-based board view grouped by a column value. Best for workflow visualization and status tracking.
+
+```sql
+{
+  "id": "status_board",
+  "name": "Tasks By Status",
+  "type": "kanban",
+  "group": "status",          // Column to group by (creates lanes)
+  "title": "title",           // Column to display as card title
+  "description": "description", // Column for card description
+  "date": "created_at",       // Column to display as date
+  "badge": "priority"         // Column to display as badge
+}
+```
+
+**Configuration Options:**
+
+| Property | Required | Description |
+|----------|----------|-------------|
+| `group` | Yes | Column name to group cards by (creates board lanes) |
+| `title` | Yes | Column to display as the card title |
+| `description` | No | Column to display as card description (supports RICH_TEXT) |
+| `date` | No | Column to display as a date (formatted) |
+| `badge` | No | Column to display as a colored badge |
+
+**Features:**
+- Drag & drop to update group values
+- Visual workflow management
+- Quick status updates
+- Grouped by any column value
+
+**When to Use:**
+- Project management (group by status)
+- Sales pipelines (group by stage)
+- Bug tracking (group by priority)
+- Content workflows (group by review status)
+
+**Example:**
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY,
+  title TEXT NOT NULL,
+  description RICH_TEXT,
+  status TEXT CHECK (status IN ('pending', 'in_progress', 'review', 'completed')),
+  priority TEXT CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "items": [
+    {
+      "id": "status",
+      "name": "Tasks By Status",
+      "type": "kanban",
+      "group": "status",
+      "title": "title",
+      "description": "description",
+      "date": "created_at",
+      "badge": "priority"
+    },
+    {
+      "id": "priority",
+      "name": "Tasks By Priority",
+      "type": "kanban",
+      "group": "priority",
+      "title": "title",
+      "description": "description",
+      "date": "created_at",
+      "badge": "status"
+    }
+  ]
+}';
+```
+
+### Calendar View
+
+Calendar-based view for date-driven data. Best for scheduling and timeline visualization.
+
+```sql
+{
+  "id": "calendar",
+  "name": "Calendar View",
+  "type": "calendar",
+  "title": "title",           // Column to display as event title
+  "startDate": "created_at",  // Column for event start date
+  "endDate": "due_date",      // Column for event end date (optional)
+  "badge": "status"           // Column to display as badge
+}
+```
+
+**Configuration Options:**
+
+| Property | Required | Description |
+|----------|----------|-------------|
+| `title` | Yes | Column to display as the event title |
+| `startDate` | Yes | Column for event start date (DATE or TIMESTAMPTZ) |
+| `endDate` | No | Column for event end date (creates date range) |
+| `badge` | No | Column to display as a colored badge |
+
+**Features:**
+- Month, week, and day views
+- Drag & drop to reschedule
+- Multi-day events (with endDate)
+- Color-coded badges
+- Click to view/edit event details
+
+**When to Use:**
+- Event management
+- Task scheduling
+- Content calendar
+- Appointment booking
+- Project timelines
+
+**Example:**
+
+```sql
+CREATE TABLE events (
+  id UUID PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  start_date TIMESTAMPTZ NOT NULL,
+  end_date TIMESTAMPTZ,
+  status TEXT DEFAULT 'scheduled',
+  location TEXT
+);
+
+COMMENT ON TABLE events IS '{
+  "icon": "Calendar",
+  "items": [
+    {
+      "id": "calendar",
+      "name": "Calendar View",
+      "type": "calendar",
+      "title": "title",
+      "startDate": "start_date",
+      "endDate": "end_date",
+      "badge": "status"
+    }
+  ]
+}';
+```
+
+### Gallery View
+
+Image grid view with cards. Best for visual content and media libraries.
+
+```sql
+{
+  "id": "gallery",
+  "name": "Gallery View",
+  "type": "gallery",
+  "cover": "cover",           // Column for image (FILE or URL)
+  "title": "title",           // Column to display as card title
+  "description": "description", // Column for card description
+  "badge": "status"           // Column to display as badge
+}
+```
+
+**Configuration Options:**
+
+| Property | Required | Description |
+|----------|----------|-------------|
+| `cover` | Yes | Column with image (FILE or URL type) |
+| `title` | Yes | Column to display as the card title |
+| `description` | No | Column to display as card description |
+| `badge` | No | Column to display as a colored badge |
+
+**Features:**
+- Responsive grid layout
+- Image previews
+- Lazy loading
+- Click to view full details
+- Hover effects
+
+**When to Use:**
+- Product catalogs
+- Photo galleries
+- Portfolio items
+- Design assets
+- Media libraries
+
+**Example:**
+
+```sql
+CREATE TABLE products (
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  cover FILE,
+  price DECIMAL(10,2),
+  status TEXT DEFAULT 'active'
+);
+
+COMMENT ON COLUMN products.cover IS '{"accept": "image/*"}';
+
+COMMENT ON TABLE products IS '{
+  "icon": "Package",
+  "items": [
+    {
+      "id": "gallery",
+      "name": "Gallery View",
+      "type": "gallery",
+      "cover": "cover",
+      "title": "name",
+      "description": "description",
+      "badge": "status"
+    }
+  ]
+}';
+```
+
+## Setting the Primary View
+
+The first item in the `items` array becomes the default/primary view that users see when they open the resource.
+
+```sql
+COMMENT ON TABLE tasks IS '{
+  "items": [
+    -- This is the primary view (shown first)
+    {"id": "sheet", "name": "Sheet View", "type": "sheet"},
+
+    -- These are alternate views (accessible via tabs)
+    {"id": "kanban", "name": "Board", "type": "kanban", ...},
+    {"id": "calendar", "name": "Calendar", "type": "calendar", ...}
+  ]
+}';
+```
+
+**To change the primary view:**
+Simply reorder the items array to put your preferred view first.
+
+```sql
+-- Make Kanban the primary view
+COMMENT ON TABLE tasks IS '{
+  "items": [
+    {"id": "kanban", "name": "Board", "type": "kanban", ...},
+    {"id": "sheet", "name": "Sheet View", "type": "sheet"},
+    {"id": "calendar", "name": "Calendar", "type": "calendar", ...}
+  ]
+}';
+```
+
+## View Tabs
+
+When multiple views are configured, users see tabs to switch between them:
+
+```
+┌─────────────────────────────────────────┐
+│ Sheet View │ Board │ Calendar │ Gallery │
+├─────────────────────────────────────────┤
+│                                         │
+│         [Current View Content]          │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+The active view is persisted in the URL, so users can bookmark specific views.
+
+## Complete Example
+
+A task management table with all four view types:
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  title VARCHAR(500) NOT NULL,
+  description RICH_TEXT,
+  status task_status DEFAULT 'pending',
+  priority task_priority DEFAULT 'medium',
+  cover FILE,
+  account_id UUID REFERENCES supasheet.accounts(id),
+  due_date TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  tags TEXT[],
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON COLUMN tasks.cover IS '{"accept": "image/*"}';
+
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "display": "block",
+  "items": [
+    {
+      "id": "sheet",
+      "name": "Sheet View",
+      "type": "sheet"
+    },
+    {
+      "id": "status",
+      "name": "Tasks By Status",
+      "type": "kanban",
+      "group": "status",
+      "title": "title",
+      "description": "description",
+      "date": "created_at",
+      "badge": "priority"
+    },
+    {
+      "id": "priority",
+      "name": "Tasks By Priority",
+      "type": "kanban",
+      "group": "priority",
+      "title": "title",
+      "description": "description",
+      "date": "created_at",
+      "badge": "status"
+    },
+    {
+      "id": "calendar",
+      "name": "Calendar View",
+      "type": "calendar",
+      "title": "title",
+      "startDate": "created_at",
+      "endDate": "due_date",
+      "badge": "status"
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery View",
+      "type": "gallery",
+      "cover": "cover",
+      "title": "title",
+      "description": "description",
+      "badge": "status"
+    }
+  ]
+}';
+```
+
+This configuration provides:
+- **Sheet View** (primary) - Traditional table for data entry
+- **Status Board** - Kanban grouped by task status
+- **Priority Board** - Kanban grouped by priority level
+- **Calendar** - Timeline view with due dates
+- **Gallery** - Visual grid of tasks with cover images
+
+## View-Specific Queries
+
+You can also configure view-specific queries by adding a `query` property to individual items:
+
+```sql
+{
+  "items": [
+    {
+      "id": "active",
+      "name": "Active Tasks",
+      "type": "sheet",
+      "query": {
+        "filter": [
+          {
+            "id": "status",
+            "value": "active",
+            "variant": "text",
+            "operator": "eq"
+          }
+        ]
+      }
+    },
+    {
+      "id": "completed",
+      "name": "Completed Tasks",
+      "type": "sheet",
+      "query": {
+        "filter": [
+          {
+            "id": "status",
+            "value": "completed",
+            "variant": "text",
+            "operator": "eq"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+<Callout type="info">
+View-specific queries override table-level query configuration. This allows you to create focused views with different default filters, sorts, and joins.
+</Callout>
+
+## Best Practices
+
+1. **Choose views that match your data** - Not every table needs all view types
+2. **Set logical groupings** - For Kanban, use columns with limited distinct values (status, priority, stage)
+3. **Use date columns** - Calendar views require DATE or TIMESTAMPTZ columns
+4. **Provide images** - Gallery views need FILE or URL columns for covers
+5. **Order views by usage** - Put the most commonly used view first
+6. **Keep view names short** - They appear as tabs in the UI
+7. **Use descriptive names** - Help users understand what each view shows
+
+## Common Patterns
+
+### Project Management
+```sql
+"items": [
+  {"id": "kanban", "name": "Board", "type": "kanban", "group": "status", ...},
+  {"id": "calendar", "name": "Timeline", "type": "calendar", ...},
+  {"id": "sheet", "name": "All Tasks", "type": "sheet"}
+]
+```
+
+### E-commerce Products
+```sql
+"items": [
+  {"id": "gallery", "name": "Catalog", "type": "gallery", "cover": "image", ...},
+  {"id": "sheet", "name": "Inventory", "type": "sheet"}
+]
+```
+
+### Event Management
+```sql
+"items": [
+  {"id": "calendar", "name": "Schedule", "type": "calendar", ...},
+  {"id": "sheet", "name": "All Events", "type": "sheet"}
+]
+```
+
+### Content Workflow
+```sql
+"items": [
+  {"id": "kanban", "name": "Editorial", "type": "kanban", "group": "status", ...},
+  {"id": "calendar", "name": "Publishing", "type": "calendar", ...},
+  {"id": "sheet", "name": "All Content", "type": "sheet"}
+]
+```
+
+## Next Steps
+
+- **[Query Configuration](/docs/guide/resource/query)** - Set default sorting and filters
+- **[Basic Resources](/docs/guide/resource/basic)** - Learn about CRUD interfaces
+- **[Data Types](/docs/guide/resource/data-types)** - Use custom data types for better views

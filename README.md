@@ -46,13 +46,6 @@ Learn how to use Supasheet as a framework:
 - Storage & SQL Editor
 - Complete Examples
 
-### 🌐 Platform (`/docs/platform`)
-Information about the hosted Supasheet platform (coming soon):
-- Managed infrastructure
-- Instant deployment
-- Team collaboration
-- Custom domains
-
 ### 🚀 Self-Host (`/docs/self-host`)
 Deploy Supasheet on your own infrastructure:
 - Prerequisites

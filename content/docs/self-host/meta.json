@@ -6,13 +6,12 @@
   "pages": [
     "index",
     "prerequisites",
-    "deployment",
     "environment-variables",
     "database-setup",
     "production-checklist",
+    "deployment",
     "---Customization---",
     "custom-components",
-    "theming",
-    "internationalization"
+    "theming"
   ]
 }

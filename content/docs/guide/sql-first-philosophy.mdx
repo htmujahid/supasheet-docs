@@ -141,41 +141,38 @@ type Product = Database['public']['Tables']['products']['Row'];
 
 ### 6. Trigger-Based Audit Logging
 
-Automatically track changes using PostgreSQL triggers:
+Supasheet includes a built-in audit logging system. Simply attach triggers to your tables to automatically track all changes:
 
 ```sql
--- Create audit log table
-CREATE TABLE audit_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  table_name TEXT NOT NULL,
-  operation TEXT NOT NULL,
-  old_data JSONB,
-  new_data JSONB,
-  changed_by UUID REFERENCES auth.users(id),
-  changed_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Enable audit logging for insert operations
+CREATE TRIGGER audit_products_insert
+  AFTER INSERT
+  ON public.products
+  FOR EACH ROW
+EXECUTE FUNCTION supasheet.audit_trigger_function();
 
--- Trigger function
-CREATE OR REPLACE FUNCTION log_changes()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO audit_logs (table_name, operation, old_data, new_data, changed_by)
-  VALUES (
-    TG_TABLE_NAME,
-    TG_OP,
-    CASE WHEN TG_OP = 'DELETE' THEN row_to_json(OLD) ELSE NULL END,
-    CASE WHEN TG_OP != 'DELETE' THEN row_to_json(NEW) ELSE NULL END,
-    auth.uid()
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Enable audit logging for update operations
+CREATE TRIGGER audit_products_update
+  AFTER UPDATE
+  ON public.products
+  FOR EACH ROW
+EXECUTE FUNCTION supasheet.audit_trigger_function();
 
--- Attach to table
-CREATE TRIGGER products_audit
-  AFTER INSERT OR UPDATE OR DELETE ON products
-  FOR EACH ROW EXECUTE FUNCTION log_changes();
+-- Enable audit logging for delete operations
+CREATE TRIGGER audit_products_delete
+  BEFORE DELETE
+  ON public.products
+  FOR EACH ROW
+EXECUTE FUNCTION supasheet.audit_trigger_function();
 ```
+
+The `supasheet.audit_trigger_function()` automatically captures:
+- Table name and operation type (INSERT/UPDATE/DELETE)
+- Old and new data values
+- User who made the change
+- Timestamp of the change
+
+All audit logs are stored in the `supasheet.audit_logs` table and can be viewed in the Audit Logs section of Supasheet.
 
 ## The SQL-First Workflow
 
@@ -218,9 +215,9 @@ While Supasheet is SQL-first, you should use application code for:
 - 🔧 **Easy modifications** - Change schema, UI updates automatically
 - 📈 **Scalability** - PostgreSQL's proven performance
 
-## Example: Complete Feature in SQL
+## Example: Basic Feature in SQL
 
-Here's a complete e-commerce order management feature in just SQL:
+Here's a basic e-commerce order management feature in just SQL:
 
 ```sql
 -- Orders table
@@ -261,11 +258,18 @@ LIMIT 30;
 
 COMMENT ON VIEW public.daily_orders IS '{"type": "chart", "name": "Daily Orders", "description": "Daily order trend", "chart_type": "line"}';
 
+-- Audit triggers
+CREATE TRIGGER audit_orders_insert
+  AFTER INSERT ON orders
+  FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
 
--- Audit trigger
-CREATE TRIGGER orders_audit
-  AFTER INSERT OR UPDATE OR DELETE ON orders
-  FOR EACH ROW EXECUTE FUNCTION log_changes();
+CREATE TRIGGER audit_orders_update
+  AFTER UPDATE ON orders
+  FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
+
+CREATE TRIGGER audit_orders_delete
+  BEFORE DELETE ON orders
+  FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
 ```
 
 This SQL gives you:

@@ -108,6 +108,46 @@ npx supabase db push
 </Step>
 
 <Step>
+### Expose Supasheet Schema
+
+For Supasheet to work, you need to expose the `supasheet` schema via the PostgREST API. The `public` schema is already exposed by default.
+
+Add the `supasheet` schema to `/supabase/config.toml`:
+
+```toml
+[api]
+schemas = ["public", "supasheet"]
+```
+
+**What this means:**
+- `public` - Your application tables (exposed by default)
+- `supasheet` - All Supasheet internal tables including accounts, roles, permissions, dashboards, charts, and reports - **Required**
+
+<Tabs items={['Local', 'Cloud']}>
+<Tab value="Local">
+After editing the config file, restart Supabase:
+
+```bash
+npx supabase stop
+npx supabase start
+```
+</Tab>
+<Tab value="Cloud">
+Update via the Supabase Dashboard:
+
+1. Go to **Project Settings** → **Data API**
+2. Find **Exposed schemas** section
+3. Add `supasheet` to the list
+4. Save changes
+</Tab>
+</Tabs>
+
+<Callout type="warning">
+Without exposing the `supasheet` schema, Supasheet won't be able to access authentication, authorization, configuration, dashboards, charts, and reports. The application will not function correctly.
+</Callout>
+</Step>
+
+<Step>
 ### Generate TypeScript Types
 
 ```bash

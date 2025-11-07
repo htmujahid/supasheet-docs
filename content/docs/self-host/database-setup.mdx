@@ -88,6 +88,53 @@ The migrations automatically create:
 - **Functions**: Permission checks, audit triggers, meta generators
 - **RLS Policies**: Row-level security on all tables
 
+## Schema Exposure (Required)
+
+After applying migrations, you **must** expose the `supasheet` schema via the PostgREST API. The `public` schema is already exposed by default.
+
+<Steps>
+<Step>
+### Edit Supabase Configuration
+
+Add the `supasheet` schema to `/supabase/config.toml`:
+
+```toml
+[api]
+schemas = ["public", "supasheet"]
+```
+
+This exposes:
+- `public` - Your application tables (exposed by default)
+- `supasheet` - All Supasheet internal tables including accounts, roles, permissions, dashboards, charts, and reports
+</Step>
+
+<Step>
+### Restart Supabase (Local)
+
+For local development, restart Supabase to apply the configuration:
+
+```bash
+npx supabase stop
+npx supabase start
+```
+</Step>
+
+<Step>
+### Update Cloud Configuration (Production)
+
+For cloud/production, update via the Supabase Dashboard:
+
+1. Go to **Project Settings** → **Data API**
+2. Find **Exposed schemas** section
+3. Add `supasheet` to the list
+4. Save changes
+</Step>
+</Steps>
+
+<Callout type="warning">
+**Important**: Without exposing the `supasheet` schema, Supasheet won't be able to access authentication, authorization, configuration, dashboards, charts, and reports. The application will not function correctly.
+</Callout>
+
 ## Adding Your Own Tables
 
 Create new migrations for your application tables:
