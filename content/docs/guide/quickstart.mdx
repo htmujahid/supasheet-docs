@@ -26,6 +26,7 @@ This creates a new migration file in `/supabase/migrations/`.
 Edit the migration file and add:
 
 ```sql
+begin;
 -- Step 1: Create custom types
 create type task_status as enum ('pending', 'in_progress', 'completed');
 create type task_priority as enum ('low', 'medium', 'high');
@@ -35,6 +36,7 @@ alter type supasheet.app_permission add value 'public.tasks:select';
 alter type supasheet.app_permission add value 'public.tasks:insert';
 alter type supasheet.app_permission add value 'public.tasks:update';
 alter type supasheet.app_permission add value 'public.tasks:delete';
+commit;
 
 -- Step 3: Create tasks table
 CREATE TABLE public.tasks (
