@@ -34,7 +34,7 @@ export function HeroSection() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
-            <Link href={"https://demo.supasheet.app/"} target="_blank" rel="noreferrer">
+            <Link href={"https://supasheet.netlify.app/"} target="_blank" rel="noreferrer">
               <button className={buttonVariants({ variant: "primary" }) + " h-11 px-6 gap-2 w-full sm:w-auto rounded-2xl"}>
                 <Zap className="h-5 w-5" />
                 Start Demo
