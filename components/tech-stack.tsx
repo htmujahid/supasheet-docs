@@ -4,7 +4,7 @@ const techFeatures = [
   {
     icon: Code2,
     title: 'Modern Stack',
-    description: 'Built with Next.js, React, TypeScript, and Tailwind CSS for a fast, type-safe development experience.',
+    description: 'Built with React, Tanstack Router, TypeScript, and Tailwind CSS for a fast, type-safe development experience.',
   },
   {
     icon: Zap,
