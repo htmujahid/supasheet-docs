@@ -2,16 +2,16 @@ import Image from "next/image";
 
 const technologies = [
   {
+    name: 'React',
+    logo: 'https://svgl.app/library/react_dark.svg',
+  },
+  {
     name: 'TanStack',
     logo: 'https://svgl.app/library/tanstack.svg',
   },
   {
     name: 'Supabase',
     logo: 'https://svgl.app/library/supabase.svg',
-  },
-  {
-    name: 'TypeScript',
-    logo: 'https://svgl.app/library/typescript.svg',
   },
   {
     name: 'Shadcn UI',
