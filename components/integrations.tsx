@@ -2,8 +2,8 @@ import Image from "next/image";
 
 const technologies = [
   {
-    name: 'Next.js',
-    logo: 'https://svgl.app/library/nextjs_icon_dark.svg',
+    name: 'TanStack',
+    logo: 'https://svgl.app/library/tanstack.svg',
   },
   {
     name: 'Supabase',
