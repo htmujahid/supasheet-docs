@@ -17,55 +17,58 @@ Self-hosting Supasheet gives you complete control:
 
 Supasheet is built with:
 
-- **Framework** - Next.js 15 (App Router)
-- **Language** - TypeScript
-- **Styling** - Tailwind CSS 4
-- **UI Components** - Shadcn UI
-- **Database** - PostgreSQL (via Supabase)
-- **Authentication** - Supabase Auth
-- **Storage** - Supabase Storage
-- **State Management** - TanStack Query
-- **Forms** - React Hook Form + Zod
+- **App** - React 19 + Vite
+- **Routing** - TanStack Router (file-based, type-safe)
+- **Data Fetching** - TanStack Query
+- **Forms** - TanStack Form
+- **Tables** - TanStack Table
+- **Styling** - Tailwind CSS v4
+- **UI Components** - shadcn/ui (Base UI variant)
+- **Rich Text** - Lexical
+- **Charts** - Recharts
+- **Backend** - Supabase (Auth, Database, Storage, Edge Functions)
 
-## Folder Structure
+## Project Structure
 
 ```
 supasheet/
-├── app/                    # Next.js App Router
-│   ├── auth/              # Authentication pages
-│   ├── home/              # Main application
-│   └── api/               # API routes
-├── components/            # Shared components
-│   ├── ui/               # Shadcn UI
-│   └── layouts/          # Layout components
-├── features/              # Feature modules
-│   ├── audit-log/        # Audit Log
-│   ├── auth/             # Authentication
-│   ├── chart/            # Charts
-│   ├── dashboard/        # Dashboards
-│   ├── report/           # Reports
-│   ├── resource/         # CRUD interfaces
-│   ├── sql/              # SQL editor
-│   ├── storage/          # Storage
-│   └── user/             # User
-├── lib/                   # Utilities
-│   ├── supabase/         # Supabase clients
-│   └── logger/             # Logger
-├── supabase/              # Database
-│   ├── migrations/       # SQL migrations
-│   └── seed.sql          # Seed data
-└── public/                # Static assets
+├── src/
+│   ├── routes/                 # TanStack Router file-based pages
+│   │   ├── __root.tsx          # Root layout and context
+│   │   ├── index.tsx           # App entry redirect
+│   │   ├── auth/               # Sign-in, sign-up, MFA, password reset
+│   │   ├── account/            # Profile, security, identities
+│   │   ├── core/               # Users, roles, permissions, audit logs
+│   │   ├── storage/            # File storage browser
+│   │   └── $schema/            # Dynamic schema module (resources, dashboards, charts, reports)
+│   ├── components/             # UI components by module
+│   │   ├── ui/                 # shadcn/ui primitives
+│   │   ├── layouts/            # Layout components
+│   │   ├── resource/           # CRUD components
+│   │   ├── dashboard/          # Dashboard widgets
+│   │   └── ...                 # Other feature components
+│   ├── hooks/                  # Shared React hooks
+│   ├── lib/                    # Utilities and shared logic
+│   │   └── supabase/           # Supabase client and query functions
+│   ├── integrations/           # Third-party setup (TanStack Query provider)
+│   └── config/                 # App-level configuration constants
+├── supabase/
+│   ├── migrations/             # SQL migration files
+│   ├── functions/              # Deno edge functions (admin user operations)
+│   └── examples/               # Example seed SQL files
+└── public/                     # Static assets
 ```
 
 ## Deployment Options
 
-Supasheet can be deployed to:
+Supasheet builds to a static SPA and can be deployed to:
 
-- **Vercel** - Recommended for Next.js (easiest)
-- **Docker** - Containerized deployment
-- **Railway** - Simple platform
+- **Netlify** - Recommended (easy static hosting)
+- **Vercel** - Static site deployment
+- **Cloudflare Pages** - Edge deployment
+- **Docker** - Containerized with nginx
+- **VPS** - Self-managed server with nginx
 - **AWS/GCP/Azure** - Enterprise solutions
-- **VPS** - Self-managed server
 
 ## Prerequisites
 
@@ -84,17 +87,30 @@ cd supasheet
 npm install
 
 # Configure environment
-cp .env.example .env.local
-# Edit .env.local with your Supabase credentials
+cp .env.example .env
+# Edit .env with your Supabase credentials
+
+# Start local Supabase (optional)
+npx supabase start
 
 # Run migrations
 npx supabase db push
 
-# Build
-npm run build
+# Start dev server
+npm run dev
+```
 
-# Start
-npm start
+## Available Scripts
+
+```bash
+npx supabase start  # Start local Supabase instance
+npm run dev         # Start dev server on port 3000
+npm run build       # Production build (outputs to dist/)
+npm run preview     # Preview the production build locally
+npm run typecheck   # TypeScript check
+npm run lint        # ESLint
+npm run check       # Format + lint fix
+npm run test        # Run tests
 ```
 
 ## Next Steps

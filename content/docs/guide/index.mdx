@@ -37,7 +37,7 @@ Supasheet is built on top of Supabase's powerful features:
 - **Row Level Security (RLS)**: PostgreSQL policies for fine-grained authorization
 - **Realtime**: Real-time subscriptions for live data updates
 
-The frontend (Next.js 16 + React 19) dynamically renders a complete CMS interface based on your database schema. You define your data model and business logic in SQL, and Supasheet automatically generates:
+The frontend (React 19 + Vite) dynamically renders a complete CMS interface based on your database schema. You define your data model and business logic in SQL, and Supasheet automatically generates:
 
 - CRUD interfaces for all tables
 - Multiple data view types (Sheet, Kanban, Calendar, Gallery)
@@ -71,14 +71,15 @@ Understand how [SQL-first development](/docs/guide/sql-first-philosophy) makes b
 
 ## Technology Stack
 
-- **Frontend**: Next.js 16 (App Router), React 19, TypeScript
-- **Styling**: Tailwind CSS 4, Shadcn UI, Diceui
-- **Backend**: Supabase (PostgreSQL, Auth, Storage)
-- **State Management**: TanStack Query (React Query)
-- **Data Tables**: TanStack Table
-- **Forms**: React Hook Form + Zod
-- **Internationalization**: i18next
-- **Deployment**: Vercel (frontend), Supabase (backend)
+- **App**: React 19 + Vite
+- **Routing**: TanStack Router (file-based, type-safe)
+- **Data Fetching**: TanStack Query
+- **Forms**: TanStack Form
+- **Tables**: TanStack Table
+- **Styling**: Tailwind CSS v4, shadcn/ui (Base UI variant)
+- **Rich Text**: Lexical
+- **Charts**: Recharts
+- **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
 
 ## Community & Support
 

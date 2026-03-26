@@ -30,70 +30,97 @@ Before deploying, you need:
 Required variables for deployment:
 
 ```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
 
-# App Configuration
-NEXT_PUBLIC_SITE_URL=https://yourdomain.com
-NEXT_PUBLIC_PRODUCT_NAME=Supasheet
-NEXT_PUBLIC_DEFAULT_LOCALE=en
-NEXT_PUBLIC_DEFAULT_THEME_MODE=system
+## Build
+
+Supasheet is a Vite SPA. Build it with:
+
+```bash
+npm run build
+```
+
+This outputs static files to the `dist/` directory. Preview the production build locally before deploying:
+
+```bash
+npm run preview
 ```
 
 ## Deployment Platforms
 
-### Vercel (Recommended)
+### Netlify (Recommended)
 
-Easiest deployment for Next.js applications.
+```bash
+npm i -g netlify-cli
+netlify login
+netlify deploy --prod --dir=dist
+```
 
-**Steps:**
-1. Go to [vercel.com](https://vercel.com)
-2. Import your Git repository
-3. Add environment variables (Settings → Environment Variables)
-4. Deploy
+Or connect your Git repository at [netlify.com](https://netlify.com):
+- Build command: `npm run build`
+- Publish directory: `dist`
 
-**CLI:**
+Add environment variables under **Site Settings** → **Environment Variables**.
+
+### Vercel
+
 ```bash
 npm i -g vercel
 vercel login
 vercel --prod
 ```
 
+Set the output directory to `dist` in your Vercel project settings. Add environment variables under **Settings** → **Environment Variables**.
+
+### Cloudflare Pages
+
+1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages**
+2. Connect your Git repository
+3. Set build command: `npm run build`
+4. Set output directory: `dist`
+5. Add environment variables and deploy
+
 ### Docker
 
-For containerized deployments.
+Serve the static build with nginx:
 
-**Build and run:**
+**Dockerfile:**
+```dockerfile
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+```
+
+**nginx.conf** (required for client-side routing):
+```nginx
+server {
+  listen 80;
+  root /usr/share/nginx/html;
+  index index.html;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}
+```
+
 ```bash
 docker build -t supasheet .
-docker run supasheet
+docker run -p 80:80 supasheet
 ```
-
-**next.config.js**
-```bash
-module.exports = {
-  // ... rest of the configuration.
-  output: "standalone",
-};
-```
-
-### Railway
-
-Simple deployment with built-in databases.
-
-**Steps:**
-1. Go to [railway.app](https://railway.app)
-2. New Project → Deploy from GitHub
-3. Add environment variables
-4. Deploy
 
 ### VPS (Ubuntu/Debian)
 
-For self-managed servers.
-
-**Setup:**
 ```bash
 # Install dependencies
 sudo apt update && sudo apt install -y nodejs npm nginx
@@ -104,11 +131,25 @@ cd supasheet
 npm install
 npm run build
 
-# Start with PM2
-npm install -g pm2
-pm2 start npm --name supasheet -- start
-pm2 save
-pm2 startup
+# Copy build to nginx web root
+sudo cp -r dist/* /var/www/html/
+
+# Configure nginx for SPA routing
+sudo tee /etc/nginx/sites-available/supasheet <<'EOF'
+server {
+  listen 80;
+  server_name yourdomain.com;
+  root /var/www/html;
+  index index.html;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}
+EOF
+
+sudo ln -s /etc/nginx/sites-available/supasheet /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ## Pushing Migrations
@@ -121,19 +162,14 @@ npx supabase link --project-ref your-project-ref
 
 # Push all migrations
 npx supabase db push
-
-# Or push specific migration
-npx supabase db push --include-seed
 ```
 
-For production Supabase projects, you can also use the Supabase CLI:
+For CI/CD pipelines:
 
 ```bash
-# Set project reference
 export SUPABASE_PROJECT_REF=your-project-ref
 export SUPABASE_ACCESS_TOKEN=your-access-token
 
-# Push migrations
 npx supabase db push
 ```
 

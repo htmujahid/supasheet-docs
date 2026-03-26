@@ -5,23 +5,13 @@ description: Customize the look and feel of Supasheet
 
 ## Overview
 
-Supasheet uses Tailwind CSS 4 and CSS variables for theming, making it easy to customize colors, typography, and overall appearance.
-
-## Theme Configuration
-
-### Environment Variables
-
-```bash
-NEXT_PUBLIC_DEFAULT_THEME_MODE=system  # light | dark | system
-NEXT_PUBLIC_THEME_COLOR=#3b82f6       # Light mode primary color
-NEXT_PUBLIC_THEME_COLOR_DARK=#2563eb  # Dark mode primary color
-```
+Supasheet uses Tailwind CSS v4 and CSS variables for theming, making it easy to customize colors, typography, and overall appearance. All theme configuration lives in `src/styles.css`.
 
 ## Color System
 
 ### CSS Variables
 
-Supasheet uses **OKLCH color space** for better perceptual uniformity and color manipulation. Colors are defined in `/styles/globals.css`:
+Supasheet uses **OKLCH color space** for better perceptual uniformity and color manipulation. Colors are defined in `src/styles.css`:
 
 ```css
 :root {
@@ -163,8 +153,22 @@ Supasheet includes several color categories:
 
 ### Customizing Colors
 
+To customize the theme, modify the CSS variables in `src/styles.css`:
+
 ```css
-/* Custom brand colors using OKLCH */
+/* Example: Customizing primary color */
+:root {
+  --primary: oklch(0.5 0.2 240);  /* Custom blue */
+}
+
+.dark {
+  --primary: oklch(0.65 0.2 240); /* Lighter for dark mode */
+}
+```
+
+Custom brand colors:
+
+```css
 :root {
   --brand-primary: oklch(0.55 0.25 240);    /* Vibrant blue */
   --brand-secondary: oklch(0.6 0.22 280);   /* Purple */
@@ -172,9 +176,9 @@ Supasheet includes several color categories:
 }
 
 .dark {
-  --brand-primary: oklch(0.65 0.25 240);    /* Lighter blue for dark mode */
-  --brand-secondary: oklch(0.7 0.22 280);   /* Lighter purple */
-  --brand-accent: oklch(0.75 0.2 150);      /* Lighter green */
+  --brand-primary: oklch(0.65 0.25 240);
+  --brand-secondary: oklch(0.7 0.22 280);
+  --brand-accent: oklch(0.75 0.2 150);
 }
 ```
 
@@ -208,57 +212,11 @@ Supasheet includes several color categories:
 </pre>
 ```
 
-### Custom Color Utilities
+## Tailwind CSS v4 Configuration
 
-Supasheet's color system is integrated into Tailwind through the `@theme inline` block:
-
-```tsx
-// Using standard theme colors
-<div className="bg-background text-foreground">
-  Page content
-</div>
-
-// Using sidebar colors
-<nav className="bg-sidebar border-sidebar-border">
-  Navigation
-</nav>
-
-// Using surface colors
-<div className="bg-surface text-surface-foreground">
-  Card or panel
-</div>
-
-// Using custom OKLCH colors directly
-<div className="bg-[oklch(0.55_0.25_240)]">
-  Custom color
-</div>
-```
-
-
-
-## Customizing Your Theme
-
-To customize the theme, modify the CSS variables in `styles/globals.css`. You can adjust colors by changing the OKLCH values:
+Supasheet uses Tailwind CSS v4 with the `@theme inline` directive in `src/styles.css`:
 
 ```css
-/* Example: Customizing primary color */
-:root {
-  --primary: oklch(0.5 0.2 240);  /* Custom blue */
-}
-
-.dark {
-  --primary: oklch(0.65 0.2 240); /* Lighter for dark mode */
-}
-```
-
-
-
-## Tailwind CSS 4 Configuration
-
-Supasheet uses Tailwind CSS 4 with the new `@theme inline` directive:
-
-```css
-/* styles/globals.css */
 @import "tailwindcss";
 
 @theme inline {
@@ -274,14 +232,6 @@ Supasheet uses Tailwind CSS 4 with the new `@theme inline` directive:
   --color-foreground: var(--foreground);
   /* ... other color mappings */
 }
-```
-
-This allows you to use theme colors directly in Tailwind classes:
-
-```tsx
-<div className="bg-background text-foreground rounded-lg">
-  Content with theme colors and radius
-</div>
 ```
 
 ## Custom Variants
@@ -349,11 +299,6 @@ Use them in your components:
 [data-theme='custom'] {
   --primary: oklch(0.5 0.2 240);
 }
-
-/* Bad ❌ - Class-based global override */
-.custom-theme {
-  background: blue;
-}
 ```
 
 ### 4. Maintain Accessibility
@@ -388,5 +333,4 @@ Use them in your components:
 
 ## Next Steps
 
-- **[Custom Components](/docs/guide/custom-components)** - Build themed components
-- **[CRUD Operations](/docs/guide/crud-operations)** - Themed auto-generated UI
+- **[Custom Components](/docs/self-host/custom-components)** - Build themed components

@@ -55,8 +55,7 @@ npx supabase start
 
 This will start Supabase on `http://127.0.0.1:54321` and provide you with:
 - API URL
-- Anon Key
-- Service Role Key
+- Publishable Key
 - Studio URL: `http://127.0.0.1:54323`
 
 #### Option 2: Cloud Project
@@ -68,21 +67,12 @@ This will start Supabase on `http://127.0.0.1:54321` and provide you with:
 <Step>
 ### Configure Environment Variables
 
-Create a `.env.local` file in the root directory:
+Create a `.env` file in the root directory:
 
 ```bash
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# App Configuration
-NEXT_PUBLIC_PRODUCT_NAME=Supasheet
-NEXT_PUBLIC_SITE_TITLE=Supasheet Admin
-NEXT_PUBLIC_SITE_DESCRIPTION=SQL-based Admin Panel
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_DEFAULT_LOCALE=en
-NEXT_PUBLIC_DEFAULT_THEME_MODE=system
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ```
 
 Replace the Supabase values with your actual credentials.
@@ -178,6 +168,7 @@ You should see the Supasheet sign-in page. Create an account to get started!
 # Development
 npm run dev              # Start dev server
 npm run build            # Build for production
+npm run preview          # Preview production build locally
 npm run typecheck        # Type checking
 npm run lint             # Run linter
 
