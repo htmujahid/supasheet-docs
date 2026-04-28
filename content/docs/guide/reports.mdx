@@ -28,7 +28,7 @@ select
   a.name as account_name,
   t.*
 from tasks t
-join supasheet.accounts a on t.account_id = a.id;
+join supasheet.users a on t.account_id = a.id;
 
 -- Step 3: Grant permissions
 revoke all on public.task_report from authenticated, service_role;

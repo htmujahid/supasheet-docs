@@ -294,7 +294,7 @@ Automatically join related tables to display additional columns in your data vie
 CREATE TABLE tasks (
   id UUID PRIMARY KEY,
   title TEXT NOT NULL,
-  account_id UUID REFERENCES supasheet.accounts(id)
+  account_id UUID REFERENCES supasheet.users(id)
 );
 
 COMMENT ON TABLE tasks IS '{
@@ -350,13 +350,13 @@ COMMENT ON TABLE orders IS '{
 **Schema Limitation**: Due to PostgREST limitations, joins can only be performed within the same schema. You cannot directly join tables from different schemas.
 </Callout>
 
-If you need to join a table from another schema (e.g., `supasheet.accounts`), create a view in your working schema:
+If you need to join a table from another schema (e.g., `supasheet.users`), create a view in your working schema:
 
 ```sql
--- Create a view in the public schema that references supasheet.accounts
+-- Create a view in the public schema that references supasheet.users
 CREATE OR REPLACE VIEW public.accounts
 WITH (security_invoker = true) AS
-SELECT * FROM supasheet.accounts;
+SELECT * FROM supasheet.users;
 
 -- Grant permissions
 REVOKE ALL ON public.accounts FROM authenticated, service_role;
@@ -366,7 +366,7 @@ GRANT SELECT ON public.accounts TO authenticated;
 CREATE TABLE public.tasks (
   id UUID PRIMARY KEY,
   title TEXT NOT NULL,
-  account_id UUID REFERENCES supasheet.accounts(id)
+  account_id UUID REFERENCES supasheet.users(id)
 );
 
 COMMENT ON TABLE public.tasks IS '{
@@ -403,7 +403,7 @@ CREATE TABLE tasks (
   description TEXT,
   status TEXT DEFAULT 'pending',
   priority TEXT DEFAULT 'medium',
-  account_id UUID REFERENCES supasheet.accounts(id),
+  account_id UUID REFERENCES supasheet.users(id),
   color TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -478,7 +478,7 @@ SELECT
   a.name as account_name,
   a.email as account_email
 FROM tasks t
-LEFT JOIN supasheet.accounts a ON t.account_id = a.id;
+LEFT JOIN supasheet.users a ON t.account_id = a.id;
 
 -- Use the view as a resource instead
 COMMENT ON VIEW tasks_with_accounts IS '{

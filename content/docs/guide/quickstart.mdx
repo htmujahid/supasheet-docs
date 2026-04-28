@@ -48,7 +48,7 @@ CREATE TABLE public.tasks (
   due_date TIMESTAMPTZ,
 
   -- User association
-  account_id UUID REFERENCES supasheet.accounts(id) ON DELETE CASCADE,
+  account_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
 
   -- Audit fields
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,

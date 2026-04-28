@@ -21,22 +21,22 @@ CREATE TABLE public.tasks (
   title TEXT NOT NULL,
   status TEXT DEFAULT 'pending',
 
-  -- Always reference supasheet.accounts for user relationships
-  account_id UUID REFERENCES supasheet.accounts(id) ON DELETE CASCADE,
+  -- Always reference supasheet.users for user relationships
+  account_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
 
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
 <Callout type="warn">
-**Important**: Always use `supasheet.accounts(id)` for user relationships, not `auth.users(id)`. See [User Management](/docs/guide/user-management) for details.
+**Important**: Always use `supasheet.users(id)` for user relationships, not `auth.users(id)`. See [User Management](/docs/guide/user-management) for details.
 </Callout>
 
 ### `supasheet` Schema
 
 Contains Supasheet's internal tables and metadata:
 
-- `supasheet.accounts` - User accounts (auto-created on signup)
+- `supasheet.users` - User accounts (auto-created on signup)
 - `supasheet.roles` - User roles (admin, user, etc.)
 - `supasheet.role_permissions` - Permission assignments
 - `supasheet.tables` - Metadata about your tables
@@ -107,7 +107,7 @@ SELECT
   a.name as account_name,
   t.*
 FROM tasks t
-JOIN supasheet.accounts a ON t.account_id = a.id;
+JOIN supasheet.users a ON t.account_id = a.id;
 
 -- Add metadata comment
 COMMENT ON VIEW public.task_report IS '{"type": "report", "name": "Task Summary", "description": "Summary of active tasks"}';

@@ -11,9 +11,9 @@ Supasheet provides a built-in user management system that automatically handles 
 
 ## The Account System
 
-### `supasheet.accounts` Table
+### `supasheet.users` Table
 
-Every user in Supasheet has an account in the `supasheet.accounts` table. This is the central user profile table that stores:
+Every user in Supasheet has an account in the `supasheet.users` table. This is the central user profile table that stores:
 
 - User name
 - Email address
@@ -40,7 +40,7 @@ The `accounts.id` is **identical** to `auth.users.id`. When a user signs up, an 
 
 ## Using Accounts in Your Tables
 
-**Always reference `supasheet.accounts` instead of `auth.users`** in your application tables.
+**Always reference `supasheet.users` instead of `auth.users`** in your application tables.
 
 ### Example
 
@@ -49,14 +49,14 @@ CREATE TABLE tasks (
     id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     title TEXT NOT NULL,
 
-    -- ✅ CORRECT: Reference supasheet.accounts
-    account_id UUID REFERENCES supasheet.accounts(id) ON DELETE CASCADE,
+    -- ✅ CORRECT: Reference supasheet.users
+    account_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
 
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-### Why Use `supasheet.accounts`?
+### Why Use `supasheet.users`?
 
 - **Separation of concerns** - Auth data stays separate from profile data
 - **Extensible** - Easy to add custom user fields
@@ -98,7 +98,7 @@ Supasheet provides a complete user management interface at `/home/user`:
 3. **Identities** - Link/unlink OAuth providers (Google, GitHub, etc.)
 4. **Preferences** - Theme settings, language, and UI customization
 5. **Roles & Permissions** - View assigned roles and permissions
-6. **Accounts** - Manage all users in the system (view, create, update, delete) if you have the required permissions: `supasheet.accounts:select`, `supasheet.accounts:insert`, `supasheet.accounts:update`, and `supasheet.accounts:delete`
+6. **Accounts** - Manage all users in the system (view, create, update, delete) if you have the required permissions: `supasheet.users:select`, `supasheet.users:insert`, `supasheet.users:update`, and `supasheet.users:delete`
 
 ## Profile Pictures
 

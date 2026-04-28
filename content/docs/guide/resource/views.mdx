@@ -406,7 +406,7 @@ CREATE TABLE tasks (
   status task_status DEFAULT 'pending',
   priority task_priority DEFAULT 'medium',
   cover FILE,
-  account_id UUID REFERENCES supasheet.accounts(id),
+  account_id UUID REFERENCES supasheet.users(id),
   due_date TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   tags TEXT[],

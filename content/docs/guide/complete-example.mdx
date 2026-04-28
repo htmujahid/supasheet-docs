@@ -94,7 +94,7 @@ CREATE TABLE tasks (
     cover FILE,
 
     -- User association
-    account_id UUID DEFAULT auth.uid() REFERENCES supasheet.accounts(id) ON DELETE CASCADE,
+    account_id UUID DEFAULT auth.uid() REFERENCES supasheet.users(id) ON DELETE CASCADE,
 
     -- Dates
     due_date TIMESTAMPTZ,
@@ -193,7 +193,7 @@ SELECT
     a.name AS account_name,
     t.*
 FROM tasks t
-JOIN supasheet.accounts a ON t.account_id = a.id;
+JOIN supasheet.users a ON t.account_id = a.id;
 
 COMMENT ON VIEW public.user_tasks IS '{"icon": "UserCheck"}';
 
@@ -434,7 +434,7 @@ SELECT
     a.name AS account_name,
     t.*
 FROM tasks t
-JOIN supasheet.accounts a ON t.account_id = a.id;
+JOIN supasheet.users a ON t.account_id = a.id;
 
 REVOKE ALL ON public.task_report FROM authenticated, service_role;
 GRANT SELECT ON public.task_report TO authenticated;
