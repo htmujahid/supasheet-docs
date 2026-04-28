@@ -294,7 +294,7 @@ Automatically join related tables to display additional columns in your data vie
 CREATE TABLE tasks (
   id UUID PRIMARY KEY,
   title TEXT NOT NULL,
-  account_id UUID REFERENCES supasheet.users(id)
+  user_id UUID REFERENCES supasheet.users(id)
 );
 
 COMMENT ON TABLE tasks IS '{
@@ -303,7 +303,7 @@ COMMENT ON TABLE tasks IS '{
     "join": [
       {
         "table": "accounts",
-        "on": "account_id",
+        "on": "user_id",
         "columns": ["name", "email"]
       }
     ]
@@ -312,7 +312,7 @@ COMMENT ON TABLE tasks IS '{
 ```
 
 This will:
-- Join the `accounts` table on `account_id`
+- Join the `accounts` table on `user_id`
 - Include `name` and `email` columns from accounts in the task list
 - Display as `accounts.name` and `accounts.email` columns
 
@@ -366,7 +366,7 @@ GRANT SELECT ON public.accounts TO authenticated;
 CREATE TABLE public.tasks (
   id UUID PRIMARY KEY,
   title TEXT NOT NULL,
-  account_id UUID REFERENCES supasheet.users(id)
+  user_id UUID REFERENCES supasheet.users(id)
 );
 
 COMMENT ON TABLE public.tasks IS '{
@@ -374,7 +374,7 @@ COMMENT ON TABLE public.tasks IS '{
     "join": [
       {
         "table": "accounts",
-        "on": "account_id",
+        "on": "user_id",
         "columns": ["name", "email"]
       }
     ]
@@ -403,7 +403,7 @@ CREATE TABLE tasks (
   description TEXT,
   status TEXT DEFAULT 'pending',
   priority TEXT DEFAULT 'medium',
-  account_id UUID REFERENCES supasheet.users(id),
+  user_id UUID REFERENCES supasheet.users(id),
   color TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -426,7 +426,7 @@ COMMENT ON TABLE tasks IS '{
     "join": [
       {
         "table": "accounts",
-        "on": "account_id",
+        "on": "user_id",
         "columns": ["name", "email"]
       }
     ]
@@ -462,7 +462,7 @@ CREATE INDEX idx_tasks_title ON tasks(title);
 CREATE INDEX idx_tasks_color ON tasks(color);
 
 -- Index for join column
-CREATE INDEX idx_tasks_account_id ON tasks(account_id);
+CREATE INDEX idx_tasks_user_id ON tasks(user_id);
 ```
 
 ### Join Performance
@@ -478,7 +478,7 @@ SELECT
   a.name as account_name,
   a.email as account_email
 FROM tasks t
-LEFT JOIN supasheet.users a ON t.account_id = a.id;
+LEFT JOIN supasheet.users a ON t.user_id = a.id;
 
 -- Use the view as a resource instead
 COMMENT ON VIEW tasks_with_accounts IS '{

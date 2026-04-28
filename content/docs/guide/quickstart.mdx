@@ -48,7 +48,7 @@ CREATE TABLE public.tasks (
   due_date TIMESTAMPTZ,
 
   -- User association
-  account_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
 
   -- Audit fields
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -56,7 +56,7 @@ CREATE TABLE public.tasks (
 );
 
 -- Create indexes
-create index idx_tasks_account_id on tasks (account_id);
+create index idx_tasks_user_id on tasks (user_id);
 create index idx_tasks_status on tasks (status);
 
 -- Step 4: Enable Row Level Security with permission checks
@@ -72,7 +72,7 @@ grant select, insert, update, delete on table tasks to authenticated;
 create policy tasks_select on tasks
   for select
   to authenticated
-  using (account_id = auth.uid() and supasheet.has_permission('public.tasks:select'));
+  using (user_id = auth.uid() and supasheet.has_permission('public.tasks:select'));
 
 create policy tasks_insert on tasks
   for insert
@@ -82,13 +82,13 @@ create policy tasks_insert on tasks
 create policy tasks_update on tasks
   for update
   to authenticated
-  using (account_id = auth.uid() and supasheet.has_permission('public.tasks:update'))
-  with check (account_id = auth.uid() and supasheet.has_permission('public.tasks:update'));
+  using (user_id = auth.uid() and supasheet.has_permission('public.tasks:update'))
+  with check (user_id = auth.uid() and supasheet.has_permission('public.tasks:update'));
 
 create policy tasks_delete on tasks
   for delete
   to authenticated
-  using (account_id = auth.uid() and supasheet.has_permission('public.tasks:delete'));
+  using (user_id = auth.uid() and supasheet.has_permission('public.tasks:delete'));
 
 -- Step 5: Grant permissions to the 'user' role
 insert into supasheet.role_permissions (role, permission) values

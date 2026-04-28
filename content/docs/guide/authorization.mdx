@@ -132,11 +132,11 @@ Users get roles through the `supasheet.user_roles` table:
 
 ```sql
 -- Assign role to user
-insert into supasheet.user_roles (account_id, role)
+insert into supasheet.user_roles (user_id, role)
 values ('user-uuid-here', 'manager');
 
 -- User can have multiple roles
-insert into supasheet.user_roles (account_id, role) values
+insert into supasheet.user_roles (user_id, role) values
   ('user-uuid-here', 'user'),
   ('user-uuid-here', 'editor');
 ```
@@ -152,7 +152,7 @@ language plpgsql
 as $$
 begin
   -- Change 'user' to your desired default role
-  insert into supasheet.user_roles (account_id, role)
+  insert into supasheet.user_roles (user_id, role)
   values (new.id, 'user');
   return new;
 end;
@@ -214,7 +214,7 @@ CREATE POLICY "Users view own tasks"
   ON tasks
   FOR SELECT
   TO authenticated
-  USING (account_id = auth.uid());
+  USING (user_id = auth.uid());
 ```
 
 <Callout type="info">
@@ -231,7 +231,7 @@ CREATE POLICY "tasks_select"
   FOR SELECT
   TO authenticated
   USING (
-    account_id = auth.uid()
+    user_id = auth.uid()
     AND supasheet.has_permission('public.tasks:select')
   );
 ```
@@ -247,18 +247,18 @@ This ensures:
 ```sql
 -- Users see only their own data
 CREATE POLICY "own_data" ON tasks FOR SELECT
-  TO authenticated USING (account_id = auth.uid());
+  TO authenticated USING (user_id = auth.uid());
 
 CREATE POLICY "create_own" ON tasks FOR INSERT
-  TO authenticated WITH CHECK (account_id = auth.uid());
+  TO authenticated WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY "update_own" ON tasks FOR UPDATE
   TO authenticated
-  USING (account_id = auth.uid())
-  WITH CHECK (account_id = auth.uid());
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY "delete_own" ON tasks FOR DELETE
-  TO authenticated USING (account_id = auth.uid());
+  TO authenticated USING (user_id = auth.uid());
 ```
 
 #### Role-Based Access
@@ -276,7 +276,7 @@ CREATE POLICY "manager_access" ON tasks FOR SELECT
     supasheet.has_role('manager')
     AND team_id IN (
       SELECT team_id FROM team_managers
-      WHERE account_id = auth.uid()
+      WHERE user_id = auth.uid()
     )
   );
 ```
@@ -291,7 +291,7 @@ CREATE POLICY "public_tasks" ON tasks FOR SELECT
 -- Users can view their own private tasks
 CREATE POLICY "own_private_tasks" ON tasks FOR SELECT
   TO authenticated
-  USING (account_id = auth.uid() AND is_public = false);
+  USING (user_id = auth.uid() AND is_public = false);
 ```
 
 ### Policy Operations
@@ -306,7 +306,7 @@ CREATE POLICY "own_private_tasks" ON tasks FOR SELECT
 
 ```sql
 -- Add indexes for policy conditions
-CREATE INDEX tasks_account_id_idx ON tasks(account_id);
+CREATE INDEX tasks_user_id_idx ON tasks(user_id);
 CREATE INDEX tasks_team_id_idx ON tasks(team_id);
 
 -- Use EXISTS instead of IN
@@ -315,7 +315,7 @@ CREATE POLICY "better_policy" ON tasks FOR SELECT
     EXISTS (
       SELECT 1 FROM team_members
       WHERE team_id = tasks.team_id
-        AND account_id = auth.uid()
+        AND user_id = auth.uid()
     )
   );
 ```
@@ -340,7 +340,7 @@ ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 -- 4. Create RLS policies
 create policy tasks_select on tasks for select
   to authenticated
-  using (account_id = auth.uid() and supasheet.has_permission('public.tasks:select'));
+  using (user_id = auth.uid() and supasheet.has_permission('public.tasks:select'));
 
 create policy tasks_insert on tasks for insert
   to authenticated

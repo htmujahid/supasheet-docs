@@ -94,7 +94,7 @@ CREATE TABLE tasks (
     cover FILE,
 
     -- User association
-    account_id UUID DEFAULT auth.uid() REFERENCES supasheet.users(id) ON DELETE CASCADE,
+    user_id UUID DEFAULT auth.uid() REFERENCES supasheet.users(id) ON DELETE CASCADE,
 
     -- Dates
     due_date TIMESTAMPTZ,
@@ -122,14 +122,14 @@ CREATE TABLE tasks (
 
 -- Table comment with UI configuration
 COMMENT ON TABLE public.tasks IS
-'{"icon": "ListTodo", "display": "block", "query": {"sort": [{"id":"title","desc":false}], "filter": [{"id":"color","value":"#f59e0b","variant":"text","operator":"ilike"}], "join": [{"table":"accounts","on":"account_id","columns":["name","email"]}]}, "items": [{"id":"sheet","name":"Sheet View","type":"sheet"}, {"id":"status","name":"Tasks By Status","type":"kanban","group":"status","title":"title","description":"description","date":"created_at","badge":"priority"}, {"id":"priority","name":"Tasks By Priority","type":"kanban","group":"priority","title":"title","description":"description","date":"created_at","badge":"status"}, {"id":"calendar","name":"Calendar View","type":"calendar", "title": "title", "startDate": "created_at", "endDate": "due_date", "badge": "status"}, {"id":"gallery","name":"Gallery View","type":"gallery","cover":"cover","title":"title","description":"description","badge":"status"}]}';
+'{"icon": "ListTodo", "display": "block", "query": {"sort": [{"id":"title","desc":false}], "filter": [{"id":"color","value":"#f59e0b","variant":"text","operator":"ilike"}], "join": [{"table":"accounts","on":"user_id","columns":["name","email"]}]}, "items": [{"id":"sheet","name":"Sheet View","type":"sheet"}, {"id":"status","name":"Tasks By Status","type":"kanban","group":"status","title":"title","description":"description","date":"created_at","badge":"priority"}, {"id":"priority","name":"Tasks By Priority","type":"kanban","group":"priority","title":"title","description":"description","date":"created_at","badge":"status"}, {"id":"calendar","name":"Calendar View","type":"calendar", "title": "title", "startDate": "created_at", "endDate": "due_date", "badge": "status"}, {"id":"gallery","name":"Gallery View","type":"gallery","cover":"cover","title":"title","description":"description","badge":"status"}]}';
 
 -- Column comments for file types
 COMMENT ON COLUMN tasks.cover IS '{"accept":"image/*"}';
 COMMENT ON COLUMN tasks.attachments IS '{"accept":"*"}';
 
 -- Create indexes
-CREATE INDEX idx_tasks_account_id ON public.tasks (account_id);
+CREATE INDEX idx_tasks_user_id ON public.tasks (user_id);
 CREATE INDEX idx_tasks_status ON public.tasks (status);
 CREATE INDEX idx_tasks_priority ON public.tasks (priority);
 ```
@@ -159,23 +159,23 @@ ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tasks_select ON public.tasks
     FOR SELECT
     TO authenticated
-    USING (account_id = auth.uid() AND supasheet.has_permission('public.tasks:select'));
+    USING (user_id = auth.uid() AND supasheet.has_permission('public.tasks:select'));
 
 CREATE POLICY tasks_insert ON public.tasks
     FOR INSERT
     TO authenticated
-    WITH CHECK (account_id = auth.uid() AND supasheet.has_permission('public.tasks:insert'));
+    WITH CHECK (user_id = auth.uid() AND supasheet.has_permission('public.tasks:insert'));
 
 CREATE POLICY tasks_update ON public.tasks
     FOR UPDATE
     TO authenticated
-    USING (account_id = auth.uid() AND supasheet.has_permission('public.tasks:update'))
-    WITH CHECK (account_id = auth.uid() AND supasheet.has_permission('public.tasks:update'));
+    USING (user_id = auth.uid() AND supasheet.has_permission('public.tasks:update'))
+    WITH CHECK (user_id = auth.uid() AND supasheet.has_permission('public.tasks:update'));
 
 CREATE POLICY tasks_delete ON public.tasks
     FOR DELETE
     TO authenticated
-    USING (account_id = auth.uid() AND supasheet.has_permission('public.tasks:delete'));
+    USING (user_id = auth.uid() AND supasheet.has_permission('public.tasks:delete'));
 ```
 
 </Step>
@@ -193,7 +193,7 @@ SELECT
     a.name AS account_name,
     t.*
 FROM tasks t
-JOIN supasheet.users a ON t.account_id = a.id;
+JOIN supasheet.users a ON t.user_id = a.id;
 
 COMMENT ON VIEW public.user_tasks IS '{"icon": "UserCheck"}';
 
@@ -434,7 +434,7 @@ SELECT
     a.name AS account_name,
     t.*
 FROM tasks t
-JOIN supasheet.users a ON t.account_id = a.id;
+JOIN supasheet.users a ON t.user_id = a.id;
 
 REVOKE ALL ON public.task_report FROM authenticated, service_role;
 GRANT SELECT ON public.task_report TO authenticated;

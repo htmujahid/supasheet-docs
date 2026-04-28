@@ -22,7 +22,7 @@ CREATE TABLE public.tasks (
   status TEXT DEFAULT 'pending',
 
   -- Always reference supasheet.users for user relationships
-  account_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
 
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -107,7 +107,7 @@ SELECT
   a.name as account_name,
   t.*
 FROM tasks t
-JOIN supasheet.users a ON t.account_id = a.id;
+JOIN supasheet.users a ON t.user_id = a.id;
 
 -- Add metadata comment
 COMMENT ON VIEW public.task_report IS '{"type": "report", "name": "Task Summary", "description": "Summary of active tasks"}';

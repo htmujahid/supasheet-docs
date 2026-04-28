@@ -50,7 +50,7 @@ CREATE TABLE tasks (
     title TEXT NOT NULL,
 
     -- ✅ CORRECT: Reference supasheet.users
-    account_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
 
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -65,12 +65,12 @@ CREATE TABLE tasks (
 
 ## Row Level Security
 
-In your RLS policies, use `account_id` to check ownership:
+In your RLS policies, use `user_id` to check ownership:
 
 ```sql
 create policy tasks_select on tasks
     for select to authenticated
-    using (account_id = auth.uid());
+    using (user_id = auth.uid());
 ```
 
 Since `accounts.id` equals `auth.uid()`, you can directly compare them.
