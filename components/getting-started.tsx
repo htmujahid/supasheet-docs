@@ -54,7 +54,7 @@ export function GettingStarted() {
                 <ArrowRight className="h-4 w-4" />
               </button>
             </Link>
-            <Link href="https://demo.supasheet.app/" target="_blank" rel="noreferrer">
+            <Link href="https://0.supasheet.app/" target="_blank" rel="noreferrer">
               <button className={buttonVariants({ variant: 'outline' }) + ' rounded-2xl h-11 px-6'}>
                 View Live Demo
               </button>

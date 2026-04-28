@@ -17,7 +17,7 @@ export function FinalCTA() {
                 or dive into the documentation.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                <Link href="https://demo.supasheet.app/" target="_blank" rel="noreferrer">
+                <Link href="https://0.supasheet.app/" target="_blank" rel="noreferrer">
                   <button className={buttonVariants({ variant: 'primary' }) + ' h-11 px-6 gap-2 w-full sm:w-auto rounded-2xl'}>
                     <Zap className="h-5 w-5" />
                     Try Live Demo
