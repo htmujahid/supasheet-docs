@@ -1,0 +1,289 @@
+---
+title: Metadata
+description: Configure table display, column behavior, and views using JSON metadata in table comments
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Supasheet reads a JSON object from each table's PostgreSQL comment to control how that table is presented. Set it with:
+
+```sql
+COMMENT ON TABLE your_table IS '{ ...metadata... }';
+```
+
+All properties are optional. The full shape is:
+
+```typescript
+type TableMetadata = {
+  display?: "block" | "none"
+  icon?: string
+  columns?: {
+    readOnly: string[]
+    writeOnce: string[]
+    hidden: string[]
+  }
+  query?: { ... }   // see Query Configuration
+  primaryItem?: string
+  items?: {
+    id: string
+    name: string
+    type: "calendar" | "kanban" | "gallery"
+    query?: { [key: string]: unknown }
+    [key: string]: unknown
+  }[]
+}
+```
+
+---
+
+## `display`
+
+Controls whether the table appears in the resources sidebar.
+
+| Value | Behavior |
+|-------|----------|
+| `"block"` | Shown in sidebar (default) |
+| `"none"` | Hidden from sidebar, still reachable by direct URL |
+
+```sql
+-- Hide an internal table from the sidebar
+COMMENT ON TABLE internal_logs IS '{"display": "none"}';
+```
+
+---
+
+## `icon`
+
+Sets the sidebar icon for the table using any [Lucide](https://lucide.dev/icons/) icon name.
+
+```sql
+COMMENT ON TABLE tasks IS '{"icon": "ListTodo"}';
+COMMENT ON TABLE products IS '{"icon": "Package"}';
+COMMENT ON TABLE customers IS '{"icon": "Users"}';
+```
+
+---
+
+## `columns`
+
+Fine-grained control over column editability and visibility. Each property takes an array of column names.
+
+### `readOnly`
+
+Columns the user can see but cannot edit in any form. Useful for system-managed or audit fields.
+
+```sql
+COMMENT ON TABLE orders IS '{
+  "columns": {
+    "readOnly": ["created_at", "updated_at", "invoice_number"],
+    "writeOnce": [],
+    "hidden": []
+  }
+}';
+```
+
+### `writeOnce`
+
+Columns that can be set during record creation but cannot be changed afterward. Useful for immutable identifiers set at creation time.
+
+```sql
+COMMENT ON TABLE memberships IS '{
+  "columns": {
+    "readOnly": [],
+    "writeOnce": ["plan", "started_at"],
+    "hidden": []
+  }
+}';
+```
+
+### `hidden`
+
+Columns completely hidden from all views and forms. The data still exists in the database; it is simply never surfaced in the UI.
+
+```sql
+COMMENT ON TABLE users IS '{
+  "columns": {
+    "readOnly": [],
+    "writeOnce": [],
+    "hidden": ["hashed_password", "internal_flags"]
+  }
+}';
+```
+
+### Combined example
+
+```sql
+CREATE TABLE contracts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  party TEXT NOT NULL,          -- set once, can't change
+  signed_at TIMESTAMPTZ,        -- read-only audit field
+  internal_notes TEXT,          -- hidden from UI
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE contracts IS '{
+  "icon": "FileText",
+  "columns": {
+    "readOnly": ["signed_at", "created_at"],
+    "writeOnce": ["party"],
+    "hidden": ["internal_notes"]
+  }
+}';
+```
+
+---
+
+## `query`
+
+Default sorting, filtering, and joins applied when the resource first loads. See **[Query Configuration](/docs/guide/resource/query)** for the full reference.
+
+---
+
+## `items` and `primaryItem`
+
+`items` defines additional view configurations (Kanban, Calendar, Gallery) layered on top of the default table view. `primaryItem` sets which view is active by default using its `id`.
+
+### `items` structure
+
+Each item requires:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier for this view |
+| `name` | `string` | Label shown in the view switcher |
+| `type` | `"kanban"` \| `"calendar"` \| `"gallery"` | View renderer to use |
+| `query` | `object` (optional) | View-specific query overrides |
+
+Additional properties are passed through to the view renderer and vary by type (see below).
+
+### Kanban view
+
+Groups rows into columns by a status/category field.
+
+```sql
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "items": [
+    {
+      "id": "kanban-status",
+      "name": "Board",
+      "type": "kanban",
+      "groupBy": "status"
+    }
+  ]
+}';
+```
+
+### Calendar view
+
+Renders rows on a calendar using a date column.
+
+```sql
+COMMENT ON TABLE events IS '{
+  "icon": "Calendar",
+  "items": [
+    {
+      "id": "calendar-start",
+      "name": "Calendar",
+      "type": "calendar",
+      "dateField": "starts_at"
+    }
+  ]
+}';
+```
+
+### Gallery view
+
+Displays rows as image cards using an image URL column.
+
+```sql
+COMMENT ON TABLE products IS '{
+  "icon": "Package",
+  "items": [
+    {
+      "id": "gallery-images",
+      "name": "Gallery",
+      "type": "gallery",
+      "imageField": "image_url"
+    }
+  ]
+}';
+```
+
+### `primaryItem`
+
+Set the `id` of the view that should be active when a user opens the resource for the first time.
+
+```sql
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "primaryItem": "kanban-status",
+  "items": [
+    {
+      "id": "kanban-status",
+      "name": "Board",
+      "type": "kanban",
+      "groupBy": "status"
+    }
+  ]
+}';
+```
+
+If `primaryItem` is omitted, the default table (sheet) view is shown first.
+
+---
+
+## Complete example
+
+```sql
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  status TEXT DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'done')),
+  due_date DATE,
+  user_id UUID REFERENCES supasheet.users(id),
+  internal_ref TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE tasks IS '{
+  "icon": "ListTodo",
+  "display": "block",
+  "columns": {
+    "readOnly": ["created_at"],
+    "writeOnce": [],
+    "hidden": ["internal_ref"]
+  },
+  "query": {
+    "sort": [{"id": "due_date", "desc": false}],
+    "filter": [{"id": "status", "value": "todo", "variant": "text", "operator": "not.eq"}]
+  },
+  "primaryItem": "board",
+  "items": [
+    {
+      "id": "board",
+      "name": "Board",
+      "type": "kanban",
+      "groupBy": "status"
+    },
+    {
+      "id": "schedule",
+      "name": "Schedule",
+      "type": "calendar",
+      "dateField": "due_date"
+    }
+  ]
+}';
+```
+
+---
+
+## Next Steps
+
+- **[Query Configuration](/docs/guide/resource/query)** - Full reference for sort, filter, and join options
+- **[Views](/docs/guide/resource/views)** - Learn more about view types
+- **[Basic Resources](/docs/guide/resource/basic)** - CRUD interface overview
+- **[Authorization](/docs/guide/authorization)** - Secure your tables with RLS
