@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { BookIcon, Database, Zap } from "lucide-react";
+import { ServerIcon, Database, Zap } from "lucide-react";
 import { buttonVariants } from "fumadocs-ui/components/ui/button";
 
 import Image from "next/image";
@@ -40,10 +40,10 @@ export function HeroSection() {
                 Start Demo
               </button>
             </Link>
-            <Link href="/docs">
+            <Link href="https://platform.supasheet.app" target="_blank" rel="noreferrer">
               <button className={buttonVariants({ variant: "outline" }) + " h-11 px-6 gap-2 w-full sm:w-auto rounded-2xl"}>
-                <BookIcon className="h-5 w-5" />
-                Documentation
+                <ServerIcon className="h-5 w-5" />
+                Get Started
               </button>
             </Link>
           </div>
