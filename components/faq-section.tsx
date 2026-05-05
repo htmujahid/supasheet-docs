@@ -44,15 +44,15 @@ export function FAQSection() {
     <section className="py-24">
       <div className="container mx-auto px-6">
         <div className="mx-auto max-w-3xl">
-          <div className="text-center space-y-4 mb-12">
+          <div className="text-center space-y-4 mb-16">
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
               Questions, answered
             </h2>
-            <p className="text-muted-foreground text-lg leading-relaxed">
+            <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
               Everything teams typically ask before building their internal ops on Supasheet.
             </p>
           </div>
-          <div className="rounded-xl border bg-card divide-y">
+          <div className="rounded-xl border bg-card divide-y text-left">
             {faqs.map((faq) => (
               <details key={faq.q} className="group p-6">
                 <summary className="flex cursor-pointer items-center justify-between gap-4 list-none [&::-webkit-details-marker]:hidden">

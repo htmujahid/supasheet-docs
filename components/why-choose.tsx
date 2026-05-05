@@ -38,28 +38,33 @@ export function WhyChoose() {
     <section className="py-24">
       <div className="container mx-auto px-6">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-8">
-            <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Why Supasheet?</h2>
+          <div className="text-center space-y-4 mb-16">
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
+              Why Supasheet?
+            </h2>
+            <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
+              Six reasons teams pick Supasheet over rolling their own admin panel
+              or paying per-seat for a low-code tool.
+            </p>
           </div>
-          <div className="border-t pt-12">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {reasons.map((reason) => {
-                const IconComponent = reason.icon;
-                return (
-                  <div key={reason.title} className="space-y-2">
-                    <div className="flex gap-2 items-center">
-                      <div className="*:size-4 flex-shrink-0">
-                        <IconComponent className="text-foreground fill-foreground/10" />
-                      </div>
-                      <h3 className="font-medium text-foreground text-sm sm:text-base">{reason.title}</h3>
-                    </div>
-                    <p className="text-sm text-left text-muted-foreground leading-relaxed">
-                      {reason.description}
-                    </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {reasons.map((reason) => {
+              const IconComponent = reason.icon;
+              return (
+                <div
+                  key={reason.title}
+                  className="rounded-xl border bg-card text-card-foreground p-6 text-left"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50 border mb-4">
+                    <IconComponent className="h-5 w-5 text-foreground" />
                   </div>
-                );
-              })}
-            </div>
+                  <h3 className="font-medium text-foreground mb-2">{reason.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {reason.description}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -44,34 +44,34 @@ export function UseCases() {
     <section className="py-24">
       <div className="container mx-auto px-6">
         <div className="mx-auto max-w-6xl">
-          <div className="text-center space-y-4 mb-12 sm:mb-16">
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl text-foreground">
+          <div className="text-center space-y-4 mb-16">
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
               What teams build with Supasheet
             </h2>
-            <p className="mx-auto max-w-3xl text-muted-foreground text-base sm:text-lg leading-relaxed">
+            <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
               Eleven pre-built example schemas ship with the repo — clone one, run the migrations,
               and start operating. Or wire up your own and Supasheet renders the UI for free.
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {useCases.map((useCase) => {
               const IconComponent = useCase.icon;
               return (
                 <div
                   key={useCase.title}
-                  className="bg-card text-card-foreground rounded-xl border shadow-sm p-6"
+                  className="bg-card text-card-foreground rounded-xl border shadow-sm p-6 text-center"
                 >
-                  <div className="*:size-6">
-                    <IconComponent className="text-primary mx-auto" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50 border mb-4 mx-auto">
+                    <IconComponent className="h-5 w-5 text-foreground" />
                   </div>
-                  <div className="space-y-2 py-3">
+                  <div className="space-y-2">
                     <h3 className="text-base font-medium text-foreground">{useCase.title}</h3>
                     <p className="text-muted-foreground text-sm leading-relaxed">
                       {useCase.description}
                     </p>
                   </div>
-                  <div className="border-t border-dashed pt-4">
-                    <div className="flex flex-wrap gap-2">
+                  <div className="border-t border-dashed mt-4 pt-4">
+                    <div className="flex flex-wrap gap-2 justify-center">
                       {useCase.examples.map((example) => (
                         <span
                           key={example}

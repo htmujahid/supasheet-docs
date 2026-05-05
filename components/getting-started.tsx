@@ -57,7 +57,7 @@ export function GettingStarted() {
       <div className="container mx-auto px-6">
         <div className="mx-auto max-w-6xl">
           <div className="text-center space-y-4 mb-16">
-            <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl text-foreground">
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
               From SQL to a working ops app in three steps
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
@@ -69,7 +69,7 @@ export function GettingStarted() {
             {steps.map((step, index) => {
               const IconComponent = step.icon;
               return (
-                <div key={index} className="space-y-3">
+                <div key={index} className="space-y-3 text-left">
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <IconComponent className="h-4 w-4" />
@@ -81,7 +81,7 @@ export function GettingStarted() {
                       </h3>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed pl-11 max-w-3xl">
+                  <p className="text-sm text-muted-foreground leading-relaxed pl-11">
                     {step.description}
                   </p>
                   <div className="rounded-2xl border bg-zinc-950 dark:bg-zinc-950 p-6 overflow-x-auto">

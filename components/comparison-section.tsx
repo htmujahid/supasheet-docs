@@ -36,7 +36,7 @@ export function ComparisonSection() {
     <section className="py-24">
       <div className="container mx-auto px-6">
         <div className="mx-auto max-w-6xl">
-          <div className="text-center space-y-4 mb-12">
+          <div className="text-center space-y-4 mb-16">
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
               How Supasheet compares
             </h2>

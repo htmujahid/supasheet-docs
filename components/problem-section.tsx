@@ -27,7 +27,7 @@ export function ProblemSection() {
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
               Internal tools shouldn&apos;t take weeks.
             </h2>
-            <p className="mx-auto max-w-3xl text-muted-foreground text-lg leading-relaxed">
+            <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
               Yet every team keeps rebuilding the same CRUD, dashboards, and permission plumbing.
               Supasheet ships the whole layer — once, open source, on your Supabase.
             </p>
@@ -38,7 +38,7 @@ export function ProblemSection() {
               return (
                 <div
                   key={problem.title}
-                  className="rounded-xl border bg-card text-card-foreground p-6"
+                  className="rounded-xl border bg-card text-card-foreground p-6 text-left"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50 border mb-4">
                     <IconComponent className="h-5 w-5 text-foreground" />

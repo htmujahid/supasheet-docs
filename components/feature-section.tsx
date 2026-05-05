@@ -58,13 +58,13 @@ export function FeaturesSection() {
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
                 Everything internal ops needs, built-in
               </h2>
-              <p className="mx-auto max-w-3xl text-muted-foreground text-lg leading-relaxed">
+              <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
                 Stop stitching together libraries and SaaS tools. Supasheet ships the full stack —
                 CRUD, auth, RBAC, dashboards, files, and audit — as one open-source app.
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature) => {
               const IconComponent = feature.icon;
 

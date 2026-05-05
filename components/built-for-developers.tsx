@@ -43,7 +43,7 @@ export function BuiltForDevelopers() {
               reads your Supabase schema and renders the screens your team needs.
             </p>
           </div>
-          <div className="grid lg:grid-cols-2 gap-8 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 items-center text-left">
             <div className="space-y-6">
               {pillars.map((pillar) => {
                 const IconComponent = pillar.icon;
