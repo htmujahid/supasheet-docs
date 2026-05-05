@@ -9,6 +9,10 @@ import { FinalCTA } from '@/components/final-cta';
 import { Integrations } from '@/components/integrations';
 import { FooterSection } from '@/components/footer-section';
 import { StatsSection } from '@/components/stats-section';
+import { ProblemSection } from '@/components/problem-section';
+import { ComparisonSection } from '@/components/comparison-section';
+import { BuiltForDevelopers } from '@/components/built-for-developers';
+import { FAQSection } from '@/components/faq-section';
 
 export default function HomePage() {
   return (
@@ -16,13 +20,17 @@ export default function HomePage() {
       <main className="flex flex-1 flex-col justify-center text-center">
         <HeroSection />
         <StatsSection />
+        <ProblemSection />
         <FeaturesSection />
         <CMSHighlights />
         <UseCases />
         <WhyChoose />
+        <ComparisonSection />
         <TechStack />
         <Integrations />
         <GettingStarted />
+        <BuiltForDevelopers />
+        <FAQSection />
         <FinalCTA />
       </main>
       <FooterSection />

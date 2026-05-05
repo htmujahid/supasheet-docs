@@ -1,35 +1,50 @@
-import { Shield, Database, BarChart3, FileText, Upload, Layout } from 'lucide-react';
+import { Shield, Database, BarChart3, Upload, Layout, Lock, ClipboardList, Users } from 'lucide-react';
 
 const features = [
   {
-    icon: Layout,
-    title: 'Dashboard',
-    description: 'Comprehensive dashboards with analytics and customizable widgets to monitor your data.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Charts',
-    description: 'Built-in charting tools with multiple visualization types and export capabilities.',
-  },
-  {
-    icon: FileText,
-    title: 'Reports',
-    description: 'Generate detailed reports with scheduling and multiple export formats.',
-  },
-  {
     icon: Database,
-    title: 'Resource Management',
-    description: 'CRUD operations with RBAC. Advanced filtering, sorting, and data export capabilities.',
+    title: 'Auto-generated CRUD',
+    description: 'Add a table, get list, detail, create, and edit screens automatically. Field types are detected from your schema and rendered with the right input.',
+  },
+  {
+    icon: Layout,
+    title: 'Multiple data views',
+    description: 'View the same data as grid, kanban, calendar, gallery, or list. Drag tasks across kanban columns, schedule on calendars, browse galleries — switch with a click.',
   },
   {
     icon: Shield,
-    title: 'Authentication & Authorization',
-    description: 'Secure authentication with multiple providers, MFA, role-based access control, and audit logs.',
+    title: 'Built-in authentication',
+    description: 'Sign-in, sign-up, OAuth (Google + GitHub), TOTP-based MFA, password reset, and identity linking — wired to Supabase Auth out of the box.',
+  },
+  {
+    icon: Lock,
+    title: 'Fine-grained RBAC',
+    description: 'Role-permission matrix enforced by Postgres RLS. The UI gates the same way for UX, but security is enforced at the database — even leaked client keys can\'t bypass it.',
+  },
+  {
+    icon: Layout,
+    title: 'Configurable dashboards',
+    description: 'KPI cards, metric tiles with sparklines, mini-tables, and chart widgets. Mark a view as a dashboard widget — it shows up. Per-widget permission gating included.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Five chart types',
+    description: 'Area, bar, line, pie, and radar — auto-rendered from your views. Use them inside dashboards or as standalone analytics pages. No JavaScript required.',
   },
   {
     icon: Upload,
-    title: 'File Management',
-    description: 'Integrated file upload, storage management, and CDN integration for media.',
+    title: 'File storage',
+    description: 'Drag-and-drop uploads, folder navigation, inline image and PDF preview. Permission-controlled buckets with dynamic upload paths that respect your RBAC.',
+  },
+  {
+    icon: ClipboardList,
+    title: 'Audit logs',
+    description: 'Every INSERT, UPDATE, and DELETE captured by Postgres triggers. Old data, new data, changed fields, user, role, timestamp — compliance-ready out of the box.',
+  },
+  {
+    icon: Users,
+    title: 'User management',
+    description: 'Create, invite, edit, and delete users via Supabase\'s Admin API behind permission checks. Invite by magic link, manage roles, view per-user audit history.',
   },
 ];
 
@@ -41,11 +56,11 @@ export function FeaturesSection() {
           <div className="flex flex-col items-center justify-center space-y-4 text-center mb-16">
             <div className="space-y-4">
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
-                Everything You Need, Built-In
+                Everything internal ops needs, built-in
               </h2>
               <p className="mx-auto max-w-3xl text-muted-foreground text-lg leading-relaxed">
-                A complete CMS platform with all the features and tools you need to build and manage
-                modern applications. No need to piece together multiple solutions.
+                Stop stitching together libraries and SaaS tools. Supasheet ships the full stack —
+                CRUD, auth, RBAC, dashboards, files, and audit — as one open-source app.
               </p>
             </div>
           </div>

@@ -2,7 +2,7 @@ import Image from "next/image";
 
 const technologies = [
   {
-    name: 'React',
+    name: 'React 19',
     logo: 'https://svgl.app/library/react_dark.svg',
   },
   {
@@ -14,8 +14,16 @@ const technologies = [
     logo: 'https://svgl.app/library/supabase.svg',
   },
   {
-    name: 'Shadcn UI',
+    name: 'Tailwind CSS',
+    logo: 'https://svgl.app/library/tailwindcss.svg',
+  },
+  {
+    name: 'shadcn/ui',
     logo: 'https://svgl.app/library/shadcn-ui.svg',
+  },
+  {
+    name: 'TypeScript',
+    logo: 'https://svgl.app/library/typescript.svg',
   },
 ];
 
@@ -28,7 +36,7 @@ export function Integrations() {
             <div className="px-6 py-4 border-b">
               <h3 className="text-sm font-semibold text-foreground">Built with modern technologies</h3>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 p-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 p-6">
             {technologies.map((tech) => {
               return (
                 <div

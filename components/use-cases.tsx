@@ -1,29 +1,41 @@
-import { Briefcase, ShoppingCart, Users, LayoutDashboard } from 'lucide-react';
+import { Briefcase, ShoppingCart, Users, GraduationCap, FileText, BarChart3 } from 'lucide-react';
 
 const useCases = [
   {
-    icon: ShoppingCart,
-    title: 'E-commerce',
-    description: 'Complete backend management for online stores. Handle products, orders, customers, and inventory with built-in reporting and analytics.',
-    examples: ['Product catalog', 'Order management', 'Customer data', 'Sales reports'],
-  },
-  {
-    icon: LayoutDashboard,
-    title: 'Personal Dashboard',
-    description: 'Create customized personal dashboards to track metrics, manage tasks, and visualize your data in one unified interface.',
-    examples: ['Activity tracking', 'Goal management', 'Data visualization', 'Personal analytics'],
+    icon: Briefcase,
+    title: 'Project & task management',
+    description: 'Run sprints, track tickets, and ship work. Kanban boards, calendars, and dashboards wired to your tasks table.',
+    examples: ['Kanban pipelines', 'Timesheets', 'Team dashboards', 'Status reports'],
   },
   {
     icon: Users,
-    title: 'CRM',
-    description: 'Build customer relationship management systems with contact management, sales pipelines, and communication tracking.',
-    examples: ['Contact management', 'Sales pipeline', 'Lead tracking', 'Customer insights'],
+    title: 'CRM & sales pipeline',
+    description: 'Manage deals, contacts, and accounts without per-seat fees. Drag deals through stages, track activity, run pipeline reports.',
+    examples: ['Deal stages', 'Contact directory', 'Activity logs', 'Sales charts'],
   },
   {
-    icon: Briefcase,
-    title: 'Internal Tools',
-    description: 'Build powerful internal dashboards and admin panels for your team. Manage operations, view analytics, and control your business data.',
-    examples: ['Employee management', 'Inventory systems', 'Order processing', 'Data analytics'],
+    icon: ShoppingCart,
+    title: 'E-commerce ops',
+    description: 'Run the back-office for a store: products, orders, customers, and reviews. Rich-text descriptions and image galleries included.',
+    examples: ['Product catalog', 'Order management', 'Customer records', 'Inventory'],
+  },
+  {
+    icon: BarChart3,
+    title: 'HR & people ops',
+    description: 'Employee records, leave requests, performance cycles. Permission-gated by role so HR sees what HR should see.',
+    examples: ['Employee directory', 'Leave tracker', 'Performance reviews', 'Org charts'],
+  },
+  {
+    icon: FileText,
+    title: 'Finance & inventory',
+    description: 'Invoicing, budgets, procurement, manufacturing, and quality control — all driven by the same metadata model.',
+    examples: ['Invoices', 'Budgets', 'Procurement', 'Quality logs'],
+  },
+  {
+    icon: GraduationCap,
+    title: 'LMS & content',
+    description: 'Courses, enrollments, lessons, and certificates. Author with rich text, track progress, gate by role.',
+    examples: ['Courses', 'Enrollments', 'Progress', 'Certificates'],
   },
 ];
 
@@ -34,14 +46,14 @@ export function UseCases() {
         <div className="mx-auto max-w-6xl">
           <div className="text-center space-y-4 mb-12 sm:mb-16">
             <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl text-foreground">
-              Built for Any Use Case
+              What teams build with Supasheet
             </h2>
             <p className="mx-auto max-w-3xl text-muted-foreground text-base sm:text-lg leading-relaxed">
-              Whether you&quot;re building internal tools, customer portals, or content platforms,
-              Supasheet provides everything you need out of the box.
+              Eleven pre-built example schemas ship with the repo — clone one, run the migrations,
+              and start operating. Or wire up your own and Supasheet renders the UI for free.
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {useCases.map((useCase) => {
               const IconComponent = useCase.icon;
               return (

@@ -1,22 +1,13 @@
 'use client';
 
-import { Sheet, KanbanSquare, Image, CalendarDays } from 'lucide-react';
+import { LayoutGrid, KanbanSquare, Image, CalendarDays } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const dataViews = [
   {
-    icon: CalendarDays,
-    title: 'Calendar View',
-    description: 'Visualize your data in a calendar format with drag-and-drop scheduling and event management.',
-    image: {
-      light: '/images/calendar-light.png',
-      dark: '/images/calendar-dark.png',
-    },
-  },
-  {
-    icon: Sheet,
-    title: 'Sheet View',
-    description: 'Spreadsheet-like interface with powerful filtering, sorting, and bulk editing capabilities.',
+    icon: LayoutGrid,
+    title: 'Grid View',
+    description: 'Spreadsheet-like interface with powerful filtering, sorting, and bulk editing — the everyday workhorse for ops teams.',
     image: {
       light: '/images/sheet-light.png',
       dark: '/images/sheet-dark.png',
@@ -25,16 +16,25 @@ const dataViews = [
   {
     icon: KanbanSquare,
     title: 'Kanban View',
-    description: 'Organize tasks and workflows with customizable boards, columns, and card layouts.',
+    description: 'Drag tasks across columns. Configure groupings via your schema and run pipelines, sprints, or deal stages with no extra UI code.',
     image: {
       light: '/images/kanban-light.png',
       dark: '/images/kanban-dark.png',
     },
   },
   {
+    icon: CalendarDays,
+    title: 'Calendar View',
+    description: 'Schedule and reschedule by drag-and-drop. Point at any date column and your records show up as events.',
+    image: {
+      light: '/images/calendar-light.png',
+      dark: '/images/calendar-dark.png',
+    },
+  },
+  {
     icon: Image,
     title: 'Gallery View',
-    description: 'Display data as visual cards with images, perfect for products, portfolios, and media.',
+    description: 'Browse data as visual cards. Perfect for products, portfolios, media libraries, and people directories.',
     image: {
       light: '/images/gallery-light.png',
       dark: '/images/gallery-dark.png',
@@ -72,11 +72,11 @@ export function CMSHighlights() {
         <div className="mx-auto max-w-6xl">
           <div className="text-center space-y-4 mb-16">
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
-              Multiple Ways to View Your Data
+              The same data, every way your team works
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
-              Switch between different views to work with your data the way you prefer.
-              Each view is optimized for specific workflows and use cases.
+              Configure once in the table comment, switch views with a click. Each view is built
+              for a specific workflow — from spreadsheet edits to kanban pipelines to calendar scheduling.
             </p>
           </div>
           <div className="grid lg:grid-cols-[300px_1fr] gap-6">

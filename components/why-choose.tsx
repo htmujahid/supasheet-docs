@@ -3,33 +3,33 @@ import { Clock, Blocks, Sparkles, Heart, Shield, Zap } from 'lucide-react';
 const reasons = [
   {
     icon: Clock,
-    title: 'Save Weeks of Development',
-    description: 'Stop building the same admin features from scratch. Get authentication, dashboards, charts, reports, and data management ready to use.',
+    title: 'Internal tools shouldn\'t take weeks',
+    description: 'Stop rebuilding the same CRUD, auth, and dashboards every project. Define a table, get a working ops screen — nothing to glue together.',
   },
   {
     icon: Blocks,
-    title: 'Everything Integrated',
-    description: 'No more piecing together libraries and tools. Everything works together seamlessly - from auth to analytics to file storage.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Opinionated & Complete',
-    description: 'We made the hard decisions for you. Best practices, modern stack, and production-ready patterns built-in from day one.',
-  },
-  {
-    icon: Heart,
-    title: 'Built for Supabase',
-    description: 'Designed specifically for Supabase. Leverages its full power while adding the features and UI you need for complete applications.',
+    title: 'Everything in one app',
+    description: 'CRUD, multiple views, auth, RBAC, dashboards, charts, file storage, and audit logs. One open-source app, not seven SaaS subscriptions.',
   },
   {
     icon: Shield,
-    title: 'Production Ready',
-    description: 'Security, performance, and best practices built-in. Deploy with confidence knowing your app is enterprise-grade.',
+    title: 'RBAC enforced by the database',
+    description: 'Permissions live in Postgres. Every table has RLS policies that check the role-permission matrix — even a leaked client key can\'t bypass it.',
+  },
+  {
+    icon: Heart,
+    title: 'Built natively on Supabase',
+    description: 'Auth, storage, edge functions, realtime — all leveraged. Run on Supabase Cloud or self-host with the open-source stack.',
+  },
+  {
+    icon: Sparkles,
+    title: 'Type-safe end to end',
+    description: 'Routes, queries, forms, and the database schema are all typed. Refactor without fear — TypeScript catches breakage before runtime does.',
   },
   {
     icon: Zap,
-    title: 'No Vendor Lock-in',
-    description: 'Built on open source Supabase, deploy anywhere. Full control over your data and infrastructure.',
+    title: 'You own the React code',
+    description: 'It\'s a React app. Fork it, brand it, embed it. No per-seat tax. No vendor lock-in. No SaaS escape velocity to plan for.',
   },
 ];
 

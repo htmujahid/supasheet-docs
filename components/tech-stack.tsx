@@ -1,25 +1,25 @@
-import { Code2, Zap, Shield, Boxes } from 'lucide-react';
+import { Code2, Type, Database, Boxes } from 'lucide-react';
 
 const techFeatures = [
   {
     icon: Code2,
-    title: 'Modern Stack',
-    description: 'Built with React, Tanstack Router, TypeScript, and Tailwind CSS for a fast, type-safe development experience.',
+    title: 'React 19 + TanStack',
+    description: 'Built on React 19, TanStack Router/Query/Form/Table, and Tailwind v4. File-based routing, smart caching, and headless components throughout.',
   },
   {
-    icon: Zap,
-    title: 'Instant Setup',
-    description: 'Connect to your Supabase instance and start managing data immediately. No complex configuration needed.',
+    icon: Database,
+    title: 'Supabase-native',
+    description: 'Auth, Storage, Edge Functions, and Postgres — Supasheet leans on Supabase end-to-end. Run on Supabase Cloud or self-hosted.',
   },
   {
-    icon: Shield,
-    title: 'Production Ready',
-    description: 'Enterprise-grade security, authentication, and authorization built-in. Deploy with confidence.',
+    icon: Type,
+    title: 'Type-safe end to end',
+    description: 'Routes, queries, forms, and the database are all typed. Refactor with confidence; TypeScript catches breakage at compile time.',
   },
   {
     icon: Boxes,
-    title: 'Fully Customizable',
-    description: 'Extend and customize every aspect with hooks, plugins, themes, and a well-documented API.',
+    title: 'You own the components',
+    description: 'shadcn/ui (Base UI variant), Lexical for rich text, Recharts for charts, dnd-kit for drag-and-drop. Headless, accessible, fork-friendly.',
   },
 ];
 
