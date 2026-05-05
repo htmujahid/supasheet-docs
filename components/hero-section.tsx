@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { Zap, Github, BookOpen, Workflow } from "lucide-react";
+import { Zap, BookOpen, Workflow } from "lucide-react";
 import { buttonVariants } from "fumadocs-ui/components/ui/button";
 
 import Image from "next/image";
@@ -41,14 +41,8 @@ export function HeroSection() {
                 Try the live demo
               </button>
             </Link>
-            <Link href="https://github.com/htmujahid/supasheet" target="_blank" rel="noreferrer">
-              <button className={buttonVariants({ variant: "outline" }) + " h-11 px-6 gap-2 w-full sm:w-auto rounded-2xl"}>
-                <Github className="h-5 w-5" />
-                Star on GitHub
-              </button>
-            </Link>
             <Link href="/docs">
-              <button className={buttonVariants({ variant: "ghost" }) + " h-11 px-6 gap-2 w-full sm:w-auto rounded-2xl"}>
+              <button className={buttonVariants({ variant: "outline" }) + " h-11 px-6 gap-2 w-full sm:w-auto rounded-2xl"}>
                 <BookOpen className="h-5 w-5" />
                 Read the docs
               </button>
