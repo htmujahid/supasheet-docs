@@ -31,7 +31,7 @@ export function HeroSection() {
               Supasheet turns any Supabase project into a complete internal operations platform.
               Auto-generated CRUD, multiple data views (grid, kanban, calendar, gallery, list),
               built-in auth with MFA, fine-grained RBAC, configurable dashboards, charts,
-              file storage, and audit logs — all in one open-source React app.
+              file storage, and audit logs, all in one open-source React app.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 pt-4">

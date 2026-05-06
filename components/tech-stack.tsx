@@ -9,7 +9,7 @@ const techFeatures = [
   {
     icon: Database,
     title: 'Supabase-native',
-    description: 'Auth, Storage, Edge Functions, and Postgres — Supasheet leans on Supabase end-to-end. Run on Supabase Cloud or self-hosted.',
+    description: 'Auth, Storage, Edge Functions, and Postgres, Supasheet leans on Supabase end-to-end. Run on Supabase Cloud or self-hosted.',
   },
   {
     icon: Type,

@@ -4,7 +4,7 @@ const problems = [
   {
     icon: RotateCw,
     title: 'Building internal tools is repetitive',
-    description: 'Every CRUD screen is the same — list, detail, form, delete. Yet every team rebuilds them from scratch for every project.',
+    description: 'Every CRUD screen is the same, list, detail, form, delete. Yet every team rebuilds them from scratch for every project.',
   },
   {
     icon: CreditCard,
@@ -29,7 +29,7 @@ export function ProblemSection() {
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
               Yet every team keeps rebuilding the same CRUD, dashboards, and permission plumbing.
-              Supasheet ships the whole layer — once, open source, on your Supabase.
+              Supasheet ships the whole layer, once, open source, on your Supabase.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

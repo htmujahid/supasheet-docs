@@ -42,7 +42,7 @@ export function ComparisonSection() {
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
               Other tools either lock you in, charge per seat, or stop short of a complete
-              internal-ops stack. Supasheet ships everything — and you keep the code.
+              internal-ops stack. Supasheet ships everything, and you keep the code.
             </p>
           </div>
           <div className="rounded-xl border bg-card overflow-hidden">

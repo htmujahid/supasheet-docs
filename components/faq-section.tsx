@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 const faqs = [
   {
     q: 'Do I need to know React to use Supasheet?',
-    a: 'For everyday CRUD use, you only write SQL — Supasheet generates the screens automatically. To customize components or add bespoke routes, basic React helps.',
+    a: 'For everyday CRUD use, you only write SQL, Supasheet generates the screens automatically. To customize components or add bespoke routes, basic React helps.',
   },
   {
     q: 'Does it work with my existing Supabase project?',
@@ -11,7 +11,7 @@ const faqs = [
   },
   {
     q: 'Can I customize the look and feel?',
-    a: 'Yes. It\'s a standard React + Tailwind + shadcn/ui app. Override CSS variables for theme colors, swap components, or fork it entirely — you own the code.',
+    a: 'Yes. It\'s a standard React + Tailwind + shadcn/ui app. Override CSS variables for theme colors, swap components, or fork it entirely, you own the code.',
   },
   {
     q: 'How does authentication work?',
@@ -19,11 +19,11 @@ const faqs = [
   },
   {
     q: 'How are permissions enforced?',
-    a: 'Roles and permissions live in supasheet.role_permissions. Every table\'s RLS policy checks supasheet.has_permission(\'schema.table:action\'). The UI gates the same way for UX, but the database is the source of truth — even leaked client keys can\'t bypass it.',
+    a: 'Roles and permissions live in supasheet.role_permissions. Every table\'s RLS policy checks supasheet.has_permission(\'schema.table:action\'). The UI gates the same way for UX, but the database is the source of truth, even leaked client keys can\'t bypass it.',
   },
   {
     q: 'Can I add custom views or routes?',
-    a: 'Yes. It uses TanStack Router with file-based routing — drop a .tsx file in src/routes/ and it\'s a route. All the data, auth, and permission hooks are reusable.',
+    a: 'Yes. It uses TanStack Router with file-based routing, drop a .tsx file in src/routes/ and it\'s a route. All the data, auth, and permission hooks are reusable.',
   },
   {
     q: 'Does it support multiple schemas / multi-tenancy?',
@@ -35,7 +35,7 @@ const faqs = [
   },
   {
     q: 'What does it cost?',
-    a: 'Supasheet itself is open-source and free. You only pay for the infrastructure you run — your Supabase project and wherever you host the React app.',
+    a: 'Supasheet itself is open-source and free. You only pay for the infrastructure you run, your Supabase project and wherever you host the React app.',
   },
 ];
 

@@ -28,7 +28,7 @@ const useCases = [
   {
     icon: FileText,
     title: 'Finance & inventory',
-    description: 'Invoicing, budgets, procurement, manufacturing, and quality control — all driven by the same metadata model.',
+    description: 'Invoicing, budgets, procurement, manufacturing, and quality control, all driven by the same metadata model.',
     examples: ['Invoices', 'Budgets', 'Procurement', 'Quality logs'],
   },
   {
@@ -49,7 +49,7 @@ export function UseCases() {
               What teams build with Supasheet
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
-              Eleven pre-built example schemas ship with the repo — clone one, run the migrations,
+              Eleven pre-built example schemas ship with the repo, clone one, run the migrations,
               and start operating. Or wire up your own and Supasheet renders the UI for free.
             </p>
           </div>

@@ -4,7 +4,7 @@ const pillars = [
   {
     icon: Type,
     title: 'Type-safe end to end',
-    description: 'Routes, queries, forms, and the database are typed. Refactor without fear — TypeScript catches breakage at compile time.',
+    description: 'Routes, queries, forms, and the database are typed. Refactor without fear, TypeScript catches breakage at compile time.',
   },
   {
     icon: FileJson,

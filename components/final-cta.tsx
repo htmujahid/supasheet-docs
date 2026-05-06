@@ -14,7 +14,7 @@ export function FinalCTA() {
               </h2>
               <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
                 Try the live demo, clone the repo, or read the docs.
-                Everything teams need to run internal operations on Supabase — open source, forever.
+                Everything teams need to run internal operations on Supabase, open source, forever.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <Link href="https://0.supasheet.app/" target="_blank" rel="noreferrer">

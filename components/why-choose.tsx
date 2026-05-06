@@ -4,7 +4,7 @@ const reasons = [
   {
     icon: Clock,
     title: 'Internal tools shouldn\'t take weeks',
-    description: 'Stop rebuilding the same CRUD, auth, and dashboards every project. Define a table, get a working ops screen — nothing to glue together.',
+    description: 'Stop rebuilding the same CRUD, auth, and dashboards every project. Define a table, get a working ops screen, nothing to glue together.',
   },
   {
     icon: Blocks,
@@ -14,17 +14,17 @@ const reasons = [
   {
     icon: Shield,
     title: 'RBAC enforced by the database',
-    description: 'Permissions live in Postgres. Every table has RLS policies that check the role-permission matrix — even a leaked client key can\'t bypass it.',
+    description: 'Permissions live in Postgres. Every table has RLS policies that check the role-permission matrix, even a leaked client key can\'t bypass it.',
   },
   {
     icon: Heart,
     title: 'Built natively on Supabase',
-    description: 'Auth, storage, edge functions, realtime — all leveraged. Run on Supabase Cloud or self-host with the open-source stack.',
+    description: 'Auth, storage, edge functions, realtime, all leveraged. Run on Supabase Cloud or self-host with the open-source stack.',
   },
   {
     icon: Sparkles,
     title: 'Type-safe end to end',
-    description: 'Routes, queries, forms, and the database schema are all typed. Refactor without fear — TypeScript catches breakage before runtime does.',
+    description: 'Routes, queries, forms, and the database schema are all typed. Refactor without fear, TypeScript catches breakage before runtime does.',
   },
   {
     icon: Zap,

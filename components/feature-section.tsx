@@ -9,27 +9,27 @@ const features = [
   {
     icon: Layout,
     title: 'Multiple data views',
-    description: 'View the same data as grid, kanban, calendar, gallery, or list. Drag tasks across kanban columns, schedule on calendars, browse galleries — switch with a click.',
+    description: 'View the same data as grid, kanban, calendar, gallery, or list. Drag tasks across kanban columns, schedule on calendars, browse galleries, switch with a click.',
   },
   {
     icon: Shield,
     title: 'Built-in authentication',
-    description: 'Sign-in, sign-up, OAuth (Google + GitHub), TOTP-based MFA, password reset, and identity linking — wired to Supabase Auth out of the box.',
+    description: 'Sign-in, sign-up, OAuth (Google + GitHub), TOTP-based MFA, password reset, and identity linking, wired to Supabase Auth out of the box.',
   },
   {
     icon: Lock,
     title: 'Fine-grained RBAC',
-    description: 'Role-permission matrix enforced by Postgres RLS. The UI gates the same way for UX, but security is enforced at the database — even leaked client keys can\'t bypass it.',
+    description: 'Role-permission matrix enforced by Postgres RLS. The UI gates the same way for UX, but security is enforced at the database, even leaked client keys can\'t bypass it.',
   },
   {
     icon: Layout,
     title: 'Configurable dashboards',
-    description: 'KPI cards, metric tiles with sparklines, mini-tables, and chart widgets. Mark a view as a dashboard widget — it shows up. Per-widget permission gating included.',
+    description: 'KPI cards, metric tiles with sparklines, mini-tables, and chart widgets. Mark a view as a dashboard widget, it shows up. Per-widget permission gating included.',
   },
   {
     icon: BarChart3,
     title: 'Five chart types',
-    description: 'Area, bar, line, pie, and radar — auto-rendered from your views. Use them inside dashboards or as standalone analytics pages. No JavaScript required.',
+    description: 'Area, bar, line, pie, and radar, auto-rendered from your views. Use them inside dashboards or as standalone analytics pages. No JavaScript required.',
   },
   {
     icon: Upload,
@@ -39,7 +39,7 @@ const features = [
   {
     icon: ClipboardList,
     title: 'Audit logs',
-    description: 'Every INSERT, UPDATE, and DELETE captured by Postgres triggers. Old data, new data, changed fields, user, role, timestamp — compliance-ready out of the box.',
+    description: 'Every INSERT, UPDATE, and DELETE captured by Postgres triggers. Old data, new data, changed fields, user, role, timestamp, compliance-ready out of the box.',
   },
   {
     icon: Users,
@@ -59,8 +59,8 @@ export function FeaturesSection() {
                 Everything internal ops needs, built-in
               </h2>
               <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
-                Stop stitching together libraries and SaaS tools. Supasheet ships the full stack —
-                CRUD, auth, RBAC, dashboards, files, and audit — as one open-source app.
+                Stop stitching together libraries and SaaS tools. Supasheet ships the full stack,
+                CRUD, auth, RBAC, dashboards, files, and audit, as one open-source app.
               </p>
             </div>
           </div>

@@ -6,7 +6,7 @@ const steps = [
   {
     icon: Database,
     title: 'Define your schema',
-    description: 'Add a table in Supabase. Configure how it shows up in the UI through a JSON metadata block on the table comment — no separate config service.',
+    description: 'Add a table in Supabase. Configure how it shows up in the UI through a JSON metadata block on the table comment, no separate config service.',
     code: `CREATE TABLE crm.deals (
   id uuid PRIMARY KEY,
   name text NOT NULL,
@@ -26,7 +26,7 @@ COMMENT ON TABLE crm.deals IS '{
   {
     icon: ShieldCheck,
     title: 'Grant permissions',
-    description: 'Map roles to permissions in supasheet.role_permissions. RLS policies enforce them at the database — the UI just respects what the DB allows.',
+    description: 'Map roles to permissions in supasheet.role_permissions. RLS policies enforce them at the database, the UI just respects what the DB allows.',
     code: `INSERT INTO supasheet.role_permissions (role, permission) VALUES
   ('admin',  'crm.deals:select'),
   ('admin',  'crm.deals:insert'),

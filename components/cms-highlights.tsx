@@ -7,7 +7,7 @@ const dataViews = [
   {
     icon: LayoutGrid,
     title: 'Grid View',
-    description: 'Spreadsheet-like interface with powerful filtering, sorting, and bulk editing — the everyday workhorse for ops teams.',
+    description: 'Spreadsheet-like interface with powerful filtering, sorting, and bulk editing, the everyday workhorse for ops teams.',
     image: {
       light: '/images/sheet-light.png',
       dark: '/images/sheet-dark.png',
@@ -76,7 +76,7 @@ export function CMSHighlights() {
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
               Configure once in the table comment, switch views with a click. Each view is built
-              for a specific workflow — from spreadsheet edits to kanban pipelines to calendar scheduling.
+              for a specific workflow, from spreadsheet edits to kanban pipelines to calendar scheduling.
             </p>
           </div>
           <div className="grid lg:grid-cols-[300px_1fr] gap-6">
