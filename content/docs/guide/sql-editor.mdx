@@ -1,70 +1,72 @@
 ---
 title: SQL Editor
-description: Built-in SQL editor for database management
+description: Built-in read-only SQL editor with saved snippets
 ---
+
+import { Callout } from 'fumadocs-ui/components/callout';
 
 ## Overview
 
-Supasheet includes a built-in SQL editor that allows you to write and execute SQL queries directly against your database. The editor provides a powerful interface for database management and data analysis.
+Every schema you expose to Supasheet gets a built-in SQL editor at `/$schema/sql-editor/$snippet`. It's a safe, read-only way to explore data and prototype queries without leaving the app — handy for support, debugging, and quick ad-hoc analysis.
 
 ## Key Features
 
-- **Syntax Highlighting** - Color-coded SQL syntax for better readability
-- **Autocomplete** - Intelligent suggestions for tables, columns, and SQL keywords
-- **Query History** - Access and re-run previously executed queries
-- **Multiple Tabs** - Work on multiple queries simultaneously
-- **Export Results** - Download query results as CSV or JSON
-- **Saved Queries** - Save and organize frequently used queries
+- **Monaco-powered editor** — syntax highlighting, multi-cursor, find/replace
+- **Schema-scoped** — every snippet belongs to a specific schema and runs against that schema's exposed views and tables
+- **Saved snippets** — name a snippet and revisit it via the URL or sidebar
+- **Result grid** — tabular result viewer with copy / export
+- **Respects RLS** — queries run as the signed-in user; every row visible matches that user's permissions and policies
 
-## Row Level Security (RLS)
+## Read-Only by Design
 
-All queries executed through the SQL editor **respect Row Level Security policies**. This means:
+The editor only accepts `SELECT` statements (and other read-only constructs such as `WITH … SELECT`). Mutations and DDL are intentionally blocked:
 
-- You only see data you're authorized to access
-- RLS policies are automatically applied to your queries
-- Queries run with your current user's permissions
-- No special privileges are granted through the SQL editor
+| Allowed | Not allowed |
+|---------|-------------|
+| `SELECT ... FROM ...` | `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE` |
+| `WITH ... SELECT ...` | `CREATE`, `ALTER`, `DROP` |
+| Joins, aggregates, set operations | `GRANT`, `REVOKE`, role changes |
 
-This ensures data security even when using the SQL editor directly.
+For changes to data, use the auto-generated CRUD UI. For schema changes, use Supabase migrations.
 
-## Query Support
+<Callout type="warn">
+Queries that take very long, return huge result sets, or run on un-indexed columns will affect everyone — they still execute on the database. Prefer pagination (`LIMIT`) and explicit `WHERE` clauses while exploring.
+</Callout>
 
-The SQL editor **only supports SELECT queries** for data retrieval and analysis.
+## Typical Workflows
 
-You can:
-- Query tables and views in the `public` schema
-- Run analytical queries with joins, aggregations, and filters
-- Export query results as CSV or JSON
+### Data exploration
 
-You cannot:
-- INSERT, UPDATE, or DELETE records (use CRUD interfaces instead)
-- CREATE or ALTER tables (use migrations instead)
-- Execute DDL or administrative commands
+```sql
+SELECT status, count(*) AS tasks
+FROM desk.tasks
+WHERE assignee_id = auth.uid()
+GROUP BY status
+ORDER BY tasks DESC;
+```
 
-## Common Use Cases
+### Prototyping a future report or chart view
 
-### Data Analysis
-Run analytical queries to understand your data, generate insights, and identify trends.
+Iterate on the query in the editor, then promote the final version into a view with the matching JSON comment (`{"type":"report"}` or `{"type":"chart"}`). See [Reports](/docs/guide/reports) and [Charts](/docs/guide/charts).
 
-### Data Export
-Extract specific datasets by running custom SELECT queries and exporting results.
+### Checking permissions
 
-### Testing Queries
-Test and refine SELECT queries before using them in views or reports.
+```sql
+SELECT * FROM supasheet.get_permissions();      -- All permissions held by current user
+SELECT * FROM supasheet.get_tables('desk');     -- Tables in 'desk' visible to current user
+```
 
-### Ad-hoc Reporting
-Create custom data views and reports without creating permanent database objects.
+### Inspecting audit trail
 
-## Security & Best Practices
-
-- **SELECT only** - Only SELECT queries are supported for safety
-- **RLS is enforced** - Your queries respect all security policies
-- **Limited to public schema** - Only query tables in the public schema
-- **No admin privileges** - SQL editor runs with your user permissions, not elevated access
-- **Use CRUD for modifications** - For INSERT, UPDATE, DELETE operations, use the auto-generated CRUD interfaces
+```sql
+SELECT created_at, operation, changed_fields
+FROM supasheet.audit_logs
+WHERE record_id = '...'
+ORDER BY created_at DESC;
+```
 
 ## Next Steps
 
-- **[Database Schema](/docs/guide/database-schema)** - Learn about schema organization
-- **[CRUD Operations](/docs/guide/crud-operations)** - Use auto-generated interfaces
-- **[Authorization](/docs/guide/authorization)** - Understand RLS policies
+- **[Database Schema](/docs/guide/database-schema)** — Discover the meta functions you can query
+- **[Reports](/docs/guide/reports)** — Promote a saved query into a permanent report
+- **[Charts](/docs/guide/charts)** — Visualise the results of a query

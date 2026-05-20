@@ -1,50 +1,47 @@
 ---
 title: Welcome to Supasheet
-description: Complete CMS Platform built on Supabase
+description: Complete CMS platform built on Supabase
 ---
 
 import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Cards, Card } from 'fumadocs-ui/components/card';
 
 ## What is Supasheet?
 
-Supasheet is a **complete CMS platform built on Supabase**. It's an opinionated, full-fledged open-source CMS with everything included. Go beyond basic admin panels with built-in authentication, dashboards, charts, reports, file management, and comprehensive data tools.
+Supasheet is a **complete, opinionated open-source CMS platform built on Supabase**. It goes far beyond a basic admin panel — authentication, role-based access control, multi-view CRUD, dashboards, charts, reports, file storage, audit logging, comments, notifications, and templates are all included out of the box.
 
-It provides a powerful, SQL-first approach where you primarily write SQL to define your application, and Supasheet handles the UI layer automatically.
+It follows a **SQL-first** philosophy: you define your data model and business logic in PostgreSQL, and Supasheet automatically renders a polished, production-ready UI on top of it.
 
 ### Key Features
 
-- **Authentication**: Complete user authentication system with Supabase Auth
-- **User Management**: Comprehensive user administration and profile management
-- **Authorization (RBAC)**: Role-based access control with PostgreSQL Row Level Security
-- **Resource (CRUD)**: Auto-generated CRUD interfaces from your database schema
-- **Data Views**: Multiple view types - Sheet, Kanban, Calendar, and Gallery
-- **Customizable UI**: Flexible theming and component customization
-- **SQL Editor**: Built-in SQL editor for direct database management
-- **Dashboard**: Customizable dashboards for data visualization
-- **Analytics**: Built-in analytics and metrics tracking
-- **Reports**: Generate custom reports from SQL queries
-- **Charts**: Create visualizations using SQL views
-- **File Storage**: Complete file upload and management with Supabase Storage
-- **Audit Logs**: Automatic change tracking using PostgreSQL triggers
+- **Authentication** — Sign in, sign up, password reset, MFA, OAuth identities
+- **User Management** — Create, invite, update, and delete users via the Supabase Admin API
+- **Authorization (RBAC)** — Three built-in roles (`x-admin`, `admin`, `user`) with fine-grained per-table permissions and PostgreSQL Row Level Security
+- **Resource (CRUD)** — Auto-generated create / read / update / delete UIs for any table or view
+- **Six View Types** — Sheet (table), Kanban, Calendar, Gallery, List, and Tree, switchable per resource
+- **Inline editing** — Side-sheet editor available on every view
+- **Dashboards** — Widget-based dashboards driven by SQL views
+- **Charts** — Area, bar, line, pie, and radar charts powered by Recharts
+- **Reports** — Tabular reports built from SQL views
+- **Templates** — Reusable, pre-filled views you can copy into target tables
+- **Comments** — Permission-gated threaded discussions on any record
+- **Notifications** — In-app notification system with fan-out, read/archive state, and trigger-based delivery
+- **Audit Logs** — Automatic INSERT/UPDATE/DELETE trail with old/new values and changed fields
+- **File Storage** — Browse, upload, rename, move, and preview files across public, personal, and per-resource buckets
+- **SQL Editor** — Built-in read-only SQL editor with saved snippets
 
 ### How It Works
 
-Supasheet is built on top of Supabase's powerful features:
+Supasheet is built on top of Supabase:
 
-- **PostgREST**: Automatic REST API from your PostgreSQL database
-- **Supabase Auth**: Built-in authentication with JWT and social providers
-- **Supabase Storage**: Complete file storage and CDN management
-- **Row Level Security (RLS)**: PostgreSQL policies for fine-grained authorization
-- **Realtime**: Real-time subscriptions for live data updates
+- **PostgREST** — Automatic REST API generated from your PostgreSQL schema
+- **Supabase Auth** — JWT-based authentication with email/password, MFA, and OAuth providers
+- **Supabase Storage** — File storage with bucket-scoped RLS policies
+- **Row Level Security** — Postgres policies for fine-grained authorization
+- **Realtime** — Optional realtime subscriptions for live updates
+- **Edge Functions** — Deno-powered admin endpoints for user management
 
-The frontend (React 19 + Vite) dynamically renders a complete CMS interface based on your database schema. You define your data model and business logic in SQL, and Supasheet automatically generates:
-
-- CRUD interfaces for all tables
-- Multiple data view types (Sheet, Kanban, Calendar, Gallery)
-- Dashboards and analytics
-- Reports and charts
-- File management UI
-- User administration
+The frontend (React 19 + Vite + TanStack Router) introspects your schema through Supasheet's `supasheet` meta schema and dynamically renders a full CMS — CRUD forms, all six view types, dashboards, charts, reports, file browsers, and admin pages — without you writing any UI code.
 
 ## Getting Started
 
@@ -52,54 +49,55 @@ The frontend (React 19 + Vite) dynamically renders a complete CMS interface base
 <Step>
 ### Choose Your Path
 
-- **[Guide](/docs/guide)** - Learn how to use Supasheet as a framework
-- **[Self-Hosting](/docs/self-host)** - Deploy Supasheet on your own infrastructure
+- **[Guide](/docs/guide)** — Learn how to use Supasheet as a framework
+- **[Self-Hosting](/docs/self-host)** — Deploy Supasheet on your own infrastructure
 </Step>
 
 <Step>
 ### Quick Start
 
-Follow the [installation guide](/docs/guide/installation) to get started with Supasheet in minutes.
+Follow the [installation guide](/docs/guide/installation) to get Supasheet running locally in a few minutes.
 </Step>
 
 <Step>
-### Learn the SQL-First Philosophy
+### Learn the SQL-First Workflow
 
-Understand how [SQL-first development](/docs/guide/sql-first-philosophy) makes building complete CMS platforms effortless.
+Read the [SQL-first philosophy](/docs/guide/sql-first-philosophy) to understand how Supasheet turns a SQL schema into a complete CMS.
 </Step>
 </Steps>
 
 ## Technology Stack
 
-- **App**: React 19 + Vite
-- **Routing**: TanStack Router (file-based, type-safe)
-- **Data Fetching**: TanStack Query
-- **Forms**: TanStack Form
-- **Tables**: TanStack Table
-- **Styling**: Tailwind CSS v4, shadcn/ui (Base UI variant)
-- **Rich Text**: Lexical
-- **Charts**: Recharts
-- **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
+- **App** — React 19.2 + Vite 7
+- **Routing** — TanStack Router (file-based, type-safe)
+- **Data Fetching** — TanStack Query 5
+- **Forms** — TanStack Form
+- **Tables** — TanStack Table 8 + react-data-grid
+- **UI** — shadcn/ui (Base UI variant) + Tailwind CSS 4
+- **Rich Text** — Lexical
+- **Charts** — Recharts
+- **Icons** — Lucide React
+- **Backend** — Supabase (Auth, Postgres, Storage, Edge Functions)
 
 ## Community & Support
 
-- **GitHub**: [github.com/htmujahid/supasheet](https://github.com/htmujahid/supasheet)
-- **Documentation**: You're here!
-- **Issues**: Report bugs and request features on GitHub
+- **GitHub** — [github.com/htmujahid/supasheet](https://github.com/htmujahid/supasheet)
+- **Documentation** — You're here
+- **Issues** — Report bugs and request features on GitHub
 
 ## Next Steps
 
 <Cards>
   <Card title="Installation" href="/docs/guide/installation">
-    Get Supasheet up and running in minutes
+    Get Supasheet up and running in minutes.
   </Card>
   <Card title="SQL-First Philosophy" href="/docs/guide/sql-first-philosophy">
-    Learn the core concepts behind Supasheet
+    Learn the core concepts behind Supasheet.
   </Card>
-  <Card title="CRUD Operations" href="/docs/guide/crud-operations">
-    Create your first auto-generated interface
+  <Card title="Resource Basics" href="/docs/guide/resource/basic">
+    Create your first auto-generated CRUD interface.
   </Card>
   <Card title="Self-Hosting" href="/docs/self-host">
-    Deploy Supasheet on your infrastructure
+    Deploy Supasheet on your own infrastructure.
   </Card>
 </Cards>

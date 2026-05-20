@@ -1,0 +1,176 @@
+---
+title: Templates
+description: Reusable view-driven data presets you can apply into any compatible table
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Templates let you define a **read-only view that produces rows** and then copy those rows into a target table on demand. They're perfect for repetitive seeding tasks:
+
+- Generating this month's invoices from active subscriptions
+- Issuing payslips for all currently employed staff
+- Creating monthly payment placeholders for active hostel allocations
+- Bootstrapping default settings for newly onboarded accounts
+
+A template is just a SQL view tagged with `{"type": "template"}` in its comment. Supasheet picks it up automatically and exposes it under `/$schema/template` and as an action on compatible tables.
+
+## How It Works
+
+1. Create a view that returns rows shaped like the destination table.
+2. Tag the view with the `template` type — and optionally a `target_table` hint — in its comment.
+3. Grant `select` on the view to the appropriate roles.
+4. Open the resource at `/$schema/template/$template` in the UI, or call `supasheet.apply_template(...)` from SQL.
+
+When applied, Supasheet inspects both the view and the target table, intersects their columns by name, and runs:
+
+```sql
+INSERT INTO <schema>.<target_table> (<common columns>)
+SELECT <common columns> FROM <schema>.<template_view>;
+```
+
+Only columns that exist in **both** the template view and the target table are copied. Defaults, generated columns, and audit fields on the target take over for the rest.
+
+## Defining a Template
+
+```sql
+-- Step 1: Add the permission
+ALTER TYPE supasheet.app_permission
+  ADD VALUE IF NOT EXISTS 'hostel.monthly_payment_template:select';
+
+-- Step 2: Build the view that produces the desired rows
+CREATE OR REPLACE VIEW hostel.monthly_payment_template AS
+SELECT
+  a.id          AS allocation_id,
+  a.monthly_rent AS amount,
+  date_trunc('month', current_date)::date AS month,
+  'pending'::payment_status AS status
+FROM hostel.allocations a
+WHERE a.status = 'active';
+
+-- Step 3: Tag the view as a template (optionally name its preferred target table)
+COMMENT ON VIEW hostel.monthly_payment_template IS '{
+  "type": "template",
+  "name": "Monthly Payment Template",
+  "description": "Pending payment entries for all active allocations. Apply to hostel.payments to seed a new billing month.",
+  "target_table": "payments"
+}';
+
+-- Step 4: Grant access
+REVOKE ALL ON hostel.monthly_payment_template FROM authenticated, service_role;
+GRANT SELECT ON hostel.monthly_payment_template TO authenticated;
+
+INSERT INTO supasheet.role_permissions (role, permission) VALUES
+  ('x-admin', 'hostel.monthly_payment_template:select');
+```
+
+## Comment Metadata
+
+```typescript
+type TemplateMeta = {
+  type: "template"
+  name?: string          // Display name in the templates list
+  description?: string   // Helper text
+  caption?: string       // Short summary shown on cards
+  target_table?: string  // Default destination — pre-selects the table in the apply dialog
+}
+```
+
+`target_table` is only a hint — the user can apply the template to any compatible table in the same schema as long as columns line up.
+
+## Applying a Template
+
+### From the UI
+
+1. Open **Templates** in the schema sidebar (or browse to `/$schema/template`).
+2. Pick a template — Supasheet shows the preview, description, and column list.
+3. Click **Apply**, choose the target table (defaults to `target_table` if set), and confirm.
+4. Supasheet calls `supasheet.apply_template` and reports how many rows were inserted.
+
+### From SQL
+
+```sql
+SELECT supasheet.apply_template(
+  p_schema        => 'hostel',
+  p_template_name => 'monthly_payment_template',
+  p_target_table  => 'payments'
+);
+-- Returns the number of rows inserted
+```
+
+The function uses `security invoker`, so it inherits the calling user's RLS context — only rows visible to the user are copied, and the target table's `INSERT` policies are still enforced.
+
+## Permissions
+
+| Action | Required permission |
+|--------|---------------------|
+| List templates in a schema | `select` on each template view |
+| Apply a template into a table | `insert` permission + RLS on the target table, **plus** `select` on the template view |
+
+Templates are visible only to users who can read the underlying view.
+
+## Discovery Function
+
+Behind the scenes, the UI calls:
+
+```sql
+SELECT * FROM supasheet.get_templates('hostel');
+```
+
+This returns every view with `{"type": "template"}` in its comment that the current user can read. The function is defined in `supabase/migrations/20260506000001_templates.sql`.
+
+## Practical Examples
+
+### Issuing a payroll batch
+
+```sql
+CREATE OR REPLACE VIEW hr.payslip_template AS
+SELECT
+  e.id          AS employee_id,
+  current_payroll() AS payroll_id,
+  e.salary      AS gross_salary,
+  0::numeric    AS deductions,
+  e.salary      AS net_salary,
+  'pending'::payslip_status AS status
+FROM hr.employees e
+WHERE e.status = 'active';
+
+COMMENT ON VIEW hr.payslip_template IS '{
+  "type": "template",
+  "name": "Monthly Payslip Template",
+  "target_table": "payslips"
+}';
+```
+
+### Bootstrapping default categories on new tenant onboarding
+
+```sql
+CREATE OR REPLACE VIEW blog.default_categories_template AS
+SELECT name, slug, description FROM (VALUES
+  ('News',         'news',         'Latest news'),
+  ('Tutorials',    'tutorials',    'How-to articles'),
+  ('Announcements','announcements','Product announcements')
+) AS t(name, slug, description);
+
+COMMENT ON VIEW blog.default_categories_template IS '{
+  "type": "template",
+  "name": "Default Categories",
+  "description": "Seed a fresh blog with standard categories.",
+  "target_table": "categories"
+}';
+```
+
+## Best Practices
+
+- **Keep the view deterministic.** Templates are most useful when each application creates a predictable batch.
+- **Name columns to match the target table.** Anything that doesn't match is silently ignored.
+- **Use sensible defaults** (`status`, `created_at`) so users don't end up with rows that need follow-up edits.
+- **Lock down with RLS.** Combine the view's `select` policy with the target table's `insert` policy so only authorised users can apply.
+- **Pair with audit logging.** Templates can insert many rows at once — audit them just like any other write.
+
+## Next Steps
+
+- **[Audit Logs](/docs/guide/audit-logs)** — Track rows created via templates
+- **[Authorization](/docs/guide/authorization)** — Permissions on the template view and its target
+- **[Reports](/docs/guide/reports)** — Reports follow the same `type`-tagged view pattern

@@ -7,26 +7,30 @@ description: Deploy Supasheet on your own infrastructure
 
 Self-hosting Supasheet gives you complete control:
 
-- **Full Control** - Own your data and infrastructure
-- **Customization** - Modify the codebase as needed
-- **Privacy** - Keep sensitive data on your infrastructure
-- **Cost-Effective** - No platform fees
-- **Compliance** - Meet regulatory requirements
+- **Full Control** — Own your data and infrastructure
+- **Customisation** — Modify the codebase to fit your domain
+- **Privacy** — Keep sensitive data inside your perimeter
+- **Cost-Effective** — No platform fees beyond Supabase and your hosting bill
+- **Compliance** — Easier path to regulatory requirements (SOC 2, HIPAA, etc.)
 
 ## Tech Stack
 
-Supasheet is built with:
-
-- **App** - React 19 + Vite
-- **Routing** - TanStack Router (file-based, type-safe)
-- **Data Fetching** - TanStack Query
-- **Forms** - TanStack Form
-- **Tables** - TanStack Table
-- **Styling** - Tailwind CSS v4
-- **UI Components** - shadcn/ui (Base UI variant)
-- **Rich Text** - Lexical
-- **Charts** - Recharts
-- **Backend** - Supabase (Auth, Database, Storage, Edge Functions)
+| Layer | Stack |
+|-------|-------|
+| App | React 19.2 + Vite 7 |
+| Routing | TanStack Router (file-based, type-safe) |
+| Data fetching | TanStack Query 5 |
+| Forms | TanStack Form |
+| Tables | TanStack Table 8 + `react-data-grid` |
+| Styling | Tailwind CSS 4 |
+| UI | shadcn/ui (Base UI variant) |
+| Icons | Lucide React |
+| Rich text | Lexical |
+| Charts | Recharts |
+| Drag & drop | dnd-kit |
+| Tree view | `@headless-tree/react` |
+| Backend | Supabase (Auth, Postgres, Storage, Edge Functions) |
+| Build output | Static SPA in `dist/` |
 
 ## Project Structure
 
@@ -34,87 +38,115 @@ Supasheet is built with:
 supasheet/
 ├── src/
 │   ├── routes/                 # TanStack Router file-based pages
-│   │   ├── __root.tsx          # Root layout and context
-│   │   ├── index.tsx           # App entry redirect
+│   │   ├── __root.tsx          # Root layout & context
+│   │   ├── index.tsx           # Entry redirect
+│   │   ├── init.tsx            # Multi-project init flow (localStorage credentials)
 │   │   ├── auth/               # Sign-in, sign-up, MFA, password reset
-│   │   ├── account/            # Profile, security, identities
-│   │   ├── core/               # Users, roles, permissions, audit logs
-│   │   ├── storage/            # File storage browser
-│   │   └── $schema/            # Dynamic schema module (resources, dashboards, charts, reports)
-│   ├── components/             # UI components by module
+│   │   ├── account/            # Profile, security, identities, roles & permissions
+│   │   ├── core/               # Users, user_roles, role_permissions, audit_logs, notifications
+│   │   ├── storage/            # File browser per bucket
+│   │   └── $schema/            # Dynamic schema: resource, dashboard, chart, report, template, sql-editor
+│   ├── components/             # Feature modules
 │   │   ├── ui/                 # shadcn/ui primitives
-│   │   ├── layouts/            # Layout components
-│   │   ├── resource/           # CRUD components
-│   │   ├── dashboard/          # Dashboard widgets
-│   │   └── ...                 # Other feature components
-│   ├── hooks/                  # Shared React hooks
-│   ├── lib/                    # Utilities and shared logic
-│   │   └── supabase/           # Supabase client and query functions
-│   ├── integrations/           # Third-party setup (TanStack Query provider)
-│   └── config/                 # App-level configuration constants
+│   │   ├── layouts/            # App shell, sidebar, header, notifications
+│   │   ├── resource/           # CRUD: forms, cells, fields, detail, sheets, comments, audit, list/tree
+│   │   ├── data-table/         # TanStack Table wrapper
+│   │   ├── data-grid/          # react-data-grid wrapper
+│   │   ├── chart/              # Recharts widgets (area, bar, line, pie, radar)
+│   │   ├── dashboard/          # Dashboard widget renderers
+│   │   ├── report/             # Report tables
+│   │   ├── editor/             # Lexical rich-text editor
+│   │   ├── template/           # Template selector & apply dialog
+│   │   ├── storage/            # File browser, upload, rename
+│   │   ├── users/              # Admin users UI
+│   │   ├── user-roles/         # Role assignments
+│   │   └── role-permissions/   # Permission matrix
+│   ├── hooks/                  # Permissions, user, data-table, mobile, etc.
+│   ├── lib/                    # Utilities + types
+│   │   ├── supabase/           # Client + per-domain data functions
+│   │   ├── database-meta.types.ts  # TableMetadata, ColumnMetadata, view types
+│   │   └── database.types.ts   # GENERATED — supabase gen types
+│   ├── integrations/           # TanStack Query provider/devtools
+│   └── config/                 # Constants (METADATA_COLUMNS, filter operators, …)
 ├── supabase/
-│   ├── migrations/             # SQL migration files
-│   ├── functions/              # Deno edge functions (admin user operations)
-│   └── examples/               # Example seed SQL files
+│   ├── migrations/             # Ordered SQL (meta, users, roles, audit, storage, notifications, templates, comments…)
+│   ├── functions/              # Deno edge functions (admin-*)
+│   └── examples/               # 12 reference domains (desk, crm, hr, finance, inventory, …)
 └── public/                     # Static assets
 ```
 
 ## Deployment Options
 
-Supasheet builds to a static SPA and can be deployed to:
+Supasheet builds to a static SPA — anywhere that can serve static files with SPA fallback works:
 
-- **Netlify** - Recommended (easy static hosting)
-- **Vercel** - Static site deployment
-- **Cloudflare Pages** - Edge deployment
-- **Docker** - Containerized with nginx
-- **VPS** - Self-managed server with nginx
-- **AWS/GCP/Azure** - Enterprise solutions
+| Target | Notes |
+|--------|-------|
+| **Vercel** | One-click static site, env vars in dashboard |
+| **Netlify** | Built-in SPA redirect support |
+| **Cloudflare Pages** | Edge-deployed, free tier generous |
+| **Render / Railway / Fly** | Static or container deployment |
+| **Docker + nginx** | Self-managed container or k8s |
+| **VPS + nginx / Caddy** | Plain `npm run build` and serve `dist/` |
+| **S3 + CloudFront** / **GCS + Cloud CDN** | Standard cloud static hosting |
+
+The Supabase backend (Auth, Postgres, Storage, Edge Functions) runs on Supabase Cloud or your self-hosted Supabase stack.
 
 ## Prerequisites
 
-- **Supabase Project** - Create at [supabase.com](https://supabase.com)
-- **Node.js 18+** - Runtime environment
-- **Git** - Version control
+- **Supabase project** — cloud or self-hosted
+- **Node.js 18+** — for building the SPA
+- **Supabase CLI** — `npm install -g supabase` (used for migrations and type generation)
+- **Git** — to clone the repo
 
 ## Quick Start
 
 ```bash
-# Clone repository
 git clone https://github.com/htmujahid/supasheet.git
 cd supasheet
 
-# Install dependencies
 npm install
 
-# Configure environment
+# 1. Environment
 cp .env.example .env
-# Edit .env with your Supabase credentials
+# Edit .env with VITE_SUPABASE_URL + VITE_SUPABASE_PUBLISHABLE_KEY
 
-# Start local Supabase (optional)
+# 2. (Optional) local Supabase
 npx supabase start
 
-# Run migrations
-npx supabase db push
+# 3. Apply migrations
+npx supabase db push                # cloud
+# or
+npx supabase db reset               # local — drops & re-applies
 
-# Start dev server
+# 4. Regenerate types after schema changes
+npx supabase gen types typescript --local \
+  --schema public --schema supasheet \
+  > src/lib/database.types.ts
+
+# 5. Dev server
 npm run dev
 ```
 
 ## Available Scripts
 
 ```bash
-npx supabase start  # Start local Supabase instance
-npm run dev         # Start dev server on port 3000
-npm run build       # Production build (outputs to dist/)
+npm run dev         # Start Vite dev server on port 3000
+npm run build       # Production build → dist/
 npm run preview     # Preview the production build locally
-npm run typecheck   # TypeScript check
+npm run typecheck   # tsc --noEmit
 npm run lint        # ESLint
-npm run check       # Format + lint fix
-npm run test        # Run tests
+npm run format      # Prettier --check
+npm run check       # Prettier --write + ESLint --fix
+npm run test        # Vitest
+
+npx supabase start  # Boot the local Supabase stack
+npx supabase stop   # Tear it down
 ```
 
 ## Next Steps
 
-- **[Deployment](/docs/self-host/deployment)** - Deploy to production
-- **[Environment Variables](/docs/self-host/environment-variables)** - Configure settings
-- **[Production Checklist](/docs/self-host/production-checklist)** - Pre-launch checks
+- **[Prerequisites](/docs/self-host/prerequisites)** — System requirements
+- **[Environment Variables](/docs/self-host/environment-variables)** — All `VITE_*` variables
+- **[Database Setup](/docs/self-host/database-setup)** — Apply migrations + expose schemas
+- **[Deployment](/docs/self-host/deployment)** — Deploy to Vercel, Netlify, Cloudflare, Docker, or a VPS
+- **[Production Checklist](/docs/self-host/production-checklist)** — Pre-launch checks

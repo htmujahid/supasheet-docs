@@ -30,6 +30,8 @@ Permissions control **UI visibility**. Users only see resources they have permis
 - `public.tasks:insert` - Create tasks
 - `public.tasks:update` - Update tasks
 - `public.tasks:delete` - Delete tasks
+- `public.tasks:audit` - Read the audit trail for a record
+- `public.tasks:comment` - Read and post comments on a record
 - `public.task_report:select` - View task report
 - `public.task_status_pie:select` - View task chart
 
@@ -95,19 +97,34 @@ insert into supasheet.role_permissions (role, permission) values
 Views, reports, dashboards, and charts only need `:select` permission since they are read-only. Tables need all four operations (select, insert, update, delete) for full CRUD functionality.
 </Callout>
 
-### Roles
+### Built-in Roles
 
-Supasheet comes with two built-in roles:
+Supasheet ships with three roles defined on the `supasheet.app_role` enum:
 
-#### User Role (Default)
-- Automatically assigned to new users
-- Grant permissions explicitly for each resource
-- Recommended for standard users
+#### `user` (Default)
+- Automatically assigned to new sign-ups via the `on_auth_user_created` trigger
+- Has no permissions by default — grant access explicitly for each resource
+- Recommended for end-users of your application
 
-#### X-Admin Role
-- Full access to all resources
-- For administrators and super users
-- Grant carefully
+#### `admin`
+- An intermediate role with no built-in permissions
+- Reserved for application admins; grant the resource permissions that match your business rules
+
+#### `x-admin`
+- The Supasheet super-admin role
+- Seeded with permissions for the entire `supasheet` schema (users, roles, permissions, audit logs, notifications, etc.)
+- Required to manage roles, permissions, and other admins through the UI under **Core**
+
+<Callout type="warn">
+`x-admin` is the only role that can manage other roles and permissions. Always have at least one user with this role.
+</Callout>
+
+### Special-Case Permissions
+
+Beyond the standard CRUD operations, Supasheet recognises two additional per-table permissions:
+
+- `schema.table:audit` — required to view the per-record audit trail on the detail page
+- `schema.table:comment` — required to read and post comments on a record
 
 ### Adding New Roles
 
@@ -352,14 +369,11 @@ insert into supasheet.role_permissions (role, permission) values
   ('user', 'public.tasks:insert'),
   ('user', 'public.tasks:update'),
   ('user', 'public.tasks:delete');
-
--- 6. Update meta tables
-INSERT INTO supasheet.tables SELECT * FROM supasheet.generate_tables('public')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
-
-INSERT INTO supasheet.columns SELECT * FROM supasheet.generate_columns('public')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name;
 ```
+
+<Callout type="info">
+Supasheet's meta schema is kept in sync automatically by event triggers (`table_creation_trigger`, `comment_trigger`, `enum_alteration_trigger`, etc.) defined in `supabase/migrations/00000000000000_meta.sql`. You do **not** need to manually refresh `supasheet.tables` or `supasheet.columns` after running DDL.
+</Callout>
 
 ## Key Takeaways
 

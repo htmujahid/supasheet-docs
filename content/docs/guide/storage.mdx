@@ -1,180 +1,165 @@
 ---
 title: Storage
-description: Manage files with Supabase Storage
+description: Manage files with Supabase Storage — buckets, policies, the FILE data type, and the built-in file browser
 ---
+
+import { Callout } from 'fumadocs-ui/components/callout';
 
 ## Overview
 
-Supasheet comes with two pre-configured storage buckets for file management. Both buckets are public (files are accessible via public URLs) but have different authorization rules.
+Supasheet integrates Supabase Storage at three levels:
 
-You can also create additional custom buckets based on your needs.
+1. **The `FILE` / `AVATAR` data types** automatically upload to the `uploads` bucket and store metadata on your rows.
+2. **Three pre-configured buckets** (`public`, `personal`, `uploads`) cover the common access patterns.
+3. **A built-in file browser** at `/storage/$bucketId` lets users browse, upload, rename, move, and preview files in any bucket they can access.
 
-## Default Storage Buckets
+All buckets and policies are defined in the migrations under `supabase/migrations/` — primarily `20251005041214_general_storage.sql` and `20251005051303_uploads.sql`.
 
-### Public Bucket
+## Pre-Configured Buckets
 
-For files that should be viewable by anyone but only managed by their owners.
+| Bucket | Public URL? | Read | Write |
+|--------|-------------|------|-------|
+| `public` | Yes (anyone with the URL) | Public + authenticated | Authenticated; updates/deletes by owner |
+| `personal` | Yes | Owner only (authenticated) | Owner only (authenticated) |
+| `uploads` | Yes | Gated by `schema.table:select` | Gated by `schema.table:insert/update/delete` |
+| `account_image` | Yes | Anyone | Owner only — first path segment must equal the user's UUID |
 
-**Allowed Operations:**
-- **Read** - Anyone can view files (including anonymous users)
-- **Insert** - Authenticated users can upload files
-- **Update** - Only file owners can update their files
-- **Delete** - Only file owners can delete their files
+### `public`
 
-**Use Cases:**
-- Product images
-- Blog post images
-- Public downloads
-- Shared resources
+Use for assets that anyone with the URL should be able to read — product images, blog covers, marketing media.
 
-**Authorization:**
-```sql
--- Anyone can read
-SELECT - public (anonymous + authenticated)
+| Operation | Who |
+|-----------|-----|
+| `SELECT` | `public` (anyone, no auth required) |
+| `INSERT` | Any authenticated user |
+| `UPDATE` | Owner (`owner_id = auth.uid()`) |
+| `DELETE` | Owner |
 
--- Authenticated users can upload
-INSERT - authenticated
+### `personal`
 
--- Only owners can update their files
-UPDATE - authenticated (owner_id = auth.uid())
+Per-user private storage — documents, drafts, sensitive uploads.
 
--- Only owners can delete their files
-DELETE - authenticated (owner_id = auth.uid())
-```
+| Operation | Who |
+|-----------|-----|
+| `SELECT` | Owner |
+| `INSERT` | Owner |
+| `UPDATE` | Owner |
+| `DELETE` | Owner |
 
-### Personal Bucket
+### `uploads` (used by the `FILE` type)
 
-For private files that only the owner can access.
+This is the bucket Supasheet writes to when a user adds a file through a `FILE` or `AVATAR` column. Access is governed by your **per-table permissions** rather than ownership:
 
-**Allowed Operations:**
-- **Read** - Only file owners can view their files
-- **Insert** - Only file owners can upload to their own folder
-- **Update** - Only file owners can update their files
-- **Delete** - Only file owners can delete their files
+- Path layout: `uploads/<schema>/<table>/<column>/<filename>`
+- `SELECT` requires `<schema>.<table>:select`
+- `INSERT` requires `<schema>.<table>:insert`
+- `UPDATE` / `DELETE` require the matching permission
 
-**Use Cases:**
-- User documents
-- Private files
-- Personal uploads
-- Sensitive data
+This means anyone who can read a row can read its attached files, anyone who can edit a row can replace them, and so on — without you writing custom storage policies.
 
-**Authorization:**
-```sql
--- Only owners can read their files
-SELECT - authenticated (owner_id = auth.uid())
+### `account_image`
 
--- Only owners can upload to their folder
-INSERT - authenticated (owner_id = auth.uid())
+Holds user avatars. The folder name must match the user's UUID, enforced by `get_storage_filename_as_uuid()`.
 
--- Only owners can update their files
-UPDATE - authenticated (owner_id = auth.uid())
+## Using `FILE` Columns
 
--- Only owners can delete their files
-DELETE - authenticated (owner_id = auth.uid())
-```
-
-## Using Storage with FILE Type
-
-The easiest way to use storage is with the `FILE` data type:
+The `FILE` data type stores an array of file objects (`{ name, type, size, url, last_modified }`). Combine it with a column comment to constrain what the UI accepts:
 
 ```sql
-CREATE TABLE products (
-  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-  name TEXT NOT NULL,
-  image FILE,  -- Automatically uses storage
-  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE store.products (
+  id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name  TEXT NOT NULL,
+  image FILE,
+  manuals FILE
 );
 
--- Configure file upload
-comment on column products.image is '{"accept":"image/*","maxSize":2097152,"maxFiles":1}';
+COMMENT ON COLUMN store.products.image   IS '{"accept": "image/*", "maxSize": 5242880, "maxFiles": 1}';
+COMMENT ON COLUMN store.products.manuals IS '{"accept": ".pdf",   "maxSize": 10485760, "maxFiles": 5}';
 ```
 
-See [Data Types](/docs/guide/data-types) for more details on the FILE type.
+See **[Data Types](/docs/guide/resource/data-types)** for the full type reference and **[Metadata → File columns](/docs/guide/resource/metadata#file-columns)** for the column metadata options.
 
-## File Organization
+### `FILE_OBJECT` (single file)
 
-Files are automatically organized using this pattern:
-
-```
-{schema}/{table}/{column}/{filename}
-```
-
-**Example:**
-- Schema: `public`
-- Table: `products`
-- Column: `image`
-- Filename: `product-photo.jpg`
-
-**Storage path:** `public/products/image/product-photo.jpg`
-
-## Access Control
-
-### Public Bucket Example
+If a column should accept exactly one file (e.g. a cover image), use the `FILE_OBJECT` composite type:
 
 ```sql
--- Everyone can view
--- https://your-project.supabase.co/storage/v1/object/public/public/products/image/photo.jpg
-
--- Only owner can update/delete
-UPDATE storage.objects SET ... WHERE owner_id = auth.uid();
-DELETE FROM storage.objects WHERE owner_id = auth.uid();
+CREATE TABLE desk.tasks (
+  id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cover FILE_OBJECT
+);
+COMMENT ON COLUMN desk.tasks.cover IS '{"accept": "image/*"}';
 ```
 
-### Personal Bucket Example
+### `AVATAR` (single image, for profiles)
+
+`AVATAR` is `FILE_OBJECT` with semantic meaning — Supasheet renders it as a circular avatar.
 
 ```sql
--- Only owner can view, upload, update, delete
-SELECT * FROM storage.objects
-WHERE bucket_id = 'personal'
-  AND owner_id = auth.uid();
+CREATE TABLE blog.authors (
+  id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name   TEXT NOT NULL,
+  avatar AVATAR
+);
+COMMENT ON COLUMN blog.authors.avatar IS '{"maxSize": 2097152}';
 ```
+
+## The File Browser
+
+Authenticated users see a **Storage** entry in the sidebar that lists buckets they can access. Clicking a bucket opens `/storage/$bucketId`, which provides:
+
+- Folder navigation with breadcrumbs
+- Multi-file upload (drag-and-drop or the upload button)
+- Rename, move, and delete actions
+- Image / PDF / text previews
+
+Each operation goes through the standard Supabase Storage API — RLS policies on `storage.objects` are the source of truth.
 
 ## Creating Custom Buckets
 
-You can create additional buckets for specific use cases:
+If you need stricter or different access patterns, define your own bucket alongside its policies:
 
 ```sql
--- Create a custom bucket
-insert into storage.buckets (id, name, public)
-values ('invoices', 'invoices', true);
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('invoices', 'invoices', false);
 
--- Add policies for the bucket
-create policy "Users can upload invoices"
-on storage.objects for insert
-to authenticated
-with check (
-  bucket_id = 'invoices'
-  and owner_id::uuid = auth.uid()
-);
+CREATE POLICY "users_read_own_invoices"
+  ON storage.objects FOR SELECT TO authenticated
+  USING (
+    bucket_id = 'invoices'
+    AND owner_id = auth.uid()
+  );
 
-create policy "Users can read own invoices"
-on storage.objects for select
-to authenticated
-using (
-  bucket_id = 'invoices'
-  and owner_id::uuid = auth.uid()
-);
+CREATE POLICY "users_upload_own_invoices"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'invoices'
+    AND owner_id = auth.uid()
+  );
 ```
 
-## Storage Limits
+The bucket will appear automatically in the storage sidebar for users whose policies grant them `SELECT` on it.
 
-Common file size limits in bytes:
+## Storage Limit Cheat-Sheet
 
-- **1 MB** = `1048576`
-- **2 MB** = `2097152`
-- **5 MB** = `5242880`
-- **10 MB** = `10485760`
-- **50 MB** = `52428800`
-- **100 MB** = `104857600`
+Useful constants when setting `maxSize`:
 
-Configure in your FILE column comment:
+| Size | Bytes |
+|------|-------|
+| 1 MB | `1048576` |
+| 2 MB | `2097152` |
+| 5 MB | `5242880` |
+| 10 MB | `10485760` |
+| 25 MB | `26214400` |
+| 50 MB | `52428800` |
+| 100 MB | `104857600` |
 
-```sql
-comment on column products.image is '{"accept":"image/*","maxSize":5242880}';
-```
+<Callout type="info">
+Supabase Storage also enforces a global `file_size_limit` per project. Make sure your `maxSize` is below the project limit, otherwise uploads will fail at the storage layer.
+</Callout>
 
 ## Next Steps
 
-- **[Data Types](/docs/guide/data-types)** - Learn about the FILE type
-- **[CRUD Operations](/docs/guide/crud-operations)** - Use storage in tables
-- **[Authorization](/docs/guide/authorization)** - Custom storage policies
+- **[Data Types](/docs/guide/resource/data-types)** — `FILE`, `FILE_OBJECT`, `AVATAR`, `RICH_TEXT`
+- **[Metadata](/docs/guide/resource/metadata#file-columns)** — Column-level configuration for file fields
+- **[Authorization](/docs/guide/authorization)** — How `schema.table:*` permissions gate the `uploads` bucket

@@ -1,123 +1,169 @@
 ---
 title: Audit Logs
-description: Track changes automatically using PostgreSQL triggers
+description: Track every change automatically using PostgreSQL triggers
 ---
+
+import { Callout } from 'fumadocs-ui/components/callout';
 
 ## Overview
 
-Supasheet provides built-in audit logging that automatically tracks all database changes. When enabled, it captures who made changes, what changed, and when.
+Supasheet ships a built-in audit-logging system that records every `INSERT`, `UPDATE`, and `DELETE` against any table you opt in. The trail is stored in `supasheet.audit_logs` and surfaced in two places:
+
+- **Core → Audit Logs** — A global, filterable view of all activity
+- **Resource detail → Audit tab** — Per-record history (requires the `schema.table:audit` permission)
+
+The schema is defined in `supabase/migrations/20250928062812_audit_logs.sql`.
 
 ## What Gets Tracked
 
-When you enable audit logging on a table, Supasheet automatically records:
+For every audited mutation, a row is appended to `supasheet.audit_logs` with:
 
-- **Operation** - INSERT, UPDATE, or DELETE
-- **Schema & Table** - Where the change occurred
-- **Record ID** - Which record was affected
-- **User Information** - Who made the change (`created_by`, `role`)
-- **User Type** - Whether it was a real user or system operation
-- **Old Data** - The data before the change (UPDATE/DELETE)
-- **New Data** - The data after the change (INSERT/UPDATE)
-- **Changed Fields** - List of fields that were modified (UPDATE only)
-- **Timestamp** - When the change occurred
-- **Metadata** - Additional context (trigger name, etc.)
-- **Errors** - Error tracking if something failed
+| Column | Meaning |
+|--------|---------|
+| `id` (uuid) | Audit entry id |
+| `created_at` (timestamptz) | When the change happened |
+| `operation` | `INSERT` / `UPDATE` / `DELETE` |
+| `schema_name`, `table_name` | Where the change happened |
+| `record_id` | The primary key of the affected row |
+| `created_by` (uuid) | The user who made the change (resolved from `auth.uid()`) |
+| `role` (`app_role`) | The user's role at the time of the change |
+| `user_type` | `'real_user'` or `'system'` (background / service-role writes) |
+| `old_data` (jsonb) | Snapshot before the change (for UPDATE / DELETE) |
+| `new_data` (jsonb) | Snapshot after the change (for INSERT / UPDATE) |
+| `changed_fields` (text[]) | Columns whose values differ (UPDATE only) |
+| `is_error`, `error_message`, `error_code` | Optional error context |
+| `metadata` (jsonb) | Extra context — open for your own use |
 
-## Enabling Audit Logging
+A set of indexes (`created_at`, `created_by`, `role`, `operation`, `schema_name + table_name`, `record_id`, partial on `is_error`, GIN on `metadata`) keeps queries fast even with large volumes.
 
-To enable audit logging on a table, attach the audit trigger:
+## Enabling Audit Logging on a Table
+
+Attach the built-in trigger function `supasheet.audit_trigger_function()` for the operations you care about:
 
 ```sql
--- Enable auditing for INSERT, UPDATE, DELETE
-CREATE TRIGGER audit_tasks_insert
-  AFTER INSERT ON public.tasks
-  FOR EACH ROW
-  EXECUTE FUNCTION supasheet.audit_trigger_function();
-
-CREATE TRIGGER audit_tasks_update
-  AFTER UPDATE ON public.tasks
-  FOR EACH ROW
-  EXECUTE FUNCTION supasheet.audit_trigger_function();
-
-CREATE TRIGGER audit_tasks_delete
-  BEFORE DELETE ON public.tasks
+CREATE TRIGGER audit_tasks
+  AFTER INSERT OR UPDATE OR DELETE
+  ON desk.tasks
   FOR EACH ROW
   EXECUTE FUNCTION supasheet.audit_trigger_function();
 ```
 
-That's it! All changes to the `tasks` table are now automatically logged in `supasheet.audit_logs`.
+The generic single-trigger form above is the recommended pattern (matches the example domains in `supabase/examples/`). You can also create three separate triggers if you only want a subset.
 
-## Viewing Audit Logs
+<Callout type="info">
+For `DELETE`, the trigger captures the row state in `old_data` automatically using the standard `OLD` record exposed to row-level triggers.
+</Callout>
 
-Audit logs are stored in the `supasheet.audit_logs` table. Users can view:
-- **Their own changes** - All audit logs they created
-- **All changes** - If they have the `x-admin` role
+## Granting Access
 
-### Example Queries
+Two permissions control who can see what:
+
+- `supasheet.audit_logs:select` — required for the global **Core → Audit Logs** page (seeded for `x-admin`)
+- `schema.table:audit` — required to see the **Audit** tab on a record's detail page
 
 ```sql
--- View all my changes
-SELECT * FROM supasheet.audit_logs
-WHERE created_by = auth.uid()
-ORDER BY created_at DESC;
+-- Allow regular users to see audit history for tasks
+ALTER TYPE supasheet.app_permission ADD VALUE 'desk.tasks:audit';
+INSERT INTO supasheet.role_permissions (role, permission) VALUES
+  ('user', 'desk.tasks:audit');
+```
 
--- View changes to a specific table
-SELECT * FROM supasheet.audit_logs
-WHERE schema_name = 'public'
-  AND table_name = 'tasks'
-ORDER BY created_at DESC;
+## Reading the Trail from SQL
 
--- View changes to a specific record
-SELECT * FROM supasheet.audit_logs
-WHERE table_name = 'tasks'
-  AND record_id = 'your-record-id'
-ORDER BY created_at DESC;
+Supasheet provides a helper `supasheet.get_audit_logs(p_schema, p_table, p_record_id)` that joins creator details:
 
--- See what fields changed
-SELECT
-  created_at,
-  operation,
-  changed_fields,
-  old_data,
-  new_data
+```sql
+SELECT * FROM supasheet.get_audit_logs('desk', 'tasks', 'a1b2…');
+```
+
+Direct queries work too:
+
+```sql
+-- Everything I changed today
+SELECT *
 FROM supasheet.audit_logs
-WHERE table_name = 'tasks'
-  AND operation = 'UPDATE'
+WHERE created_by = auth.uid()
+  AND created_at >= date_trunc('day', now())
 ORDER BY created_at DESC;
+
+-- Updates to a single record with the changed columns
+SELECT created_at, changed_fields, old_data, new_data
+FROM supasheet.audit_logs
+WHERE schema_name = 'desk'
+  AND table_name = 'tasks'
+  AND record_id = 'a1b2…'
+  AND operation = 'UPDATE'
+ORDER BY created_at;
+
+-- Errors that hit any audited table
+SELECT * FROM supasheet.audit_logs WHERE is_error;
 ```
+
+## Adding an Audit Tab to the UI
+
+To surface audit history on a record's detail page, list `audit` in the table's `tabs` metadata and ensure the user holds `schema.table:audit`:
+
+```sql
+COMMENT ON TABLE desk.tasks IS '{
+  "icon": "ListTodo",
+  "tabs": ["audit", "comment"]
+}';
+```
+
+## Per-Record History (Optional)
+
+If you want richer, table-specific history (revision numbers, business context), pair the audit trail with a domain history table and point Supasheet at it through `history` in the table metadata:
+
+```sql
+COMMENT ON TABLE desk.tasks IS '{
+  "history": {"table": "tasks_history"}
+}';
+```
+
+This is independent of `supasheet.audit_logs` — the audit log keeps the universal append-only trail, while the history table is for domain-specific rendering.
 
 ## Complete Example
 
 ```sql
--- Create your table
-CREATE TABLE products (
-  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+-- Table
+CREATE TABLE store.products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
-  price DECIMAL(10,2),
-  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  price NUMERIC(10, 2),
+  status product_status NOT NULL DEFAULT 'draft',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable audit logging
-CREATE TRIGGER audit_products_insert
-  AFTER INSERT ON products
+-- Audit trigger
+CREATE TRIGGER audit_products
+  AFTER INSERT OR UPDATE OR DELETE
+  ON store.products
   FOR EACH ROW
   EXECUTE FUNCTION supasheet.audit_trigger_function();
 
-CREATE TRIGGER audit_products_update
-  AFTER UPDATE ON products
-  FOR EACH ROW
-  EXECUTE FUNCTION supasheet.audit_trigger_function();
+-- Permissions
+ALTER TYPE supasheet.app_permission ADD VALUE 'store.products:select';
+ALTER TYPE supasheet.app_permission ADD VALUE 'store.products:insert';
+ALTER TYPE supasheet.app_permission ADD VALUE 'store.products:update';
+ALTER TYPE supasheet.app_permission ADD VALUE 'store.products:delete';
+ALTER TYPE supasheet.app_permission ADD VALUE 'store.products:audit';
 
-CREATE TRIGGER audit_products_delete
-  BEFORE DELETE ON products
-  FOR EACH ROW
-  EXECUTE FUNCTION supasheet.audit_trigger_function();
+INSERT INTO supasheet.role_permissions (role, permission) VALUES
+  ('user', 'store.products:select'),
+  ('user', 'store.products:insert'),
+  ('user', 'store.products:update'),
+  ('user', 'store.products:audit');
 
--- Now all changes are automatically tracked!
+-- Expose audit tab in the UI
+COMMENT ON TABLE store.products IS '{
+  "icon": "Package",
+  "tabs": ["audit"]
+}';
 ```
 
 ## Next Steps
 
-- **[Authorization](/docs/guide/authorization)** - Control who can view audit logs
-- **[Complete Example](/docs/guide/complete-example)** - See audit logging in action
-- **[CRUD Operations](/docs/guide/crud-operations)** - Tables being audited
+- **[Authorization](/docs/guide/authorization)** — How `:audit` slots into the permission model
+- **[Comments](/docs/guide/comments)** — Pair audit with discussions on each record
+- **[Notifications](/docs/guide/notifications)** — Notify users when audited events happen

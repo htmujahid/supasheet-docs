@@ -4,6 +4,7 @@ description: Build your first feature with Supasheet in 5 minutes
 ---
 
 import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Cards, Card } from 'fumadocs-ui/components/card';
 
 ## Build Your First Admin Interface
 
@@ -40,7 +41,7 @@ commit;
 
 -- Step 3: Create tasks table
 CREATE TABLE public.tasks (
-  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT,
   status task_status DEFAULT 'pending',
@@ -110,13 +111,15 @@ This applies your migration to the local database without resetting existing dat
 </Step>
 
 <Step>
-### Generate Types
+### Regenerate TypeScript Types
 
 ```bash
-npm run typegen
+npx supabase gen types typescript --local \
+  --schema public --schema supasheet \
+  > src/lib/database.types.ts
 ```
 
-This creates TypeScript types from your new schema.
+This refreshes `src/lib/database.types.ts` so the frontend knows about your new table.
 </Step>
 
 <Step>

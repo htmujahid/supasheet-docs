@@ -1,143 +1,142 @@
 ---
 title: Database Schema
-description: Understanding Supasheet's schema organization
+description: How Supasheet organises its schemas, the meta layer, and feature views
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-## Schema Organization
+## Schema Organisation
 
-Supasheet uses PostgreSQL schemas to organize different types of functionality. This separation makes it easy to understand what data is used for what purpose.
+Supasheet uses PostgreSQL schemas to separate concerns. You build your application in **your own schemas** (one per domain) and let Supasheet introspect them through its `supasheet` meta schema.
 
-## Core Schemas
+| Schema | Owned by | Purpose |
+|--------|----------|---------|
+| `supasheet` | Supasheet | Meta layer, RBAC, users, audit logs, comments, notifications, templates |
+| `public` | You | Default schema for general application tables |
+| `auth` | Supabase | Managed by Supabase Auth — do not modify |
+| `storage` | Supabase | Managed by Supabase Storage — do not modify |
+| `<your schemas>` | You | One schema per business domain (`desk`, `crm`, `hr`, `blog`, `store`, …) |
 
-### `public` Schema
+## Your Application Schemas
 
-The default schema for your application tables. All tables here automatically get CRUD interfaces in Supasheet:
+Create one schema per domain. The example seed files in `supabase/examples/` follow this pattern (`desk`, `crm`, `hr`, `finance`, `store`, `blog`, `inventory`, `manufacturing`, `procurement`, `quality`, `lms`, `hostel`).
 
 ```sql
-CREATE TABLE public.tasks (
-  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-  title TEXT NOT NULL,
-  status TEXT DEFAULT 'pending',
+CREATE SCHEMA IF NOT EXISTS desk;
 
+CREATE TABLE desk.tasks (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title       TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'pending',
   -- Always reference supasheet.users for user relationships
-  user_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
-
-  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  user_id     UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now()
 );
 ```
 
 <Callout type="warn">
-**Important**: Always use `supasheet.users(id)` for user relationships, not `auth.users(id)`. See [User Management](/docs/guide/user-management) for details.
+Always reference `supasheet.users(id)` instead of `auth.users(id)`. See [User Management](/docs/guide/user-management) for the reasoning.
 </Callout>
 
-### `supasheet` Schema
+## The `supasheet` Schema
 
-Contains Supasheet's internal tables and metadata:
+The internal schema that powers everything. Created by the migrations in `supabase/migrations/`.
 
-- `supasheet.users` - User accounts (auto-created on signup)
-- `supasheet.roles` - User roles (admin, user, etc.)
-- `supasheet.role_permissions` - Permission assignments
-- `supasheet.tables` - Metadata about your tables
-- `supasheet.columns` - Metadata about table columns
-- `supasheet.views` - Metadata about database views (including dashboards, charts, reports via JSON comments)
+| Table / View | Defined in | Purpose |
+|--------------|------------|---------|
+| `supasheet.users` | `20250523000814_users.sql` | User profiles synced with `auth.users` |
+| `supasheet.user_roles` | `20250523000822_roles.sql` | User ↔ role assignments |
+| `supasheet.role_permissions` | `20250523000822_roles.sql` | Role ↔ permission grants |
+| `supasheet.tables` | `00000000000000_meta.sql` | Cached metadata for every accessible table |
+| `supasheet.columns` | `00000000000000_meta.sql` | Cached metadata for every accessible column |
+| `supasheet.views` | `00000000000000_meta.sql` | Cached metadata for every accessible view |
+| `supasheet.materialized_views` | `00000000000000_meta.sql` | Cached metadata for materialised views |
+| `supasheet.audit_logs` | `20250928062812_audit_logs.sql` | Append-only audit trail |
+| `supasheet.notifications` | `20251006051303_notifications.sql` | Notification payloads |
+| `supasheet.user_notifications` | `20251006051303_notifications.sql` | Per-user fan-out + read state |
+| `supasheet.comments` | `20260514000001_comments.sql` | Per-record threaded comments |
 
-## Feature Views with JSON Metadata
+## Auto-Maintained Meta Layer
 
-Instead of separate schemas, Supasheet uses JSON comments to identify special view types:
+The migration `00000000000000_meta.sql` installs **event triggers** that keep the meta tables in sync as you run DDL:
 
-### Charts
+| Trigger | Fires on | Effect |
+|---------|----------|--------|
+| `table_creation_trigger` | `CREATE TABLE / VIEW / MATERIALIZED VIEW` | Adds metadata row |
+| `table_deletion_trigger` | `DROP TABLE / VIEW / MATERIALIZED VIEW` | Removes metadata |
+| `table_alteration_trigger` | `ALTER TABLE / VIEW / MATERIALIZED VIEW` | Refreshes column metadata |
+| `comment_trigger` | `COMMENT ON ...` | Updates the cached JSON comment |
+| `enum_alteration_trigger` | `ALTER TYPE ... ADD VALUE` | Refreshes enum values |
+| `schema_creation_trigger` / `schema_deletion_trigger` | schema DDL | Adds / removes whole schemas |
 
-Create views in `public` schema with chart metadata:
+Together with the permission-aware functions `supasheet.get_schemas()`, `get_tables()`, `get_views()`, `get_columns()`, and `get_related_tables()`, this is how the UI discovers what to render.
+
+You do **not** need to call `refresh materialized view` or insert into `supasheet.tables` after running migrations.
+
+## Feature Views via JSON Comments
+
+Dashboards, charts, reports, and templates are not separate tables — they are **views whose comment identifies them by `type`**. Supasheet ships discovery functions that filter `supasheet.views` for each type:
+
+| Type | Discovery function | Documented in |
+|------|--------------------|---------------|
+| `chart` | `supasheet.get_charts(p_schema)` | [Charts](/docs/guide/charts) |
+| `dashboard_widget` | `supasheet.get_widgets(p_schema)` | [Dashboards](/docs/guide/dashboards) |
+| `report` | `supasheet.get_reports(p_schema)` | [Reports](/docs/guide/reports) |
+| `template` | `supasheet.get_templates(p_schema)` | [Templates](/docs/guide/templates) |
+
+### Example
 
 ```sql
--- Example: Task status distribution (pie chart)
-CREATE VIEW public.task_status_pie AS
+-- A pie chart of task statuses
+CREATE VIEW desk.task_status_pie AS
 SELECT
-  status::text as label,
-  COUNT(*) as value
-FROM tasks
+  status::text AS label,
+  COUNT(*)::int AS value
+FROM desk.tasks
 GROUP BY status;
 
--- Add metadata comment
-COMMENT ON VIEW public.task_status_pie IS '{"type": "chart", "name": "Task Status Pie", "description": "Current task status breakdown", "chart_type": "pie"}';
+COMMENT ON VIEW desk.task_status_pie IS '{
+  "type": "chart",
+  "name": "Task Status",
+  "description": "Current task status breakdown",
+  "chart_type": "pie"
+}';
 
--- Grant permissions
-REVOKE ALL ON public.task_status_pie FROM authenticated, service_role;
-GRANT SELECT ON public.task_status_pie TO authenticated;
+REVOKE ALL ON desk.task_status_pie FROM authenticated, service_role;
+GRANT SELECT ON desk.task_status_pie TO authenticated;
 
--- Assign permissions to roles
-INSERT INTO supasheet.role_permissions (role, permission)
-VALUES ('user', 'public.task_status_pie:select');
+INSERT INTO supasheet.role_permissions (role, permission) VALUES
+  ('user', 'desk.task_status_pie:select');
 ```
 
-### Dashboard Widgets
+## Exposing Schemas via PostgREST
 
-Create views with dashboard widget metadata:
-
-```sql
--- Example: Active tasks card
-CREATE VIEW public.task_summary AS
-SELECT
-  COUNT(*) as value,
-  'list-todo' as icon,
-  'active tasks' as label
-FROM tasks
-WHERE status != 'completed';
-
--- Add metadata comment
-COMMENT ON VIEW public.task_summary IS '{"type": "dashboard_widget", "name": "Task Summary", "description": "Summary of active tasks", "widget_type": "card_1"}';
-
--- Grant permissions
-REVOKE ALL ON public.task_summary FROM authenticated, service_role;
-GRANT SELECT ON public.task_summary TO authenticated;
-```
-
-Dashboard views support different widget types: `card_1`, `card_2`, `card_3`, `card_4`, `table_1`, `table_2`.
-
-### Reports
-
-Define views with report metadata:
-
-```sql
--- Example: Task report with user details
-CREATE VIEW public.task_report AS
-SELECT
-  a.name as account_name,
-  t.*
-FROM tasks t
-JOIN supasheet.users a ON t.user_id = a.id;
-
--- Add metadata comment
-COMMENT ON VIEW public.task_report IS '{"type": "report", "name": "Task Summary", "description": "Summary of active tasks"}';
-
--- Grant permissions
-REVOKE ALL ON public.task_report FROM authenticated, service_role;
-GRANT SELECT ON public.task_report TO authenticated;
-```
-
-### Why Meta Tables?
-
-Supasheet maintains metadata about your database in these tables:
-- `supasheet.tables` - Information about all tables
-- `supasheet.columns` - Information about all columns
-- `supasheet.views` - Information about all views
-
-## Schema Configuration
-
-Schemas are exposed via PostgREST API in `/supabase/config.toml`:
+For Supasheet to query a schema through the publishable key, it must be exposed in `supabase/config.toml`:
 
 ```toml
 [api]
-schemas = ["public", "supasheet"]
+schemas = ["public", "supasheet", "desk", "crm", "hr"]
+extra_search_path = ["public", "extensions"]
 ```
 
-The `public` schema contains all your application tables and views (including those for dashboards, charts, and reports). The system identifies special view types through JSON comment metadata.
+After editing the config:
+
+```bash
+# Local
+npx supabase stop && npx supabase start
+
+# Cloud — set "Exposed schemas" in Project Settings → Data API
+```
+
+<Callout type="warn">
+`supasheet` **must** be exposed for the platform to work. Application schemas only need to be exposed once you start adding tables / views in them.
+</Callout>
 
 ## Next Steps
 
-- **[CRUD Operations](/docs/guide/crud-operations)** - Work with tables
-- **[Charts](/docs/guide/charts)** - Create visualizations
-- **[Dashboards](/docs/guide/dashboards)** - Build dashboards
-- **[Reports](/docs/guide/reports)** - Generate reports
+- **[Authorization](/docs/guide/authorization)** — Grant permissions per schema/table
+- **[Resource Basics](/docs/guide/resource/basic)** — Build CRUD on top of your tables
+- **[Charts](/docs/guide/charts)** — Build a chart from a view
+- **[Reports](/docs/guide/reports)** — Build a report from a view
+- **[Templates](/docs/guide/templates)** — Reuse preset data via templates

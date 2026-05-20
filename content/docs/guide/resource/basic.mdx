@@ -313,7 +313,7 @@ CREATE TABLE products (
 -- Orders
 CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  customer_id UUID REFERENCES auth.users(id),
+  customer_id UUID REFERENCES supasheet.users(id),
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'shipped', 'delivered')),
   total DECIMAL(10,2),
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -346,6 +346,6 @@ All three tables now have full CRUD interfaces!
 
 - **[Metadata](/docs/guide/resource/metadata)** - Configure icons, visibility, columns, and views
 - **[Query Configuration](/docs/guide/resource/query)** - Set default sorting and filters
-- **[Views](/docs/guide/resource/views)** - Multiple view types (Sheet, Kanban, Calendar, Gallery)
+- **[Views](/docs/guide/resource/views)** - Multiple view types (Sheet, Kanban, Calendar, Gallery, List, Tree)
 - **[Data Types](/docs/guide/resource/data-types)** - Use custom data types
 - **[Authorization](/docs/guide/authorization)** - Secure your tables with RLS

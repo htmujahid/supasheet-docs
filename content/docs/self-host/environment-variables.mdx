@@ -3,42 +3,60 @@ title: Environment Variables
 description: Configure Supasheet with environment variables
 ---
 
-## Development (.env)
+import { Callout } from 'fumadocs-ui/components/callout';
 
-For local development with Supabase running locally:
+## Required Variables
 
-```bash
-# Supabase (Local)
+Supasheet needs exactly two environment variables — your Supabase project URL and its publishable key.
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `VITE_SUPABASE_URL` | Yes | The base URL of your Supabase project |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Yes | The publishable (anon) key used by the Supabase client |
+
+Both variables must be prefixed with `VITE_` to be exposed to the Vite client bundle.
+
+## Development (`.env`)
+
+For local development against `npx supabase start`:
+
+```bash title=".env"
 VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
 ```
 
-The local publishable key above is the default used by `npx supabase start`. Run `npx supabase status` to confirm your local values.
+The default local publishable key matches the value printed by `npx supabase start`. Run `npx supabase status` if your local stack reports different values.
 
-## Production (.env)
+## Production (`.env`)
 
-```bash
-# Supabase (Get from supabase.com project settings)
+```bash title=".env.production"
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
 ```
+
+Most hosts (Vercel, Netlify, Cloudflare Pages, Render, Fly) expose env vars through their dashboard rather than a checked-in file — set them there for production builds.
 
 ## Getting Supabase Credentials
 
-1. Go to [supabase.com](https://supabase.com) and sign in
-2. Open your project
-3. Go to **Settings** → **API**
+1. Open [supabase.com](https://supabase.com) and sign in.
+2. Select your project.
+3. Go to **Project Settings → API**.
 4. Copy:
    - **Project URL** → `VITE_SUPABASE_URL`
-   - **Publishable key** → `VITE_SUPABASE_PUBLISHABLE_KEY`
+   - **Publishable key** (formerly *anon key*) → `VITE_SUPABASE_PUBLISHABLE_KEY`
 
-## Security
+<Callout type="info">
+Never put the **service role** key in a `VITE_*` variable. Service role belongs only inside Edge Functions (`supabase/functions/`), where it's read from `SUPABASE_SERVICE_ROLE_KEY` at runtime.
+</Callout>
 
-- All `VITE_*` variables are bundled into the client-side build and exposed in the browser, only put public-safe values here
-- The publishable key is designed to be public; Row Level Security policies enforce data access
-- Never commit `.env` files to git, add it to `.gitignore`
+## Notes
+
+- The Supabase publishable key is **public by design** — it's safe to commit, ship in the bundle, and share. Authorisation is enforced server-side by RLS policies, not by hiding this key.
+- All `VITE_*` values are inlined into the production JavaScript bundle, so anyone visiting your site can read them. That's fine for the URL and publishable key, but never for secrets.
+- The service role key is a different story — it bypasses RLS and must stay server-side. Use it only inside Edge Functions (`supabase/functions/`) via `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Next Steps
 
-- **[Deployment](/docs/self-host/deployment)** - Deploy to production
-- **[Production Checklist](/docs/self-host/production-checklist)** - Pre-launch checks
+- **[Deployment](/docs/self-host/deployment)** — Deploy the static bundle to production
+- **[Database Setup](/docs/self-host/database-setup)** — Apply migrations on Supabase
+- **[Production Checklist](/docs/self-host/production-checklist)** — Pre-launch sanity checks

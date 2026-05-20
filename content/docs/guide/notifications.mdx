@@ -1,0 +1,200 @@
+---
+title: Notifications
+description: In-app notifications with fan-out, per-user read state, and trigger-driven delivery
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Supasheet ships a complete in-app notifications system. It's optimised for **fan-out** — one event creates a single notification row and N per-user delivery rows — so you can deliver a single broadcast to every user with a role, every user with a specific permission, or any custom user list, without duplicating payloads.
+
+Defined in `supabase/migrations/20251006051303_notifications.sql`.
+
+## What the User Sees
+
+Once you start creating notifications, every signed-in user gets:
+
+- A **bell badge** in the header showing the unread count
+- A **dropdown** listing recent notifications (title, body, link, age)
+- **Mark all as read** in the dropdown header
+- A click on any notification routes them to the `link` you supplied (e.g. `/desk/resource/tasks/detail/<id>`)
+
+## Data Model
+
+### `supasheet.notifications`
+
+One row per event — shared across all recipients.
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `id` | `uuid` | Notification id |
+| `type` | `text` | Application-defined type (e.g. `"role_granted"`, `"task_comment"`) |
+| `title` | `text` | Headline shown in the dropdown |
+| `body` | `text` | Optional secondary text |
+| `link` | `text` | In-app URL the recipient is taken to |
+| `metadata` | `jsonb` | Free-form payload (record ids, context, …) — indexed via GIN |
+| `created_by` | `uuid` | Who triggered it (resolves to `auth.uid()` when called from a session) |
+| `created_at` | `timestamptz` | When it happened |
+
+### `supasheet.user_notifications`
+
+One row per `(notification, recipient)` — holds the per-user delivery state.
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `id` | `uuid` | Delivery id |
+| `notification_id` | `uuid` | FK → `notifications.id` |
+| `user_id` | `uuid` | Recipient — FK → `supasheet.users(id)` |
+| `read_at` | `timestamptz?` | Set when the user marks the notification as read |
+| `archived_at` | `timestamptz?` | Set when the user archives it |
+| `created_at` | `timestamptz` | When the delivery row was created |
+
+Both tables carry `"display": "none"` in their comment so they don't appear in the resource sidebar — interactions go through the helper functions below.
+
+## Creating a Notification
+
+Use `supasheet.create_notification(...)` — it inserts both the shared payload and the per-user fan-out rows in one call.
+
+```sql
+SELECT supasheet.create_notification(
+  p_type     => 'task_assigned',
+  p_title    => 'New task assigned',
+  p_body     => 'Ship the Q3 release notes by Friday.',
+  p_user_ids => ARRAY['…assignee-uuid…']::uuid[],
+  p_metadata => jsonb_build_object('task_id', 'a1b2…'),
+  p_link     => '/desk/resource/tasks/detail/a1b2…'
+);
+```
+
+Returns the new notification id, or `NULL` when `p_user_ids` is empty.
+
+### Resolving Recipients
+
+Two helper functions return user lists you can pass straight into `p_user_ids`:
+
+```sql
+-- Everyone with a specific role
+SELECT supasheet.get_users_with_role('admin');
+
+-- Everyone whose role grants a specific permission
+SELECT supasheet.get_users_with_permission('desk.tasks:update');
+```
+
+Pattern of use:
+
+```sql
+PERFORM supasheet.create_notification(
+  'release_freeze',
+  'Release freeze starts Friday',
+  'No non-critical merges until Monday.',
+  supasheet.get_users_with_role('admin')
+);
+```
+
+These helpers mirror your authorisation rules — only users actually granted the role or permission receive the notification.
+
+## Triggering from Domain Tables
+
+The most useful pattern is to attach a trigger that creates notifications when something happens in your domain. The migration ships a working example: `trg_user_roles_notify` notifies a user the first time they're granted a role.
+
+```sql
+CREATE OR REPLACE FUNCTION supasheet.trg_user_roles_notify ()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  PERFORM supasheet.create_notification(
+    'role_granted',
+    'Role assigned',
+    'You have been granted the "' || NEW.role::text || '" role.',
+    ARRAY[NEW.user_id],
+    jsonb_build_object('role', NEW.role, 'user_id', NEW.user_id)
+  );
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER user_roles_notify
+  AFTER INSERT ON supasheet.user_roles
+  FOR EACH ROW EXECUTE FUNCTION supasheet.trg_user_roles_notify();
+```
+
+### Example: Notify Assignee on Task Insert
+
+```sql
+CREATE OR REPLACE FUNCTION desk.notify_task_assigned ()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF NEW.assignee_id IS NOT NULL THEN
+    PERFORM supasheet.create_notification(
+      p_type     => 'task_assigned',
+      p_title    => 'New task: ' || NEW.title,
+      p_body     => left(coalesce(NEW.description, ''), 280),
+      p_user_ids => ARRAY[NEW.assignee_id],
+      p_metadata => jsonb_build_object('task_id', NEW.id, 'priority', NEW.priority),
+      p_link     => '/desk/resource/tasks/' || NEW.id::text || '/detail'
+    );
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER trg_notify_task_assigned
+  AFTER INSERT ON desk.tasks
+  FOR EACH ROW EXECUTE FUNCTION desk.notify_task_assigned();
+```
+
+## Convenience Helpers Used by the UI
+
+| Function | Purpose |
+|----------|---------|
+| `supasheet.unread_notifications_count()` | Powers the bell badge — fast scalar count |
+| `supasheet.mark_all_notifications_read()` | Marks every unread delivery for the current user as read, returns the row count |
+
+Both run as `security definer` and key off `auth.uid()`.
+
+## Reading from SQL
+
+Notifications and deliveries are subject to RLS — users only see their own deliveries. The UI calls into the standard PostgREST endpoints:
+
+```sql
+-- Recent deliveries for the current user, joined to the payload
+SELECT un.id, un.read_at, n.title, n.body, n.link, n.created_at
+FROM   supasheet.user_notifications un
+JOIN   supasheet.notifications      n ON n.id = un.notification_id
+WHERE  un.user_id = auth.uid()
+  AND  un.archived_at IS NULL
+ORDER  BY n.created_at DESC
+LIMIT  50;
+```
+
+## Permissions
+
+| Permission | Used for |
+|------------|----------|
+| `supasheet.notifications:select` | Allows the **Core → Notifications** admin view |
+| `supasheet.user_notifications:select` | Companion permission for admin views |
+
+End-users do **not** need either permission — RLS lets them see their own deliveries through the user-scoped policies. Grant the permissions above only to admin roles that need to audit the full notification stream.
+
+```sql
+-- Grant admin visibility into all notifications (already seeded for x-admin)
+INSERT INTO supasheet.role_permissions (role, permission) VALUES
+  ('admin', 'supasheet.notifications:select'),
+  ('admin', 'supasheet.user_notifications:select');
+```
+
+## Best Practices
+
+- **Pick stable `type` values.** They make it easy to filter the audit and UI groupings.
+- **Always set `link`.** A click should take the user somewhere actionable.
+- **Use `metadata` for IDs**, not free-form strings. You'll thank yourself when you build digest emails or analytics later.
+- **De-duplicate at the trigger.** If you fire on `AFTER UPDATE`, guard the body with `IF NEW.col IS DISTINCT FROM OLD.col` so you don't spam users.
+- **Resolve recipients with the helpers.** They follow the same RBAC source of truth as the rest of your app.
+
+<Callout type="info">
+Notifications are intentionally synchronous — `create_notification` runs in the same transaction as the trigger that called it. Keep work in the trigger small; for heavy enrichment, write to a queue table and process it out of band.
+</Callout>
+
+## Next Steps
+
+- **[Comments](/docs/guide/comments)** — Pair comments with comment-driven notifications
+- **[Audit Logs](/docs/guide/audit-logs)** — Notifications + audit logs gives you a clean event trail
+- **[Authorization](/docs/guide/authorization)** — Resolving recipients with `get_users_with_role` / `_with_permission`

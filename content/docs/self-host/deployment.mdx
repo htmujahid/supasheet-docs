@@ -27,12 +27,14 @@ Before deploying, you need:
 
 ## Environment Variables
 
-Required variables for deployment:
+Required for every deployment:
 
 ```bash
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
 ```
+
+See **[Environment Variables](/docs/self-host/environment-variables)** for details.
 
 ## Build
 
@@ -88,11 +90,18 @@ Serve the static build with nginx:
 
 **Dockerfile:**
 ```dockerfile
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+
+# Build-time env (Vite inlines VITE_* at build time)
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
+
 RUN npm run build
 
 FROM nginx:alpine
@@ -122,8 +131,9 @@ docker run -p 80:80 supasheet
 ### VPS (Ubuntu/Debian)
 
 ```bash
-# Install dependencies
-sudo apt update && sudo apt install -y nodejs npm nginx
+# Install dependencies (use NodeSource for Node.js 20+)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt update && sudo apt install -y nodejs nginx
 
 # Clone and build
 git clone https://github.com/htmujahid/supasheet.git

@@ -42,32 +42,42 @@ description: Essential checks before going live
   - Backup retention configured
   - Restore procedure tested
 
+## Database
+
+- [ ] **`supasheet` schema exposed** via PostgREST (`[api].schemas` includes `supasheet` and every domain schema you use)
+- [ ] **Permissions seeded** for every table, view, chart, dashboard, report, and template
+- [ ] At least one user holds the **`x-admin`** role
+- [ ] **Audit triggers** attached to tables you want to track
+- [ ] **`:audit` / `:comment` permissions** granted where the audit / comment tabs should be visible
+
 ## Application
 
 - [ ] **Features Working**
-  - CRUD operations functional
-  - File uploads working
-  - Charts/dashboards loading
-  - Reports generating correctly
+  - CRUD operations functional across every view type (Sheet, Kanban, Calendar, Gallery, List, Tree)
+  - File uploads working (`FILE`, `FILE_OBJECT`, `AVATAR`)
+  - Charts, dashboards, reports load
+  - Templates apply and create the expected rows
+  - Comments post and load with the right permissions
+  - Notifications bell updates and `mark all read` works
+  - SQL editor only accepts read-only queries
 
 - [ ] **Responsive Design**
-  - Mobile tested
-  - Tablet tested
-  - Desktop tested
+  - Mobile, tablet, and desktop tested
 
 - [ ] **Performance**
   - Page load times acceptable
-  - Images optimized
-  - No console errors
+  - Images optimised, no console errors
+  - Indexes on frequently filtered columns
 
 ## Testing
 
-- [ ] **Core Features**
-  - Sign up flow works
-  - Login works
-  - Password reset works
-  - CRUD operations tested
-  - File uploads working
+- [ ] **Authentication flows**
+  - Sign up, sign in, password reset, MFA enrol/verify
+  - OAuth identities link/unlink
+- [ ] **Admin flows**
+  - Create / invite / update / delete users via Edge Functions
+  - Assign / revoke roles
+  - Permission matrix updates flow into the UI
 
 ## Launch
 

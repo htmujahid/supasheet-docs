@@ -5,29 +5,50 @@ description: System requirements for self-hosting Supasheet
 
 ## Required Software
 
-### Node.js 18+
+### Node.js 20+ (recommended) — 18 minimum
 
-Supasheet requires Node.js version 18 or higher.
+Vite 7 and TanStack Router require a current Node release. Node 20 LTS is the recommended runtime.
 
 ```bash
-# Check version
-node --version  # Should be v18.0.0 or higher
+node --version   # Should print v20.x.x or higher (v18.0+ is the floor)
+```
 
-# Install Node.js from nodejs.org if needed
+Install via [nodejs.org](https://nodejs.org), `nvm`, `fnm`, or your distribution's package manager.
+
+### Supabase CLI
+
+Used to run a local stack, apply migrations, and generate types.
+
+```bash
+npm install -g supabase   # or: brew install supabase/tap/supabase
+supabase --version
 ```
 
 ### Docker
 
-Docker is required for running Supabase locally.
+Only required if you want to run Supabase locally (`npx supabase start`). Skip if you'll connect to Supabase Cloud directly.
 
 ```bash
-# Check Docker installation
 docker --version
-
-# Download from docker.com if needed
 ```
+
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) on macOS/Windows, or Docker Engine on Linux.
+
+### Git
+
+To clone the repo:
+
+```bash
+git --version
+```
+
+## Required Accounts
+
+- **Supabase account** — Sign up at [supabase.com](https://supabase.com) (free tier is enough to get started)
+- **A hosting provider** for the static SPA — Vercel, Netlify, Cloudflare Pages, Render, your own VPS, etc.
 
 ## Next Steps
 
-- **[Deployment](/docs/self-host/deployment)** - Deploy Supasheet
-- **[Environment Variables](/docs/self-host/environment-variables)** - Configure settings
+- **[Environment Variables](/docs/self-host/environment-variables)** — Configure the app
+- **[Database Setup](/docs/self-host/database-setup)** — Apply migrations and expose the `supasheet` schema
+- **[Deployment](/docs/self-host/deployment)** — Build and deploy

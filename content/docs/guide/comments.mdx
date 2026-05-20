@@ -1,0 +1,154 @@
+---
+title: Comments
+description: Permission-gated comments on any record, from any table
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Supasheet ships a generic comments system — any record in any table can have a comment thread without you adding new columns or migrations. Comments are stored centrally in `supasheet.comments` and gated by a dedicated permission, so you can decide on a per-table basis who can discuss what.
+
+The schema is defined in `supabase/migrations/20260514000001_comments.sql`.
+
+## The `supasheet.comments` Table
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `id` | `uuid` | Comment id |
+| `created_at` / `updated_at` | `timestamptz` | Audit timestamps |
+| `schema_name` | `text` | Schema of the record being commented on |
+| `table_name` | `text` | Table of the record being commented on |
+| `record_id` | `text` | Primary key of the record (stored as text for flexibility) |
+| `content` | `text` | The comment body |
+| `created_by` | `uuid` | Author — references `supasheet.users(id)` |
+
+Indexes on `(schema_name, table_name, record_id)`, `created_by`, and `created_at` keep listings fast.
+
+## The `:comment` Permission
+
+For each table you want to enable comments on, add a `comment` permission:
+
+```sql
+ALTER TYPE supasheet.app_permission
+  ADD VALUE IF NOT EXISTS 'desk.tasks:comment';
+
+INSERT INTO supasheet.role_permissions (role, permission) VALUES
+  ('user',    'desk.tasks:comment'),
+  ('x-admin', 'desk.tasks:comment');
+```
+
+This permission controls **two things**:
+
+1. **Who can read comments on the table** — Supasheet's helper function `supasheet.get_comments()` only returns rows for users holding the matching permission.
+2. **Who can post comments** — the table's RLS `INSERT` policy requires the permission as well as the author matching `auth.uid()`.
+
+`UPDATE` and `DELETE` are always limited to the original author.
+
+## Showing the Comment Tab in the UI
+
+Add `comment` to the `tabs` array in the resource's metadata:
+
+```sql
+COMMENT ON TABLE desk.tasks IS '{
+  "icon": "ListTodo",
+  "tabs": ["audit", "comment"]
+}';
+```
+
+Users with `desk.tasks:comment` will see a **Comments** tab on each task detail page where they can browse the thread, post new comments, and edit / delete their own.
+
+## Reading from SQL
+
+Use `supasheet.get_comments(schema, table, record_id)` to fetch a thread with author details:
+
+```sql
+SELECT *
+FROM supasheet.get_comments('desk', 'tasks', 'a1b2c3…');
+```
+
+The function returns each comment joined to author info (`name`, `email`, `picture_url`). Like all Supasheet meta helpers, it runs with `security definer` but enforces the `:comment` permission internally — there is no way to read a thread you cannot already access.
+
+To check direct table queries:
+
+```sql
+-- Comments authored by the current user (always visible to themselves)
+SELECT * FROM supasheet.comments
+WHERE created_by = auth.uid();
+
+-- Comments on a specific record — requires the :comment permission via the helper
+SELECT * FROM supasheet.get_comments('desk', 'tasks', 'a1b2c3…');
+```
+
+<Callout type="info">
+The base table's policies allow users to read **their own** comments unconditionally; the helper function adds permission-aware visibility to the rest of the thread. Always read threads through the helper unless you have a specific need to bypass it.
+</Callout>
+
+## Posting Comments
+
+The `INSERT` policy enforces two checks:
+
+1. `created_by = auth.uid()` — you can only post as yourself
+2. The current user holds `schema.table:comment`
+
+```sql
+INSERT INTO supasheet.comments
+  (schema_name, table_name, record_id, content, created_by)
+VALUES
+  ('desk', 'tasks', 'a1b2c3…', 'I picked this up — ETA Friday.', auth.uid());
+```
+
+In the UI, this happens automatically when a user submits the comment form on the resource detail page.
+
+## Editing and Deleting
+
+Authors can edit and delete their own comments. Admins can be granted the same via standard table permissions — but typically comments are immutable history, so most teams leave the defaults as-is.
+
+## Combining with Notifications
+
+A natural extension is to notify subscribers when someone comments. Add an `AFTER INSERT` trigger on `supasheet.comments` that resolves "interested users" (typically the record's assignee / creator) and calls `supasheet.create_notification(...)`:
+
+```sql
+CREATE OR REPLACE FUNCTION desk.notify_task_comment ()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE
+  v_task_owner uuid;
+BEGIN
+  IF NEW.schema_name = 'desk' AND NEW.table_name = 'tasks' THEN
+    SELECT assignee_id INTO v_task_owner
+    FROM desk.tasks WHERE id::text = NEW.record_id;
+
+    IF v_task_owner IS NOT NULL AND v_task_owner <> NEW.created_by THEN
+      PERFORM supasheet.create_notification(
+        p_type    => 'task_comment',
+        p_title   => 'New comment on your task',
+        p_body    => left(NEW.content, 280),
+        p_user_ids => ARRAY[v_task_owner],
+        p_link    => format('/desk/resource/tasks/%s/comment', NEW.record_id)
+      );
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER trg_notify_task_comment
+  AFTER INSERT ON supasheet.comments
+  FOR EACH ROW EXECUTE FUNCTION desk.notify_task_comment();
+```
+
+See **[Notifications](/docs/guide/notifications)** for the full API.
+
+## Permissions Cheatsheet
+
+| Goal | Required permission |
+|------|---------------------|
+| See the **Comments** tab on a record | `<schema>.<table>:comment` |
+| Post a comment on a record | `<schema>.<table>:comment` |
+| Edit / delete your own comment | None beyond above |
+| Edit / delete someone else's comment | Custom — extend the default policies |
+
+## Next Steps
+
+- **[Notifications](/docs/guide/notifications)** — Notify users when new comments land
+- **[Audit Logs](/docs/guide/audit-logs)** — Pair comments with a full change history
+- **[Authorization](/docs/guide/authorization)** — Grant `:comment` per role

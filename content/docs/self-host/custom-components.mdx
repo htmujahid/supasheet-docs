@@ -3,6 +3,15 @@ title: Custom Components
 description: Extend the UI when auto-generated interfaces aren't enough
 ---
 
+## Imports & Path Aliases
+
+Supasheet's `tsconfig.json` configures both `#/*` and `@/*` as aliases for `./src/*`. The codebase consistently uses `#/...` — match that convention in your custom components so you don't fight ESLint.
+
+```ts
+import { supabase } from "#/lib/supabase/client"
+import { Button }   from "#/components/ui/button"
+```
+
 ## When to Use Custom Components
 
 While Supasheet auto-generates most UI, you may need custom components for:
@@ -23,7 +32,7 @@ Supasheet uses TanStack Router with file-based routing. Add a new file under `sr
 // src/routes/custom-feature/index.tsx
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '#/lib/supabase/client';
 
 export const Route = createFileRoute('/custom-feature/')({
   component: CustomFeaturePage,
@@ -55,7 +64,7 @@ function CustomFeaturePage() {
 
 ```tsx
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '#/lib/supabase/client';
 
 export function DeleteButton({ id }: { id: string }) {
   const queryClient = useQueryClient();
@@ -84,7 +93,7 @@ export function DeleteButton({ id }: { id: string }) {
 
 ```tsx
 import { useForm } from '@tanstack/react-form';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '#/lib/supabase/client';
 
 export function CustomOrderForm() {
   const form = useForm({
@@ -217,8 +226,8 @@ export function MultiStepForm() {
 ### Using TanStack Table
 
 ```tsx
-import { useDataTable } from '@/components/data-table/hooks/use-data-table';
-import { DataTable } from '@/components/data-table/components/data-table';
+import { useDataTable } from '#/components/data-table/hooks/use-data-table';
+import { DataTable } from '#/components/data-table/components/data-table';
 
 export function CustomDataTable({ data }: { data: any[] }) {
   const table = useDataTable({
@@ -259,7 +268,7 @@ export function CustomDataTable({ data }: { data: any[] }) {
 ```tsx
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '#/lib/supabase/client';
 
 export function RevenueChart() {
   const { data } = useQuery({
@@ -303,9 +312,9 @@ export function StyledCard({ title, children }: { title: string; children: React
 ### Using shadcn Components
 
 ```tsx
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Button } from '#/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '#/components/ui/card';
+import { Input } from '#/components/ui/input';
 
 export function ShippingForm() {
   return (

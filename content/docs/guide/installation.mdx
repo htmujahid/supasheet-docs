@@ -67,15 +67,18 @@ This will start Supabase on `http://127.0.0.1:54321` and provide you with:
 <Step>
 ### Configure Environment Variables
 
-Create a `.env` file in the root directory:
+Copy `.env.example` to `.env` in the root directory:
 
 ```bash
-# Supabase Configuration
+cp .env.example .env
+```
+
+```bash title=".env"
 VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ```
 
-Replace the Supabase values with your actual credentials.
+Replace the values with your actual Supabase credentials.
 </Step>
 
 <Step>
@@ -140,11 +143,15 @@ Without exposing the `supasheet` schema, Supasheet won't be able to access authe
 <Step>
 ### Generate TypeScript Types
 
+Regenerate `src/lib/database.types.ts` from your live database whenever the schema changes:
+
 ```bash
-npm run typegen
+npx supabase gen types typescript --local \
+  --schema public --schema supasheet \
+  > src/lib/database.types.ts
 ```
 
-This generates type definitions from your database schema.
+For a cloud project, swap `--local` for `--project-id <your-project-id>` and add any additional schemas you've exposed (e.g. `--schema crm --schema hr`).
 </Step>
 
 <Step>
@@ -166,17 +173,22 @@ You should see the Supasheet sign-in page. Create an account to get started!
 
 ```bash
 # Development
-npm run dev              # Start dev server
+npm run dev              # Start dev server on port 3000
 npm run build            # Build for production
 npm run preview          # Preview production build locally
-npm run typecheck        # Type checking
-npm run lint             # Run linter
+npm run typecheck        # Type-check the project
+npm run lint             # Run ESLint
+npm run format           # Check formatting
+npm run check            # Auto-fix formatting + lint
+npm run test             # Run Vitest
 
 # Supabase
 npx supabase start       # Start local instance
 npx supabase stop        # Stop local instance
-npx supabase db reset    # Reset database
-npm run typegen          # Generate types
+npx supabase db reset    # Reset database & re-apply migrations
+npx supabase gen types typescript --local \
+  --schema public --schema supasheet \
+  > src/lib/database.types.ts  # Regenerate database types
 ```
 
 ## Next Steps

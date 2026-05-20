@@ -101,15 +101,17 @@ CREATE POLICY "Users view own orders"
   TO authenticated
   USING (user_id = auth.uid());
 
--- Policy: Admins can see all orders
+-- Policy: x-admins can see all orders
 CREATE POLICY "Admins view all orders"
   ON orders
   FOR SELECT
   TO authenticated
   USING (
-    auth.jwt() ->> 'role' = 'admin'
+    supasheet.has_role('x-admin')
   );
 ```
+
+Use the Supasheet helpers `supasheet.has_role(role)` and `supasheet.has_permission(permission)` in policies — they check `supasheet.user_roles` and `supasheet.role_permissions` for the current `auth.uid()`. Avoid hand-rolling `auth.jwt() ->> 'role'` style checks: roles live in tables, not the JWT.
 
 ### 4. PostgREST Integration
 
@@ -125,16 +127,18 @@ All tables and views with proper permissions are automatically exposed via Supab
 
 ### 5. Type Safety
 
-After schema changes, run:
+After schema changes, regenerate the database types:
 
 ```bash
-npm run typegen
+npx supabase gen types typescript --local \
+  --schema public --schema supasheet \
+  > src/lib/database.types.ts
 ```
 
 This generates TypeScript types ensuring type safety across your entire stack:
 
 ```typescript
-import { Database } from '@/lib/database.types';
+import { Database } from '#/lib/database.types';
 
 type Product = Database['public']['Tables']['products']['Row'];
 ```
@@ -234,7 +238,7 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Customers see own orders"
   ON orders FOR SELECT
-  USING (customer_id = auth.uid() OR auth.jwt() ->> 'role' = 'admin');
+  USING (customer_id = auth.uid() OR supasheet.has_role('x-admin'));
 
 -- Dashboard widget view
 CREATE VIEW public.order_stats AS

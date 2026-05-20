@@ -4,6 +4,7 @@ description: Initialize and configure your PostgreSQL database
 ---
 
 import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 ## Overview
 
@@ -79,14 +80,19 @@ Applies all local migrations to cloud database.
 
 ## What Gets Created
 
-The migrations automatically create:
+The migrations in `supabase/migrations/` build the complete platform layer:
 
-- **Schemas**: `supasheet`, `public`
-- **Core Tables**: accounts, roles, permissions, meta tables
-- **Feature Tables**: dashboards, charts, reports, audit logs
-- **Storage Buckets**: public, personal
-- **Functions**: Permission checks, audit triggers, meta generators
-- **RLS Policies**: Row-level security on all tables
+- **Schemas**: `supasheet` (Supasheet's meta + RBAC + audit/notifications/comments), plus `public` (yours to use)
+- **Meta layer**: `supasheet.tables`, `columns`, `views`, `materialized_views` (with event triggers that auto-sync on DDL)
+- **Users**: `supasheet.users` with triggers to mirror `auth.users`
+- **RBAC**: `supasheet.user_roles`, `role_permissions`, plus `app_role` and `app_permission` enums and helpers `has_role()` / `has_permission()`
+- **Audit log**: `supasheet.audit_logs` and `audit_trigger_function()`
+- **Notifications**: `supasheet.notifications` + `user_notifications` + `create_notification()` / resolver helpers
+- **Comments**: `supasheet.comments` and `get_comments()`
+- **Templates**: `get_templates()` and `apply_template()`
+- **Custom types**: `FILE_OBJECT`, `FILE`, `EMAIL`, `TEL`, `RATING`, `PERCENTAGE`, `URL`, `DURATION`, `COLOR`, `AVATAR`, `RICH_TEXT`
+- **Storage buckets**: `public`, `personal`, `uploads`, `account_image` with RLS policies
+- **Discovery functions**: `get_schemas()`, `get_tables()`, `get_views()`, `get_columns()`, `get_charts()`, `get_widgets()`, `get_reports()`, `get_templates()`
 
 ## Schema Exposure (Required)
 
@@ -143,9 +149,33 @@ Create new migrations for your application tables:
 npx supabase migration new add_products_table
 ```
 
-See [Quickstart](/docs/guide/quickstart) for complete examples.
+Each migration that adds tables typically does five things — add permissions to the `app_permission` enum, create the table, enable RLS + policies, grant the new permissions to roles, and (optionally) attach the audit trigger:
+
+```sql
+BEGIN;
+ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'store.products:select';
+ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'store.products:insert';
+ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'store.products:update';
+ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'store.products:delete';
+COMMIT;
+
+CREATE TABLE store.products (...);
+ALTER TABLE store.products ENABLE ROW LEVEL SECURITY;
+-- ... policies, grants, role assignments, audit trigger ...
+```
+
+After running migrations, regenerate types:
+
+```bash
+npx supabase gen types typescript --local \
+  --schema public --schema supasheet --schema store \
+  > src/lib/database.types.ts
+```
+
+See **[Quickstart](/docs/guide/quickstart)** and **[Complete Example](/docs/guide/complete-example)** for full templates, and **[Examples in the repo](https://github.com/htmujahid/supasheet/tree/main/supabase/examples)** for 12 reference domains.
 
 ## Next Steps
 
-- **[Deployment](/docs/self-host/deployment)** - Deploy your application
-- **[Environment Variables](/docs/self-host/environment-variables)** - Configure settings
+- **[Environment Variables](/docs/self-host/environment-variables)** — Configure the SPA
+- **[Deployment](/docs/self-host/deployment)** — Build & deploy
+- **[Production Checklist](/docs/self-host/production-checklist)** — Pre-launch sanity checks

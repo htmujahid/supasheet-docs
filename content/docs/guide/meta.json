@@ -18,6 +18,9 @@
     "dashboards",
     "charts",
     "reports",
+    "templates",
+    "comments",
+    "notifications",
     "audit-logs",
     "storage",
     "sql-editor"
