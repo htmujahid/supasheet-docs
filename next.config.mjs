@@ -8,8 +8,8 @@ const config = {
   async redirects() {
     return [
       {
-        source: '/docs',
-        destination: '/docs/guide',
+        source: '/',
+        destination: '/guide',
         permanent: true,
       },
     ];

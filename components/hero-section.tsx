@@ -41,7 +41,7 @@ export function HeroSection() {
                 Try the live demo
               </button>
             </Link>
-            <Link href="/docs">
+            <Link href="/guide">
               <button className={buttonVariants({ variant: "outline" }) + " h-11 px-6 gap-2 w-full sm:w-auto rounded-2xl"}>
                 <BookOpen className="h-5 w-5" />
                 Read the docs
