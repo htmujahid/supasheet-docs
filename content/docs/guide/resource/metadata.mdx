@@ -22,19 +22,25 @@ type TableMetadata = {
   name?: string
   description?: string
   icon?: string
-  single?: boolean
-  inlineForm?: boolean
+  singleton?: boolean
+  inline_form?: boolean
   query?: {
     sort?:   { id: string; desc: boolean }[]
     filter?: { id: string; value: string | string[]; variant: string; operator: string }[]
     join?:   { table: string; on: string; columns: string[] }[]
     select?: string[]
   }
-  primaryItem?: string
-  items?: MetaViewItem[]            // Kanban | Calendar | Gallery | List | Tree
-  filterTemplates?: FilterTemplate[]
-  sections?: FieldSection[]
-  metadataColumns?: string[]
+  primary_view?: string
+  views?: ViewLayout[]              // Kanban | Calendar | Gallery | List | Tree
+  filter_presets?: FilterPreset[]
+  fields?: {
+    sections?: FieldSection[]
+    metadata?: string[]
+    quick_create?: string[]
+    duplicated?: string[]
+    behavior?: FieldBehavior[]
+    lookups?: LookupConfig[]
+  }
   tabs?: string[]
   history?: { table: string }
 }
@@ -49,7 +55,7 @@ Controls whether the resource appears in the sidebar.
 | Value | Behaviour |
 |-------|-----------|
 | `"block"` (default) | Listed in the schema's resource sidebar |
-| `"none"` | Hidden from the sidebar — still reachable by direct URL or as a child via `inlineForm` |
+| `"none"` | Hidden from the sidebar — still reachable by direct URL or as a child via `inline_form` |
 
 ```sql
 COMMENT ON TABLE supasheet.notifications IS '{"display": "none"}';
@@ -82,7 +88,7 @@ COMMENT ON TABLE hr.employees IS '{"icon": "Users"}';
 
 ---
 
-## `single`
+## `singleton`
 
 Marks the table as a singleton — the resource opens directly into the single record instead of a list. Perfect for settings tables.
 
@@ -90,13 +96,13 @@ Marks the table as a singleton — the resource opens directly into the single r
 COMMENT ON TABLE blog.blog_settings IS '{
   "icon": "BookOpen",
   "name": "Blog Settings",
-  "single": true
+  "singleton": true
 }';
 ```
 
 ---
 
-## `inlineForm`
+## `inline_form`
 
 When `true`, the table renders as an editable section on its parent record's detail page instead of a top-level resource. Combine with `"display": "none"` to hide the table from the schema sidebar.
 
@@ -104,7 +110,7 @@ When `true`, the table renders as an editable section on its parent record's det
 COMMENT ON TABLE store.order_items IS '{
   "icon": "Receipt",
   "display": "none",
-  "inlineForm": true
+  "inline_form": true
 }';
 ```
 
@@ -129,27 +135,27 @@ COMMENT ON TABLE desk.tasks IS '{
 
 ---
 
-## `items` and `primaryItem`
+## `views` and `primary_view`
 
-`items` declares the alternate views (Kanban, Calendar, Gallery, List, Tree). `primaryItem` is the `id` of the view to load by default. See **[Views](/docs/guide/resource/views)** for the per-view configuration reference.
+`views` declares the alternate views (Kanban, Calendar, Gallery, List, Tree). `primary_view` is the `id` of the view to load by default. See **[Views](/docs/guide/resource/views)** for the per-view configuration reference.
 
 ```sql
 COMMENT ON TABLE desk.projects IS '{
-  "primaryItem": "kanban",
-  "items": [
+  "primary_view": "kanban",
+  "views": [
     {"id": "kanban", "name": "By Status", "type": "kanban",
      "group": "status", "title": "title", "badge": "priority"},
     {"id": "calendar", "name": "Timeline", "type": "calendar",
-     "title": "title", "startDate": "start_date", "endDate": "end_date"}
+     "title": "title", "start_date": "start_date", "end_date": "end_date"}
   ]
 }';
 ```
 
-If `primaryItem` is omitted, the default sheet view is shown.
+If `primary_view` is omitted, the default sheet view is shown.
 
 ---
 
-## `sections`
+## `fields.sections`
 
 Group fields into named sections on the detail / create / edit page. Sections control both layout and what fields are visible per form mode.
 
@@ -166,17 +172,19 @@ type FieldSection = {
 
 ```sql
 COMMENT ON TABLE desk.tasks IS '{
-  "sections": [
-    {"id": "summary",      "title": "Summary",
-     "fields": ["title", "description", "cover"]},
-    {"id": "schedule",     "title": "Schedule",
-     "fields": ["status", "priority", "assignee_id", "due_date"]},
-    {"id": "organization", "title": "Organization",
-     "fields": ["project_id", "tags", "is_important"]},
-    {"id": "extras", "title": "Attachments & notes", "collapsible": true,
-     "description": "Files, color tag, and free-form notes",
-     "fields": ["attachments", "color", "notes"]}
-  ]
+  "fields": {
+    "sections": [
+      {"id": "summary",      "title": "Summary",
+       "fields": ["title", "description", "cover"]},
+      {"id": "schedule",     "title": "Schedule",
+       "fields": ["status", "priority", "assignee_id", "due_date"]},
+      {"id": "organization", "title": "Organization",
+       "fields": ["project_id", "tags", "is_important"]},
+      {"id": "extras", "title": "Attachments & notes", "collapsible": true,
+       "description": "Files, color tag, and free-form notes",
+       "fields": ["attachments", "color", "notes"]}
+    ]
+  }
 }';
 ```
 
@@ -196,12 +204,12 @@ Any field not listed in any section is hidden from the form.
 
 ---
 
-## `filterTemplates`
+## `filter_presets`
 
 Pre-canned filter sets exposed as one-click chips above the table.
 
 ```typescript
-type FilterTemplate = {
+type FilterPreset = {
   id: string
   name: string
   description?: string
@@ -217,7 +225,7 @@ type FilterTemplate = {
 
 ```sql
 COMMENT ON TABLE desk.tasks IS '{
-  "filterTemplates": [
+  "filter_presets": [
     {"id": "open",     "name": "Open (not completed)",
      "filters": [{"id": "status", "value": ["pending", "in_progress"],
                   "variant": "multiSelect", "operator": "in"}]},
@@ -233,7 +241,7 @@ COMMENT ON TABLE desk.tasks IS '{
 
 ---
 
-## `metadataColumns`
+## `fields.metadata`
 
 Override the columns considered "metadata" (hidden from regular forms but shown in audit / system sections). Defaults to:
 
@@ -243,7 +251,9 @@ Override the columns considered "metadata" (hidden from regular forms but shown 
 
 ```sql
 COMMENT ON TABLE store.products IS '{
-  "metadataColumns": ["created_at", "updated_at", "created_by"]
+  "fields": {
+    "metadata": ["created_at", "updated_at", "created_by"]
+  }
 }';
 ```
 
@@ -381,15 +391,15 @@ COMMENT ON TABLE desk.tasks IS $$
       {"table": "users", "on": "assignee_id", "columns": ["name", "email"]}
     ]
   },
-  "primaryItem": "status",
-  "items": [
+  "primary_view": "status",
+  "views": [
     {"id": "status",   "name": "Tasks By Status",   "type": "kanban",
      "group": "status",   "title": "title", "description": "description",
      "date": "created_at", "badge": "priority"},
     {"id": "calendar", "name": "Task Schedule",     "type": "calendar",
-     "title": "title", "startDate": "due_date", "badge": "status"}
+     "title": "title", "start_date": "due_date", "badge": "status"}
   ],
-  "filterTemplates": [
+  "filter_presets": [
     {"id": "open",      "name": "Open (not completed)",
      "filters": [{"id": "status", "value": ["pending", "in_progress"],
                   "variant": "multiSelect", "operator": "in"}]},
@@ -397,16 +407,18 @@ COMMENT ON TABLE desk.tasks IS $$
      "filters": [{"id": "is_important", "value": "true",
                   "variant": "boolean", "operator": "is"}]}
   ],
-  "sections": [
-    {"id": "summary",  "title": "Summary",
-     "fields": ["title", "description", "cover"]},
-    {"id": "schedule", "title": "Schedule",
-     "fields": ["status", "priority", "assignee_id", "due_date", "completed_at"]},
-    {"id": "progress", "title": "Progress",
-     "fields": ["completion", "is_important"]},
-    {"id": "extras", "title": "Attachments & notes", "collapsible": true,
-     "fields": ["attachments", "notes"]}
-  ],
+  "fields": {
+    "sections": [
+      {"id": "summary",  "title": "Summary",
+       "fields": ["title", "description", "cover"]},
+      {"id": "schedule", "title": "Schedule",
+       "fields": ["status", "priority", "assignee_id", "due_date", "completed_at"]},
+      {"id": "progress", "title": "Progress",
+       "fields": ["completion", "is_important"]},
+      {"id": "extras", "title": "Attachments & notes", "collapsible": true,
+       "fields": ["attachments", "notes"]}
+    ]
+  },
   "tabs": ["audit", "comment"]
 }
 $$;

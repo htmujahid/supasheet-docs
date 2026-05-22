@@ -13,27 +13,27 @@ Every resource in Supasheet can be rendered through six different view types. Yo
 |------|----------|----------------|
 | **Sheet** | Default spreadsheet view of all columns | None (always available) |
 | **Kanban** | Items grouped by status / category | `group`, `title`, optional `description`, `badge`, `date` |
-| **Calendar** | Time-based data with a start (and optional end) date | `title`, `startDate`, optional `endDate`, `badge` |
+| **Calendar** | Time-based data with a start (and optional end) date | `title`, `start_date`, optional `end_date`, `badge` |
 | **Gallery** | Card-style display with cover images | `cover`, `title`, optional `description`, `badge` |
-| **List** | Compact vertical list with summary fields | `title`, optional `description`, `field1`, `field2` |
+| **List** | Compact vertical list with summary fields | `title`, optional `description`, `field_1`, `field_2` |
 | **Tree** | Hierarchical, parent–child data | `parent`, `title`, optional `secondary` |
 
 ## Configuring Views
 
-Views are declared in the JSON comment on the table. Each entry in `items` is a view, and `primaryItem` is the `id` of the view to load by default when a user opens the resource.
+Views are declared in the JSON comment on the table. Each entry in `views` is a view, and `primary_view` is the `id` of the view to load by default when a user opens the resource.
 
 ```sql
 COMMENT ON TABLE desk.projects IS $$
 {
   "icon": "FolderKanban",
   "display": "block",
-  "primaryItem": "kanban",
-  "items": [
+  "primary_view": "kanban",
+  "views": [
     {"id": "kanban",   "name": "Projects By Status", "type": "kanban",
      "group": "status", "title": "title", "description": "description",
      "date": "start_date", "badge": "priority"},
     {"id": "calendar", "name": "Project Timeline",   "type": "calendar",
-     "title": "title", "startDate": "start_date", "endDate": "end_date",
+     "title": "title", "start_date": "start_date", "end_date": "end_date",
      "badge": "status"},
     {"id": "gallery",  "name": "Project Gallery",    "type": "gallery",
      "cover": "cover", "title": "title", "description": "description",
@@ -44,7 +44,7 @@ $$;
 ```
 
 <Callout type="info">
-The **Sheet** view is always available. You only need to declare it in `items` if you want to label it differently or change its position relative to the other views.
+The **Sheet** view is always available. You only need to declare it in `views` if you want to label it differently or change its position relative to the other views.
 </Callout>
 
 ## View Types
@@ -56,8 +56,8 @@ The default tabular view. Renders every column, supports sorting, filtering, pag
 ```sql
 COMMENT ON TABLE invoices IS '{
   "icon": "FileText",
-  "primaryItem": "sheet",
-  "items": [
+  "primary_view": "sheet",
+  "views": [
     {"id": "sheet", "name": "All Invoices", "type": "sheet"}
   ]
 }';
@@ -79,8 +79,8 @@ Cards grouped into columns by a single enum / text field.
 ```sql
 COMMENT ON TABLE desk.tasks IS '{
   "icon": "ListTodo",
-  "primaryItem": "status",
-  "items": [
+  "primary_view": "status",
+  "views": [
     {"id": "status",   "name": "Tasks By Status",   "type": "kanban",
      "group": "status",   "title": "title", "description": "description",
      "date": "created_at", "badge": "priority"},
@@ -99,17 +99,17 @@ Renders records as events on a calendar. Supports day, week, and month layouts.
 |-------|----------|---------|
 | `type` | yes | Must be `"calendar"` |
 | `title` | yes | Column shown as the event title |
-| `startDate` | yes | Event start (date / timestamptz column) |
-| `endDate` | no | Event end — if omitted the event is treated as a single-day item |
+| `start_date` | yes | Event start (date / timestamptz column) |
+| `end_date` | no | Event end — if omitted the event is treated as a single-day item |
 | `badge` | no | Column rendered as a styled badge on the event |
 
 ```sql
 COMMENT ON TABLE desk.projects IS '{
   "icon": "FolderKanban",
-  "primaryItem": "calendar",
-  "items": [
+  "primary_view": "calendar",
+  "views": [
     {"id": "calendar", "name": "Project Timeline", "type": "calendar",
-     "title": "title", "startDate": "start_date", "endDate": "end_date",
+     "title": "title", "start_date": "start_date", "end_date": "end_date",
      "badge": "status"}
   ]
 }';
@@ -130,8 +130,8 @@ Card grid with cover images, ideal for product catalogues and media libraries.
 ```sql
 COMMENT ON TABLE store.products IS '{
   "icon": "Package",
-  "primaryItem": "gallery",
-  "items": [
+  "primary_view": "gallery",
+  "views": [
     {"id": "gallery", "name": "Product Gallery", "type": "gallery",
      "cover": "image", "title": "name", "description": "description",
      "badge": "status"}
@@ -148,17 +148,17 @@ A compact vertical layout — useful for directories and reference lists where y
 | `type` | yes | Must be `"list"` |
 | `title` | yes | Primary line |
 | `description` | no | Secondary line |
-| `field1` | no | Extra field rendered on the right of each row |
-| `field2` | no | Extra field rendered on the right of each row |
+| `field_1` | no | Extra field rendered on the right of each row |
+| `field_2` | no | Extra field rendered on the right of each row |
 
 ```sql
 COMMENT ON TABLE blog.authors IS '{
   "icon": "UserPen",
-  "primaryItem": "list",
-  "items": [
+  "primary_view": "list",
+  "views": [
     {"id": "list", "name": "Authors List", "type": "list",
      "title": "display_name", "description": "user.email",
-     "field1": "language", "field2": "country"}
+     "field_1": "language", "field_2": "country"}
   ]
 }';
 ```
@@ -177,8 +177,8 @@ Renders a hierarchy by following a self-referencing foreign key (or any column t
 ```sql
 COMMENT ON TABLE hr.departments IS '{
   "icon": "Network",
-  "primaryItem": "tree",
-  "items": [
+  "primary_view": "tree",
+  "views": [
     {"id": "tree",    "name": "Org Tree",         "type": "tree",
      "parent": "parent_id", "title": "name", "secondary": "code"},
     {"id": "gallery", "name": "Department Gallery", "type": "gallery",
@@ -194,52 +194,54 @@ Tree views work best with explicit ordering — add a `sort` clause in the table
 
 ## Choosing the Default View
 
-`primaryItem` matches the `id` of one of the entries in `items`. It controls which view opens when a user clicks the resource in the sidebar.
+`primary_view` matches the `id` of one of the entries in `views`. It controls which view opens when a user clicks the resource in the sidebar.
 
 ```json
 {
-  "primaryItem": "kanban",
-  "items": [
+  "primary_view": "kanban",
+  "views": [
     {"id": "kanban", "type": "kanban", ...},
     {"id": "sheet",  "type": "sheet"}
   ]
 }
 ```
 
-If `primaryItem` is omitted, the resource opens in the standard sheet view.
+If `primary_view` is omitted, the resource opens in the standard sheet view.
 
 ## Inline Editing (Side Sheets)
 
 Every view supports an inline editor that slides in from the side. When a user clicks a card (Kanban, Gallery, List, Calendar), opens a row in the sheet, or expands a node in the tree, the editor opens in-place — you don't need to navigate to a separate detail page.
 
-Inline editing uses the field sections defined in the [metadata `sections`](/docs/guide/resource/metadata) configuration.
+Inline editing uses the field sections defined in the [metadata `fields.sections`](/docs/guide/resource/metadata) configuration.
 
 ## Singleton Resources
 
-For tables that should only ever contain one row (settings tables, app config), use `single: true`. The sidebar entry skips the list view and opens the single record directly.
+For tables that should only ever contain one row (settings tables, app config), use `singleton: true`. The sidebar entry skips the list view and opens the single record directly.
 
 ```sql
 COMMENT ON TABLE blog.blog_settings IS '{
   "icon": "BookOpen",
   "name": "Blog Settings",
-  "single": true,
-  "sections": [
-    {"id": "identity", "title": "Identity",
-     "fields": ["blog_name", "tagline", "description", "logo"]},
-    {"id": "content",  "title": "Content",
-     "fields": ["posts_per_page", "footer_text"]}
-  ]
+  "singleton": true,
+  "fields": {
+    "sections": [
+      {"id": "identity", "title": "Identity",
+       "fields": ["blog_name", "tagline", "description", "logo"]},
+      {"id": "content",  "title": "Content",
+       "fields": ["posts_per_page", "footer_text"]}
+    ]
+  }
 }';
 ```
 
 ## Inline Child Forms
 
-Junction / detail tables (e.g. `order_items`, `purchase_order_items`) can opt into being rendered inside their parent record using `inlineForm: true`. When enabled, they appear as an editable section on the parent's detail page instead of as a top-level resource.
+Junction / detail tables (e.g. `order_items`, `purchase_order_items`) can opt into being rendered inside their parent record using `inline_form: true`. When enabled, they appear as an editable section on the parent's detail page instead of as a top-level resource.
 
 ```sql
 COMMENT ON TABLE store.order_items IS '{
   "icon": "Receipt",
-  "inlineForm": true,
+  "inline_form": true,
   "display": "none"
 }';
 ```
@@ -251,7 +253,7 @@ Set `"display": "none"` to hide the table from the schema's resource list while 
 - **Pick the view that matches the data shape.** Kanban for status workflows, Calendar for time-based items, Gallery for visual records, Tree for hierarchies, List for compact lookups.
 - **Use `badge` thoughtfully.** Pair it with the [enum metadata](/docs/guide/resource/metadata#enum-styling) to colour-code statuses and priorities.
 - **Define multiple views per resource.** Users can switch between them — kanban-by-status and kanban-by-priority on the same table covers two distinct workflows for free.
-- **Set a `primaryItem` that reflects the dominant workflow.** If you spend most of your time on the kanban, make that the default.
+- **Set a `primary_view` that reflects the dominant workflow.** If you spend most of your time on the kanban, make that the default.
 - **Always add a `sort` in the `query` block.** Determinism beats surprises, especially in tree and list views.
 
 ## Next Steps
