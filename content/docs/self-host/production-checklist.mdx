@@ -29,7 +29,7 @@ description: Essential checks before going live
 
 - [ ] **Migrations**
   - All migrations pushed to production
-  - Meta tables updated
+  - Meta tables refreshed (`select supasheet.refresh_metadata();` run after the last schema-affecting migration)
   - Seed data loaded (if needed)
 
 - [ ] **Indexes**
@@ -41,8 +41,6 @@ description: Essential checks before going live
   - Automated backups enabled
   - Backup retention configured
   - Restore procedure tested
-
-## Database
 
 - [ ] **`supasheet` schema exposed** via PostgREST (`[api].schemas` includes `supasheet` and every domain schema you use)
 - [ ] **Permissions seeded** for every table, view, chart, dashboard, report, and template

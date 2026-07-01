@@ -15,7 +15,7 @@ When you create a table:
 
 ```sql
 CREATE TABLE products (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   name TEXT NOT NULL,
   description TEXT,
   price DECIMAL(10,2) NOT NULL,
@@ -49,31 +49,7 @@ Click any column header to sort:
 
 ### Filtering
 
-Multiple filter types based on column data type:
-
-```typescript
-// Text columns
-- Contains
-- Equals
-- Starts with
-- Ends with
-
-// Number columns
-- Equals
-- Greater than
-- Less than
-- Between
-
-// Date columns
-- Before
-- After
-- Between
-
-// Boolean columns
-- Is true
-- Is false
-- Is null
-```
+Available filter operators depend on the column's data type — text, number, date, boolean, select, multi-select, and UUID columns each get their own operator set (contains, is, is before/after, has any of, and so on). See **[Operators by Column Type](/guide/resource/query#operators-by-column-type)** for the exact list per type.
 
 ### Column Visibility
 
@@ -126,7 +102,7 @@ Automatic validation based on:
 
 ```sql
 CREATE TABLE products (
-  id UUID DEFAULT gen_random_uuid(),  -- Auto-generated
+  id UUID DEFAULT extensions.uuid_generate_v4(),  -- Auto-generated
   status TEXT DEFAULT 'draft',        -- Pre-filled in form
   created_at TIMESTAMPTZ DEFAULT NOW() -- Auto-set, hidden in form
 );
@@ -140,7 +116,7 @@ Foreign key relationships are automatically detected and rendered as select drop
 
 ```sql
 CREATE TABLE orders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   customer_id UUID REFERENCES customers(id),  -- Dropdown of customers
   product_id UUID REFERENCES products(id),     -- Dropdown of products
   quantity INTEGER NOT NULL
@@ -151,6 +127,10 @@ The dropdowns show:
 - Primary display field (usually `name` or `title`)
 - Searchable
 - Paginated for large datasets
+
+<Callout type="warn">
+This only works when the referenced table lives in the **same schema** as the one being queried — PostgREST can't embed a foreign key that points to a different schema (e.g. a `store.orders.user_id` FK pointing at `supasheet.users`). If you need to reference a table from another schema, create a same-named replica view (`with (security_invoker = true)`) in your own schema first. See [Cross-Schema Joins](/guide/resource/query#cross-schema-joins) for the exact pattern.
+</Callout>
 
 ### Display Fields
 
@@ -240,6 +220,18 @@ Confirms before deletion:
   Deletes respect foreign key constraints. If a record is referenced elsewhere, deletion will fail unless you use `ON DELETE CASCADE`.
 </Callout>
 
+## Import & Export
+
+Every resource supports **📤 CSV export** and **📥 CSV import** — no configuration needed.
+
+**Export** writes the currently visible columns to a CSV file, using each column's display `name` (see [Metadata](/guide/resource/metadata)) as the header — not the raw database column name. You can export everything in the current view or just the selected rows.
+
+**Import** parses a CSV client-side, matches its header row against the table's columns by name, and inserts in batches of 500 rows at a time. Each value is coerced to the target column's type (numbers, booleans, dates, etc.) before insert, and unmatched columns in the CSV are ignored rather than rejected.
+
+<Callout type="warn">
+Import respects the same RLS policies and form validation as manual creation — rows that fail a `NOT NULL`, `CHECK`, or RLS policy are skipped, not silently defaulted.
+</Callout>
+
 ## Permissions
 
 All CRUD operations respect Row Level Security policies:
@@ -301,7 +293,7 @@ FROM products;
 ```sql
 -- Products
 CREATE TABLE products (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   name TEXT NOT NULL,
   description TEXT,
   price DECIMAL(10,2) NOT NULL,
@@ -312,7 +304,7 @@ CREATE TABLE products (
 
 -- Orders
 CREATE TABLE orders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   customer_id UUID REFERENCES supasheet.users(id),
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'shipped', 'delivered')),
   total DECIMAL(10,2),
@@ -321,7 +313,7 @@ CREATE TABLE orders (
 
 -- Order Items
 CREATE TABLE order_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
   product_id UUID REFERENCES products(id),
   quantity INTEGER NOT NULL CHECK (quantity > 0),
@@ -344,8 +336,8 @@ All three tables now have full CRUD interfaces!
 
 ## Next Steps
 
-- **[Metadata](/docs/guide/resource/metadata)** - Configure icons, visibility, columns, and views
-- **[Query Configuration](/docs/guide/resource/query)** - Set default sorting and filters
-- **[Views](/docs/guide/resource/views)** - Multiple view types (Sheet, Kanban, Calendar, Gallery, List, Tree)
-- **[Data Types](/docs/guide/resource/data-types)** - Use custom data types
-- **[Authorization](/docs/guide/authorization)** - Secure your tables with RLS
+- **[Metadata](/guide/resource/metadata)** - Configure icons, visibility, columns, and views
+- **[Query Configuration](/guide/resource/query)** - Set default sorting and filters
+- **[Views](/guide/resource/views)** - Multiple view types (Sheet, Kanban, Calendar, Gallery, List, Tree)
+- **[Data Types](/guide/resource/data-types)** - Use custom data types
+- **[Authorization](/guide/authorization)** - Secure your tables with RLS

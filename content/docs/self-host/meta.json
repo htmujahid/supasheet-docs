@@ -8,8 +8,8 @@
     "prerequisites",
     "environment-variables",
     "database-setup",
-    "production-checklist",
     "deployment",
+    "production-checklist",
     "---Customization---",
     "custom-components",
     "theming"

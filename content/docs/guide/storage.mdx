@@ -21,8 +21,7 @@ All buckets and policies are defined in the migrations under `supabase/migration
 |--------|-------------|------|-------|
 | `public` | Yes (anyone with the URL) | Public + authenticated | Authenticated; updates/deletes by owner |
 | `personal` | Yes | Owner only (authenticated) | Owner only (authenticated) |
-| `uploads` | Yes | Gated by `schema.table:select` | Gated by `schema.table:insert/update/delete` |
-| `account_image` | Yes | Anyone | Owner only — first path segment must equal the user's UUID |
+| `uploads` | Yes | Gated by `schema.table:select` (or owner-only under `auth/`) | Gated by `schema.table:insert/update/delete` (or owner-only under `auth/`) |
 
 ### `public`
 
@@ -57,9 +56,11 @@ This is the bucket Supasheet writes to when a user adds a file through a `FILE` 
 
 This means anyone who can read a row can read its attached files, anyone who can edit a row can replace them, and so on — without you writing custom storage policies.
 
-### `account_image`
+There's one exception carved out inside the same bucket: the **`uploads/auth/<uid>/...`** subpath, used for account profile pictures. Objects under `auth/` skip the `schema.table:action` permission check entirely — a signed-in user has full `SELECT`/`INSERT`/`UPDATE`/`DELETE` on `auth/<their own uid>/...` and nothing outside it. There is no separate `account_image` bucket; avatars are just another prefix inside `uploads`.
 
-Holds user avatars. The folder name must match the user's UUID, enforced by `get_storage_filename_as_uuid()`.
+<Callout type="info">
+This `auth/` carve-out is the one place in `uploads` where access is owner-based instead of permission-based — every other path in the bucket follows the `<schema>.<table>:<action>` rule above.
+</Callout>
 
 ## Using `FILE` Columns
 
@@ -67,7 +68,7 @@ The `FILE` data type stores an array of file objects (`{ name, type, size, url, 
 
 ```sql
 CREATE TABLE store.products (
-  id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id    UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   name  TEXT NOT NULL,
   image FILE,
   manuals FILE
@@ -77,7 +78,7 @@ COMMENT ON COLUMN store.products.image   IS '{"accept": "image/*", "maxSize": 52
 COMMENT ON COLUMN store.products.manuals IS '{"accept": ".pdf",   "maxSize": 10485760, "maxFiles": 5}';
 ```
 
-See **[Data Types](/docs/guide/resource/data-types)** for the full type reference and **[Metadata → File columns](/docs/guide/resource/metadata#file-columns)** for the column metadata options.
+See **[Data Types](/guide/resource/data-types)** for the full type reference and **[Metadata → File columns](/guide/resource/metadata#file-columns)** for the column metadata options.
 
 ### `FILE_OBJECT` (single file)
 
@@ -85,7 +86,7 @@ If a column should accept exactly one file (e.g. a cover image), use the `FILE_O
 
 ```sql
 CREATE TABLE desk.tasks (
-  id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id    UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   cover FILE_OBJECT
 );
 COMMENT ON COLUMN desk.tasks.cover IS '{"accept": "image/*"}';
@@ -97,7 +98,7 @@ COMMENT ON COLUMN desk.tasks.cover IS '{"accept": "image/*"}';
 
 ```sql
 CREATE TABLE blog.authors (
-  id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id     UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   name   TEXT NOT NULL,
   avatar AVATAR
 );
@@ -160,6 +161,6 @@ Supabase Storage also enforces a global `file_size_limit` per project. Make sure
 
 ## Next Steps
 
-- **[Data Types](/docs/guide/resource/data-types)** — `FILE`, `FILE_OBJECT`, `AVATAR`, `RICH_TEXT`
-- **[Metadata](/docs/guide/resource/metadata#file-columns)** — Column-level configuration for file fields
-- **[Authorization](/docs/guide/authorization)** — How `schema.table:*` permissions gate the `uploads` bucket
+- **[Data Types](/guide/resource/data-types)** — `FILE`, `FILE_OBJECT`, `AVATAR`, `RICH_TEXT`
+- **[Metadata](/guide/resource/metadata#file-columns)** — Column-level configuration for file fields
+- **[Authorization](/guide/authorization)** — How `schema.table:*` permissions gate the `uploads` bucket

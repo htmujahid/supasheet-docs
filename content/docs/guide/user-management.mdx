@@ -33,7 +33,7 @@ Columns (defined in `supabase/migrations/20250523000814_users.sql`):
 
 Two database triggers keep `supasheet.users` in sync with Supabase Auth:
 
-- **`on_auth_user_created`** — fires after `INSERT` on `auth.users` and creates the matching `supasheet.users` row. Name and picture are extracted from OAuth metadata (Google, GitHub, …) when available; otherwise the email local-part is used.
+- **`on_auth_user_created`** — fires after `INSERT` on `auth.users` and creates the matching `supasheet.users` row. `name` comes from `raw_user_meta_data->>'name'` (populated by OAuth providers) when present, falling back to the email local-part, or an empty string if there's no email either. `picture_url` comes from `raw_user_meta_data->>'avatar_url'` when present — there's no fallback for it, it's simply left `null` otherwise.
 - **`on_auth_user_updated`** — propagates email changes from `auth.users` to `supasheet.users`.
 
 The trigger function `protect_user_fields()` blocks direct updates to `id` and `email`, ensuring those fields stay authoritative on the auth side.
@@ -44,7 +44,7 @@ Always foreign-key to `supasheet.users(id)`:
 
 ```sql
 CREATE TABLE tasks (
-    id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id      UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     title   TEXT NOT NULL,
     user_id UUID REFERENCES supasheet.users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT now()
@@ -58,6 +58,10 @@ create policy tasks_select on tasks
     for select to authenticated
     using (user_id = auth.uid());
 ```
+
+<Callout type="info">
+The foreign key above can point cross-schema with no issue — `supasheet.users` is fine to reference from `public`, `store`, or any other schema. What *doesn't* work cross-schema is PostgREST embedding/joining: if you want to pull user columns (name, email, …) into `tasks`' default list view via `query.join`, or use them as a `fields.lookups` target, you first need a same-named replica view (`<your-schema>.users`, `with (security_invoker = true)`) in your own schema. See [Cross-Schema Joins](/guide/resource/query#cross-schema-joins) for the exact pattern — every bundled example schema does this.
+</Callout>
 
 ## Account UI
 
@@ -74,14 +78,19 @@ The user dropdown in the header also exposes notifications and theme switching.
 
 ## Admin User Management
 
-Users with the right permissions on `supasheet.users` see the **Core → Users** section:
+Users with the right permissions on `supasheet.users` see the **Core → Users** section. Unlike most tables, these permission values aren't something you add yourself — they ship pre-seeded in `supabase/migrations/20250523000822_roles.sql`, granted by default to the `x-admin` role only:
 
 | Permission | Capability |
 |------------|------------|
-| `supasheet.users:select` | List and view users |
+| `supasheet.users:select` | List and view users (`/core/users`) |
 | `supasheet.users:insert` | Create new users directly (`/core/users/new`) |
 | `supasheet.users:update` | Edit users (`/core/users/$userId/edit`) |
 | `supasheet.users:delete` | Delete users (`/core/users/$userId/danger`) |
+| `supasheet.users:invite` | Send a magic invite link to a new email (`/core/users/invite`) |
+| `supasheet.users:ban` | Ban / unban a user (`/core/users/$userId/security`) |
+| `supasheet.users:generate_link` | Generate a password recovery or email confirmation link (`/core/users/$userId/security`) |
+
+Note this is a separate check from the RLS policies on the table itself: `supasheet.users` only has `SELECT`/`UPDATE` policies scoped to `auth.uid() = id` (a user reading/updating their own row) — there's no RLS path for inserting or deleting other users' rows at all. Every admin capability above works only because it's routed through a service-role Edge Function, not a direct authenticated-role table write.
 
 Admin operations are not run as the signed-in user — they go through Deno Edge Functions in `supabase/functions/`:
 
@@ -94,9 +103,24 @@ Admin operations are not run as the signed-in user — they go through Deno Edge
 
 These functions use the service role key and run server-side, so the publishable key alone cannot escalate privileges.
 
+## Assigning Roles and Permissions
+
+Two more Core sections round out user administration — unlike the Edge-Function-backed pages above, these are ordinary permission-gated tables over `supasheet.user_roles` and `supasheet.role_permissions`, so they read/write directly as the signed-in `x-admin` user (no Edge Function involved):
+
+| Permission | Capability |
+|------------|------------|
+| `supasheet.user_roles:select` | List which roles are assigned to which users (`/core/user_roles`) |
+| `supasheet.user_roles:insert` | Assign a role to a user (`/core/user_roles/new`) |
+| `supasheet.user_roles:delete` | Revoke a role from a user |
+| `supasheet.role_permissions:select` | List which permissions each role grants (`/core/role_permissions`) |
+| `supasheet.role_permissions:insert` | Grant a permission to a role (`/core/role_permissions/new`) |
+| `supasheet.role_permissions:delete` | Revoke a permission from a role |
+
+These six are also pre-seeded to `x-admin` only in `20250523000822_roles.sql`, alongside the `supasheet.users:*` permissions above. In practice this means an `x-admin` never has to write the `INSERT INTO supasheet.user_roles / role_permissions` statements shown in [Authorization](/guide/authorization) by hand — the same operations are available as a UI over these two Core sections. Reach for raw SQL when seeding roles/permissions from a migration; use the UI for day-to-day changes.
+
 ## Profile Pictures
 
-Profile pictures live in the `account_image` storage bucket. Each user has their own folder named after their UUID, and an RLS policy ensures users can only write into their own folder.
+Profile pictures live in the `uploads` storage bucket, under the `auth/<uid>/` path — there is no dedicated avatar bucket. A storage policy scoped to that path lets a user read and write only their own `auth/<uid>/...` folder, bypassing the normal `schema.table:action` permission check that governs the rest of `uploads`. See **[Storage](/guide/storage)** for the full bucket/permission model.
 
 ## Custom User Data
 
@@ -113,6 +137,6 @@ It is also a great place to attach domain-specific user attributes (e.g. employe
 
 ## Next Steps
 
-- **[Authorization](/docs/guide/authorization)** — Three roles, permissions, and RLS patterns
-- **[Notifications](/docs/guide/notifications)** — Deliver notifications to specific users or roles
-- **[Audit Logs](/docs/guide/audit-logs)** — Track every change made by every user
+- **[Authorization](/guide/authorization)** — Three roles, permissions, and RLS patterns
+- **[Notifications](/guide/notifications)** — Deliver notifications to specific users or roles
+- **[Audit Logs](/guide/audit-logs)** — Track every change made by every user

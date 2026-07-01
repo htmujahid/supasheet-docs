@@ -23,6 +23,6 @@
     "notifications",
     "audit-logs",
     "storage",
-    "sql-editor"
+    "app-configuration"
   ]
 }

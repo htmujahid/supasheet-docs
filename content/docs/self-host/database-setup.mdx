@@ -83,7 +83,7 @@ Applies all local migrations to cloud database.
 The migrations in `supabase/migrations/` build the complete platform layer:
 
 - **Schemas**: `supasheet` (Supasheet's meta + RBAC + audit/notifications/comments), plus `public` (yours to use)
-- **Meta layer**: `supasheet.tables`, `columns`, `views`, `materialized_views` (with event triggers that auto-sync on DDL)
+- **Meta layer**: `supasheet.tables`, `columns`, `views`, `materialized_views` — materialized views refreshed manually via `select supasheet.refresh_metadata();` after DDL changes (see [Database Schema](/guide/database-schema#refreshing-the-meta-layer))
 - **Users**: `supasheet.users` with triggers to mirror `auth.users`
 - **RBAC**: `supasheet.user_roles`, `role_permissions`, plus `app_role` and `app_permission` enums and helpers `has_role()` / `has_permission()`
 - **Audit log**: `supasheet.audit_logs` and `audit_trigger_function()`
@@ -91,7 +91,7 @@ The migrations in `supabase/migrations/` build the complete platform layer:
 - **Comments**: `supasheet.comments` and `get_comments()`
 - **Templates**: `get_templates()` and `apply_template()`
 - **Custom types**: `FILE_OBJECT`, `FILE`, `EMAIL`, `TEL`, `RATING`, `PERCENTAGE`, `URL`, `DURATION`, `COLOR`, `AVATAR`, `RICH_TEXT`
-- **Storage buckets**: `public`, `personal`, `uploads`, `account_image` with RLS policies
+- **Storage buckets**: `public`, `personal`, `uploads` (also used for account avatars, under `uploads/auth/{uid}/...`) with RLS policies
 - **Discovery functions**: `get_schemas()`, `get_tables()`, `get_views()`, `get_columns()`, `get_charts()`, `get_widgets()`, `get_reports()`, `get_templates()`
 
 ## Schema Exposure (Required)
@@ -149,7 +149,7 @@ Create new migrations for your application tables:
 npx supabase migration new add_products_table
 ```
 
-Each migration that adds tables typically does five things — add permissions to the `app_permission` enum, create the table, enable RLS + policies, grant the new permissions to roles, and (optionally) attach the audit trigger:
+Each migration that adds tables typically does six things — add permissions to the `app_permission` enum, create the table, enable RLS + policies, grant the new permissions to roles, (optionally) attach the audit trigger, and refresh the meta layer:
 
 ```sql
 BEGIN;
@@ -162,7 +162,15 @@ COMMIT;
 CREATE TABLE store.products (...);
 ALTER TABLE store.products ENABLE ROW LEVEL SECURITY;
 -- ... policies, grants, role assignments, audit trigger ...
+
+-- Required last step: supasheet.tables/columns/views are materialized
+-- views and won't pick up your new table until you refresh them.
+select supasheet.refresh_metadata();
 ```
+
+<Callout type="warn">
+There are no event triggers watching for schema changes — `select supasheet.refresh_metadata();` is the only thing that syncs the meta layer. Forgetting it is the most common reason a new table doesn't show up in the UI.
+</Callout>
 
 After running migrations, regenerate types:
 
@@ -172,10 +180,10 @@ npx supabase gen types typescript --local \
   > src/lib/database.types.ts
 ```
 
-See **[Quickstart](/docs/guide/quickstart)** and **[Complete Example](/docs/guide/complete-example)** for full templates, and **[Examples in the repo](https://github.com/htmujahid/supasheet/tree/main/supabase/examples)** for 12 reference domains.
+See **[Quickstart](/guide/quickstart)** and **[Complete Example](/guide/complete-example)** for full templates, and **[Examples in the repo](https://github.com/htmujahid/supasheet/tree/main/supabase/examples)** for 12 reference domains.
 
 ## Next Steps
 
-- **[Environment Variables](/docs/self-host/environment-variables)** — Configure the SPA
-- **[Deployment](/docs/self-host/deployment)** — Build & deploy
-- **[Production Checklist](/docs/self-host/production-checklist)** — Pre-launch sanity checks
+- **[Environment Variables](/self-host/environment-variables)** — Configure the SPA
+- **[Deployment](/self-host/deployment)** — Build & deploy
+- **[Production Checklist](/self-host/production-checklist)** — Pre-launch sanity checks

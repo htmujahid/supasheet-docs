@@ -99,35 +99,27 @@ ORDER BY created_at;
 SELECT * FROM supasheet.audit_logs WHERE is_error;
 ```
 
-## Adding an Audit Tab to the UI
+## Adding an Audit Log Link to the UI
 
-To surface audit history on a record's detail page, list `audit` in the table's `tabs` metadata and ensure the user holds `schema.table:audit`:
-
-```sql
-COMMENT ON TABLE desk.tasks IS '{
-  "icon": "ListTodo",
-  "tabs": ["audit", "comment"]
-}';
-```
-
-## Per-Record History (Optional)
-
-If you want richer, table-specific history (revision numbers, business context), pair the audit trail with a domain history table and point Supasheet at it through `history` in the table metadata:
+Audit history isn't a metadata-configured tab — it's a dedicated page (`/$schema/resource/$resource/$resourceId/audit`) that Supasheet automatically links to from a record's actions menu whenever the current user holds `schema.table:audit`. There's nothing to declare in the table's JSON `comment` for this; granting the permission is enough:
 
 ```sql
-COMMENT ON TABLE desk.tasks IS '{
-  "history": {"table": "tasks_history"}
-}';
+ALTER TYPE supasheet.app_permission ADD VALUE 'desk.tasks:audit';
+
+INSERT INTO supasheet.role_permissions (role, permission) VALUES
+  ('user', 'desk.tasks:audit');
 ```
 
-This is independent of `supasheet.audit_logs` — the audit log keeps the universal append-only trail, while the history table is for domain-specific rendering.
+<Callout type="info">
+Don't confuse this with the `tabs` metadata field documented in [Metadata](/guide/resource/metadata#tabs) — that field only filters which **related-table** tabs show on the detail page (foreign key relationships). It has no effect on audit or comment access, which are controlled purely by permissions.
+</Callout>
 
 ## Complete Example
 
 ```sql
 -- Table
 CREATE TABLE store.products (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   name TEXT NOT NULL,
   price NUMERIC(10, 2),
   status product_status NOT NULL DEFAULT 'draft',
@@ -155,15 +147,14 @@ INSERT INTO supasheet.role_permissions (role, permission) VALUES
   ('user', 'store.products:update'),
   ('user', 'store.products:audit');
 
--- Expose audit tab in the UI
+-- Metadata (audit access needs no entry here — it's driven entirely by the :audit permission above)
 COMMENT ON TABLE store.products IS '{
-  "icon": "Package",
-  "tabs": ["audit"]
+  "icon": "Package"
 }';
 ```
 
 ## Next Steps
 
-- **[Authorization](/docs/guide/authorization)** — How `:audit` slots into the permission model
-- **[Comments](/docs/guide/comments)** — Pair audit with discussions on each record
-- **[Notifications](/docs/guide/notifications)** — Notify users when audited events happen
+- **[Authorization](/guide/authorization)** — How `:audit` slots into the permission model
+- **[Comments](/guide/comments)** — Pair audit with discussions on each record
+- **[Notifications](/guide/notifications)** — Notify users when audited events happen

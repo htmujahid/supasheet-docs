@@ -41,7 +41,7 @@ commit;
 
 -- Step 3: Create tasks table
 CREATE TABLE public.tasks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   title TEXT NOT NULL,
   description TEXT,
   status task_status DEFAULT 'pending',
@@ -97,6 +97,9 @@ insert into supasheet.role_permissions (role, permission) values
   ('user', 'public.tasks:insert'),
   ('user', 'public.tasks:update'),
   ('user', 'public.tasks:delete');
+
+-- Step 6: Refresh the meta layer so Supasheet picks up the new table
+select supasheet.refresh_metadata();
 ```
 </Step>
 
@@ -139,16 +142,16 @@ Navigate to the Resources section in Supasheet and select "tasks" to see your ne
 ## Next Steps
 
 <Cards>
-  <Card title="Complete Example" href="/docs/guide/complete-example">
+  <Card title="Complete Example" href="/guide/complete-example">
     Full workflow with dashboards, charts, and reports
   </Card>
-  <Card title="SQL-First Philosophy" href="/docs/guide/sql-first-philosophy">
+  <Card title="SQL-First Philosophy" href="/guide/sql-first-philosophy">
     Understand the core concepts
   </Card>
-  <Card title="Authorization" href="/docs/guide/authorization">
+  <Card title="Authorization" href="/guide/authorization">
     Master the permission system
   </Card>
-  <Card title="Dashboards" href="/docs/guide/dashboards">
+  <Card title="Dashboards" href="/guide/dashboards">
     Create dashboard widgets
   </Card>
 </Cards>

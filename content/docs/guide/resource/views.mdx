@@ -212,7 +212,7 @@ If `primary_view` is omitted, the resource opens in the standard sheet view.
 
 Every view supports an inline editor that slides in from the side. When a user clicks a card (Kanban, Gallery, List, Calendar), opens a row in the sheet, or expands a node in the tree, the editor opens in-place — you don't need to navigate to a separate detail page.
 
-Inline editing uses the field sections defined in the [metadata `fields.sections`](/docs/guide/resource/metadata) configuration.
+Inline editing uses the field sections defined in the [metadata `fields.sections`](/guide/resource/metadata) configuration.
 
 ## Singleton Resources
 
@@ -251,13 +251,13 @@ Set `"display": "none"` to hide the table from the schema's resource list while 
 ## Best Practices
 
 - **Pick the view that matches the data shape.** Kanban for status workflows, Calendar for time-based items, Gallery for visual records, Tree for hierarchies, List for compact lookups.
-- **Use `badge` thoughtfully.** Pair it with the [enum metadata](/docs/guide/resource/metadata#enum-styling) to colour-code statuses and priorities.
+- **Use `badge` thoughtfully.** Pair it with the [enum metadata](/guide/resource/metadata#enum-columns) to colour-code statuses and priorities.
 - **Define multiple views per resource.** Users can switch between them — kanban-by-status and kanban-by-priority on the same table covers two distinct workflows for free.
 - **Set a `primary_view` that reflects the dominant workflow.** If you spend most of your time on the kanban, make that the default.
 - **Always add a `sort` in the `query` block.** Determinism beats surprises, especially in tree and list views.
 
 ## Next Steps
 
-- **[Metadata](/docs/guide/resource/metadata)** — Configure sections, filter templates, enum styling
-- **[Query Configuration](/docs/guide/resource/query)** — Default sorts, filters, and joins
-- **[Data Types](/docs/guide/resource/data-types)** — Custom types that power covers and badges
+- **[Metadata](/guide/resource/metadata)** — Configure sections, filter templates, enum styling
+- **[Query Configuration](/guide/resource/query)** — Default sorts, filters, and joins
+- **[Data Types](/guide/resource/data-types)** — Custom types that power covers and badges

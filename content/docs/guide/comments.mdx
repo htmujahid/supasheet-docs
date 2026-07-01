@@ -45,18 +45,15 @@ This permission controls **two things**:
 
 `UPDATE` and `DELETE` are always limited to the original author.
 
-## Showing the Comment Tab in the UI
+## Showing Comments in the UI
 
-Add `comment` to the `tabs` array in the resource's metadata:
+There's no metadata to configure — a **Comments** link appears automatically in a record's actions menu (`/$schema/resource/$resource/$resourceId/comment`) for any user holding `desk.tasks:comment`. Granting the permission is the only setup required.
 
-```sql
-COMMENT ON TABLE desk.tasks IS '{
-  "icon": "ListTodo",
-  "tabs": ["audit", "comment"]
-}';
-```
+Users with `desk.tasks:comment` can browse the thread, post new comments, and edit / delete their own.
 
-Users with `desk.tasks:comment` will see a **Comments** tab on each task detail page where they can browse the thread, post new comments, and edit / delete their own.
+<Callout type="info">
+Don't confuse this with the `tabs` metadata field described in [Metadata](/guide/resource/metadata#tabs) — that field only filters which **related-table** tabs appear on the detail page (foreign key relationships). Comments and the audit log are separate, permission-gated pages, not metadata-configured tabs.
+</Callout>
 
 ## Reading from SQL
 
@@ -136,7 +133,7 @@ CREATE TRIGGER trg_notify_task_comment
   FOR EACH ROW EXECUTE FUNCTION desk.notify_task_comment();
 ```
 
-See **[Notifications](/docs/guide/notifications)** for the full API.
+See **[Notifications](/guide/notifications)** for the full API.
 
 ## Permissions Cheatsheet
 
@@ -149,6 +146,6 @@ See **[Notifications](/docs/guide/notifications)** for the full API.
 
 ## Next Steps
 
-- **[Notifications](/docs/guide/notifications)** — Notify users when new comments land
-- **[Audit Logs](/docs/guide/audit-logs)** — Pair comments with a full change history
-- **[Authorization](/docs/guide/authorization)** — Grant `:comment` per role
+- **[Notifications](/guide/notifications)** — Notify users when new comments land
+- **[Audit Logs](/guide/audit-logs)** — Pair comments with a full change history
+- **[Authorization](/guide/authorization)** — Grant `:comment` per role

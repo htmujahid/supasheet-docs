@@ -25,7 +25,7 @@ Create one schema per domain. The example seed files in `supabase/examples/` fol
 CREATE SCHEMA IF NOT EXISTS desk;
 
 CREATE TABLE desk.tasks (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id          UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   title       TEXT NOT NULL,
   status      TEXT NOT NULL DEFAULT 'pending',
   -- Always reference supasheet.users for user relationships
@@ -36,7 +36,7 @@ CREATE TABLE desk.tasks (
 ```
 
 <Callout type="warn">
-Always reference `supasheet.users(id)` instead of `auth.users(id)`. See [User Management](/docs/guide/user-management) for the reasoning.
+Always reference `supasheet.users(id)` instead of `auth.users(id)`. See [User Management](/guide/user-management) for the reasoning.
 </Callout>
 
 ## The `supasheet` Schema
@@ -57,22 +57,34 @@ The internal schema that powers everything. Created by the migrations in `supaba
 | `supasheet.user_notifications` | `20251006051303_notifications.sql` | Per-user fan-out + read state |
 | `supasheet.comments` | `20260514000001_comments.sql` | Per-record threaded comments |
 
-## Auto-Maintained Meta Layer
+## Refreshing the Meta Layer
 
-The migration `00000000000000_meta.sql` installs **event triggers** that keep the meta tables in sync as you run DDL:
+`supasheet.tables`, `supasheet.columns`, `supasheet.views`, and `supasheet.materialized_views` are **materialized views** — they're a cached snapshot of your schema, not a live introspection query. There are no event triggers keeping them in sync automatically. After any DDL change — `CREATE`/`ALTER`/`DROP TABLE`, `VIEW`, or `MATERIALIZED VIEW`, a schema change, an enum change (`ALTER TYPE ... ADD VALUE`), or a `COMMENT ON ...` — you must refresh them yourself:
 
-| Trigger | Fires on | Effect |
-|---------|----------|--------|
-| `table_creation_trigger` | `CREATE TABLE / VIEW / MATERIALIZED VIEW` | Adds metadata row |
-| `table_deletion_trigger` | `DROP TABLE / VIEW / MATERIALIZED VIEW` | Removes metadata |
-| `table_alteration_trigger` | `ALTER TABLE / VIEW / MATERIALIZED VIEW` | Refreshes column metadata |
-| `comment_trigger` | `COMMENT ON ...` | Updates the cached JSON comment |
-| `enum_alteration_trigger` | `ALTER TYPE ... ADD VALUE` | Refreshes enum values |
-| `schema_creation_trigger` / `schema_deletion_trigger` | schema DDL | Adds / removes whole schemas |
+```sql
+select supasheet.refresh_metadata();
+```
 
-Together with the permission-aware functions `supasheet.get_schemas()`, `get_tables()`, `get_views()`, `get_columns()`, and `get_related_tables()`, this is how the UI discovers what to render.
+<Callout type="warn">
+Forgetting this step is the most common cause of "my new table/column/comment metadata isn't showing up." Get in the habit of ending every migration with `select supasheet.refresh_metadata();`.
+</Callout>
 
-You do **not** need to call `refresh materialized view` or insert into `supasheet.tables` after running migrations.
+`refresh_metadata()` is defined in `00000000000000_meta.sql` and simply re-runs `REFRESH MATERIALIZED VIEW` for all four meta views:
+
+```sql
+create or replace function supasheet.refresh_metadata () returns void as $$
+BEGIN
+    REFRESH MATERIALIZED VIEW supasheet.tables;
+    REFRESH MATERIALIZED VIEW supasheet.columns;
+    REFRESH MATERIALIZED VIEW supasheet.views;
+    REFRESH MATERIALIZED VIEW supasheet.materialized_views;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+`EXECUTE` on this function is revoked from `anon`/`authenticated`/`service_role` by default — only the database owner can call it. In practice that means running it from the Supabase SQL Editor, the CLI (`supabase db reset` / `db push` re-run all migrations including the final `refresh materialized view` calls in `00000000000000_meta.sql`, so a fresh migration run is always in sync), or as the last statement in your own migration file.
+
+Together with the permission-aware functions `supasheet.get_schemas()`, `get_tables()`, `get_views()`, `get_columns()`, and `get_related_tables()`, these cached meta views are how the UI discovers what to render.
 
 ## Feature Views via JSON Comments
 
@@ -80,10 +92,10 @@ Dashboards, charts, reports, and templates are not separate tables — they are 
 
 | Type | Discovery function | Documented in |
 |------|--------------------|---------------|
-| `chart` | `supasheet.get_charts(p_schema)` | [Charts](/docs/guide/charts) |
-| `dashboard_widget` | `supasheet.get_widgets(p_schema)` | [Dashboards](/docs/guide/dashboards) |
-| `report` | `supasheet.get_reports(p_schema)` | [Reports](/docs/guide/reports) |
-| `template` | `supasheet.get_templates(p_schema)` | [Templates](/docs/guide/templates) |
+| `chart` | `supasheet.get_charts(p_schema)` | [Charts](/guide/charts) |
+| `dashboard_widget` | `supasheet.get_widgets(p_schema)` | [Dashboards](/guide/dashboards) |
+| `report` | `supasheet.get_reports(p_schema)` | [Reports](/guide/reports) |
+| `template` | `supasheet.get_templates(p_schema)` | [Templates](/guide/templates) |
 
 ### Example
 
@@ -108,6 +120,9 @@ GRANT SELECT ON desk.task_status_pie TO authenticated;
 
 INSERT INTO supasheet.role_permissions (role, permission) VALUES
   ('user', 'desk.task_status_pie:select');
+
+-- Required after creating the view and setting its comment
+select supasheet.refresh_metadata();
 ```
 
 ## Exposing Schemas via PostgREST
@@ -117,7 +132,7 @@ For Supasheet to query a schema through the publishable key, it must be exposed 
 ```toml
 [api]
 schemas = ["public", "supasheet", "desk", "crm", "hr"]
-extra_search_path = ["public", "extensions"]
+extra_search_path = ["public", "extensions", "supasheet", "desk", "crm", "hr"]
 ```
 
 After editing the config:
@@ -135,8 +150,8 @@ npx supabase stop && npx supabase start
 
 ## Next Steps
 
-- **[Authorization](/docs/guide/authorization)** — Grant permissions per schema/table
-- **[Resource Basics](/docs/guide/resource/basic)** — Build CRUD on top of your tables
-- **[Charts](/docs/guide/charts)** — Build a chart from a view
-- **[Reports](/docs/guide/reports)** — Build a report from a view
-- **[Templates](/docs/guide/templates)** — Reuse preset data via templates
+- **[Authorization](/guide/authorization)** — Grant permissions per schema/table
+- **[Resource Basics](/guide/resource/basic)** — Build CRUD on top of your tables
+- **[Charts](/guide/charts)** — Build a chart from a view
+- **[Reports](/guide/reports)** — Build a report from a view
+- **[Templates](/guide/templates)** — Reuse preset data via templates

@@ -39,7 +39,33 @@ CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high', 'urgent');
 </Step>
 
 <Step>
-### Step 2: Add Permissions to the System
+### Step 2: Create a Replica View for `supasheet.users`
+
+<Callout type="warn">
+**This step is required, not optional.** The table you're about to create lives in `public`, but the canonical user table is `supasheet.users` — a different schema. PostgREST cannot embed a foreign key across schemas, so without this replica, the `query.join` you'll add to the table's own metadata (Step 4) and the `user_tasks`/`task_report` views (Steps 6 and 9) will silently fail to resolve. See [Cross-Schema Joins](/guide/resource/query#cross-schema-joins) for why.
+</Callout>
+
+Create a same-named view in `public` that mirrors `supasheet.users`, before anything else references it:
+
+```sql
+create or replace view public.users
+with (security_invoker = true) as
+select * from supasheet.users;
+
+revoke all on public.users from authenticated, service_role;
+grant select on public.users to authenticated;
+```
+
+`security_invoker = true` makes the view enforce RLS as the querying user, not the view owner. This is the exact same pattern used by every bundled example schema (`desk.users`, `crm.users`, `store.users`, …) — it's how `supasheet.users` gets referenced from any other schema, every time.
+
+<Callout type="info">
+The foreign key you'll add in the next step still points straight at `supasheet.users(id)` — a foreign key can only target a real table, never a view. Only `query.join` / `fields.lookups` / view definitions need to go through `public.users` instead.
+</Callout>
+
+</Step>
+
+<Step>
+### Step 3: Add Permissions to the System
 
 Add permission values for ALL operations you'll need:
 
@@ -80,7 +106,7 @@ ALTER TYPE supasheet.app_permission ADD VALUE 'public.task_metrics_radar:select'
 </Step>
 
 <Step>
-### Step 3: Create the Table
+### Step 4: Create the Table
 
 Create your main table with proper structure:
 
@@ -122,7 +148,7 @@ CREATE TABLE tasks (
 
 -- Table comment with UI configuration
 COMMENT ON TABLE public.tasks IS
-'{"icon": "ListTodo", "display": "block", "query": {"sort": [{"id":"title","desc":false}], "filter": [{"id":"color","value":"#f59e0b","variant":"text","operator":"ilike"}], "join": [{"table":"accounts","on":"user_id","columns":["name","email"]}]}, "views": [{"id":"sheet","name":"Sheet View","type":"sheet"}, {"id":"status","name":"Tasks By Status","type":"kanban","group":"status","title":"title","description":"description","date":"created_at","badge":"priority"}, {"id":"priority","name":"Tasks By Priority","type":"kanban","group":"priority","title":"title","description":"description","date":"created_at","badge":"status"}, {"id":"calendar","name":"Calendar View","type":"calendar", "title": "title", "start_date": "created_at", "end_date": "due_date", "badge": "status"}, {"id":"gallery","name":"Gallery View","type":"gallery","cover":"cover","title":"title","description":"description","badge":"status"}]}';
+'{"icon": "ListTodo", "display": "block", "query": {"sort": [{"id":"title","desc":false}], "filter": [{"id":"color","value":"#f59e0b","operator":"ilike"}], "join": [{"table":"users","on":"user_id","columns":["name","email"]}]}, "views": [{"id":"sheet","name":"Sheet View","type":"sheet"}, {"id":"status","name":"Tasks By Status","type":"kanban","group":"status","title":"title","description":"description","date":"created_at","badge":"priority"}, {"id":"priority","name":"Tasks By Priority","type":"kanban","group":"priority","title":"title","description":"description","date":"created_at","badge":"status"}, {"id":"calendar","name":"Calendar View","type":"calendar", "title": "title", "start_date": "created_at", "end_date": "due_date", "badge": "status"}, {"id":"gallery","name":"Gallery View","type":"gallery","cover":"cover","title":"title","description":"description","badge":"status"}]}';
 
 -- Column comments for file types
 COMMENT ON COLUMN tasks.cover IS '{"accept":"image/*"}';
@@ -141,7 +167,7 @@ Supasheet uses custom domain types like `FILE`, `RICH_TEXT`, `PERCENTAGE`, `DURA
 </Step>
 
 <Step>
-### Step 4: Set Up Row Level Security (RLS)
+### Step 5: Set Up Row Level Security (RLS)
 
 Enable RLS and create policies:
 
@@ -181,9 +207,9 @@ CREATE POLICY tasks_delete ON public.tasks
 </Step>
 
 <Step>
-### Step 5: Create Views (Optional)
+### Step 6: Create Views (Optional)
 
-Create views for enhanced querying:
+Create views for enhanced querying — note this joins `public.users` (the replica from Step 2), not `supasheet.users` directly:
 
 ```sql
 -- Create a view with joined data
@@ -193,7 +219,7 @@ SELECT
     a.name AS account_name,
     t.*
 FROM tasks t
-JOIN supasheet.users a ON t.user_id = a.id;
+JOIN public.users a ON t.user_id = a.id;
 
 COMMENT ON VIEW public.user_tasks IS '{"icon": "UserCheck"}';
 
@@ -205,7 +231,7 @@ GRANT SELECT ON public.user_tasks TO authenticated;
 </Step>
 
 <Step>
-### Step 6: Create Dashboard Widgets
+### Step 7: Create Dashboard Widgets
 
 Dashboard widgets come in different types. Create views for each widget type you need:
 
@@ -324,7 +350,7 @@ COMMENT ON VIEW public.task_list_detailed IS '{"type": "dashboard_widget", "name
 </Step>
 
 <Step>
-### Step 7: Create Charts
+### Step 8: Create Charts
 
 Create views for different chart types:
 
@@ -423,9 +449,9 @@ COMMENT ON VIEW public.task_metrics_radar IS '{"type": "chart", "name": "Task Me
 </Step>
 
 <Step>
-### Step 8: Create Reports
+### Step 9: Create Reports
 
-Create report views:
+Create report views — again joining `public.users`, not `supasheet.users` directly:
 
 ```sql
 CREATE OR REPLACE VIEW public.task_report
@@ -434,7 +460,7 @@ SELECT
     a.name AS account_name,
     t.*
 FROM tasks t
-JOIN supasheet.users a ON t.user_id = a.id;
+JOIN public.users a ON t.user_id = a.id;
 
 REVOKE ALL ON public.task_report FROM authenticated, service_role;
 GRANT SELECT ON public.task_report TO authenticated;
@@ -445,7 +471,7 @@ COMMENT ON VIEW public.task_report IS '{"type": "report", "name": "Task Summary"
 </Step>
 
 <Step>
-### Step 9: Set Up Audit Logging
+### Step 10: Set Up Audit Logging
 
 Add triggers to automatically track changes:
 
@@ -472,7 +498,7 @@ EXECUTE FUNCTION supasheet.audit_trigger_function();
 </Step>
 
 <Step>
-### Step 10: Grant Permissions to Roles
+### Step 11: Grant Permissions to Roles
 
 Grant all permissions to appropriate roles:
 
@@ -511,17 +537,34 @@ INSERT INTO supasheet.role_permissions (role, permission) VALUES
 
 </Step>
 
+<Step>
+### Step 12: Refresh the Meta Layer
+
+`supasheet.tables`, `supasheet.columns`, and `supasheet.views` are materialized views — nothing refreshes them automatically. Finish every migration with:
+
+```sql
+select supasheet.refresh_metadata();
+```
+
+<Callout type="warn">
+Skip this and none of the tables, views, dashboard widgets, charts, or reports you just created will show up in the UI, even though the SQL objects and permissions exist.
+</Callout>
+
+</Step>
+
 </Steps>
 
 ## Key Takeaways
 
-1. **Permissions First**: Always add permissions to `supasheet.app_permission` enum before creating resources
-2. **RLS is Required**: Every table must have RLS policies that check permissions using `supasheet.has_permission()`
-3. **Revoke Then Grant**: Always revoke all permissions first, then explicitly grant what's needed
-4. **JSON Comments for Metadata**: Use JSON comments on views to identify dashboards, charts, and reports (no separate tables or schemas)
-5. **Grant to Roles**: Assign permissions to roles in `supasheet.role_permissions` table
-6. **Security Invoker**: Use `with(security_invoker = true)` for views to respect RLS policies
-7. **Audit Everything**: Add audit triggers for INSERT, UPDATE, and DELETE operations
+1. **Replica Views Are Required, Not Optional**: If your table lives outside `supasheet` and references `supasheet.users` (or any table in another schema) via a foreign key, create a same-named replica view in your own schema *before* anything tries to join/embed it — `query.join`, `fields.lookups`, and hand-written view joins all need the target in the same schema to resolve. Skipping this doesn't degrade gracefully — the join silently fails to appear.
+2. **Permissions First**: Always add permissions to `supasheet.app_permission` enum before creating resources
+3. **RLS is Required**: Every table must have RLS policies that check permissions using `supasheet.has_permission()`
+4. **Revoke Then Grant**: Always revoke all permissions first, then explicitly grant what's needed
+5. **JSON Comments for Metadata**: Use JSON comments on views to identify dashboards, charts, and reports (no separate tables or schemas)
+6. **Grant to Roles**: Assign permissions to roles in `supasheet.role_permissions` table
+7. **Security Invoker**: Use `with(security_invoker = true)` for views to respect RLS policies
+8. **Audit Everything**: Add audit triggers for INSERT, UPDATE, and DELETE operations
+9. **Refresh the Meta Layer**: Always end a migration with `select supasheet.refresh_metadata();` — the meta tables are materialized views, not live introspection
 
 ## Complete Migration Template
 
@@ -531,58 +574,64 @@ Here's a complete migration template you can use:
 -- 1. Create types
 create type [your_type] as enum ('value1', 'value2');
 
--- 2. Add all permissions
+-- 2. Create replica views for any cross-schema table you'll reference
+--    (REQUIRED whenever [table] references supasheet.users or any table
+--    outside its own schema — see Step 2 above for why)
+create or replace view public.users
+with (security_invoker = true) as
+select * from supasheet.users;
+revoke all on public.users from authenticated, service_role;
+grant select on public.users to authenticated;
+
+-- 3. Add all permissions
 alter type supasheet.app_permission add value 'public.[table]:select';
 alter type supasheet.app_permission add value 'public.[table]:insert';
 alter type supasheet.app_permission add value 'public.[table]:update';
 alter type supasheet.app_permission add value 'public.[table]:delete';
 -- ... add permissions for views, dashboards, charts, reports
 
--- 3. Create table
+-- 4. Create table (foreign keys still point at the real table, e.g.
+--    `references supasheet.users(id)` — never at the replica view)
 CREATE TABLE [table] (...);
 
--- 4. Enable RLS and create policies
+-- 5. Enable RLS and create policies
 alter table [table] enable row level security;
 revoke all on table [table] from authenticated, service_role;
 grant select, insert, update, delete on table [table] to authenticated;
 create policy [table]_select on [table] for select ...;
 -- ... other policies
 
--- 5. Create views
+-- 6. Create views (join the replica view, e.g. public.users, not the
+--    cross-schema table directly)
 create or replace view public.vw_[table] ...;
 
--- 6. Create dashboard widget views with metadata
+-- 7. Create dashboard widget views with metadata
 create or replace view public.[widget_name] ...;
 comment on view public.[widget_name] is '{"type": "dashboard_widget", "name": "...", "description": "...", "widget_type": "card_1"}';
 
--- 7. Create chart views with metadata
+-- 8. Create chart views with metadata
 create or replace view public.[chart_name] ...;
 comment on view public.[chart_name] is '{"type": "chart", "name": "...", "description": "...", "chart_type": "line"}';
 
--- 8. Create report views with metadata
+-- 9. Create report views with metadata
 create or replace view public.[report_name] ...;
 comment on view public.[report_name] is '{"type": "report", "name": "...", "description": "..."}';
 
--- 9. Add audit triggers
+-- 10. Add audit triggers
 CREATE TRIGGER audit_[table]_insert AFTER INSERT ON [table] FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
 CREATE TRIGGER audit_[table]_update AFTER UPDATE ON [table] FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
 CREATE TRIGGER audit_[table]_delete BEFORE DELETE ON [table] FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
 
--- 13. Grant permissions to roles
+-- 11. Grant permissions to roles
 insert into supasheet.role_permissions (role, permission) values
     ('user', 'public.[table]:select'),
     ('user', 'public.[table]:insert');
     -- ... all other permissions
 
--- 10. Update meta tables (IMPORTANT!)
-INSERT INTO supasheet.columns SELECT * FROM supasheet.generate_columns('public')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, table_id = EXCLUDED.table_id, name = EXCLUDED.name;
-
-INSERT INTO supasheet.tables SELECT * FROM supasheet.generate_tables('public')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name, rls_enabled = EXCLUDED.rls_enabled;
-
-INSERT INTO supasheet.views SELECT * FROM supasheet.generate_views('public')
-ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name, comment = EXCLUDED.comment;
+-- 12. Refresh the meta layer (IMPORTANT!)
+-- supasheet.tables/columns/views/materialized_views are materialized views,
+-- not live introspection — nothing updates them until you call this.
+select supasheet.refresh_metadata();
 
 -- Views include all types (regular, dashboard widgets, charts, reports)
 -- The system identifies them by the JSON comment metadata
@@ -590,8 +639,8 @@ ON CONFLICT (id) DO UPDATE SET schema = EXCLUDED.schema, name = EXCLUDED.name, c
 
 ## Next Steps
 
-- **[Authorization](/docs/guide/authorization)** - Understanding the permission system
-- **[Dashboards](/docs/guide/dashboards)** - Learn more about widget types
-- **[Charts](/docs/guide/charts)** - Explore chart types in detail
-- **[Reports](/docs/guide/reports)** - Advanced report features
-- **[Audit Logs](/docs/guide/audit-logs)** - Viewing and filtering audit logs
+- **[Authorization](/guide/authorization)** - Understanding the permission system
+- **[Dashboards](/guide/dashboards)** - Learn more about widget types
+- **[Charts](/guide/charts)** - Explore chart types in detail
+- **[Reports](/guide/reports)** - Advanced report features
+- **[Audit Logs](/guide/audit-logs)** - Viewing and filtering audit logs

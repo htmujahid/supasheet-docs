@@ -1,0 +1,95 @@
+---
+title: Materialized Views
+description: A cached, first-class resource type for expensive queries
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+A materialized view is a Postgres view whose result set is computed once and stored on disk, rather than re-run on every query. Supasheet treats materialized views as a resource type in their own right — alongside tables and regular views — with their own metadata comment, permission model, and discovery function (`supasheet.get_materialized_views`).
+
+The tradeoff is staleness: a regular view always reflects live data; a materialized view only reflects the data as of its last `REFRESH`.
+
+## Materialized Views vs. Regular Views
+
+| | Regular view | Materialized view |
+|---|---|---|
+| Data freshness | Always live | As of last refresh |
+| Query cost | Paid on every read | Paid once, at refresh time |
+| Storage | None (just a saved query) | Stores the full result set |
+| Indexable | No | Yes |
+| Good for | Simple joins, dashboards/charts/reports over small-to-medium tables | Expensive aggregations over large tables |
+
+Everything you already know about tagging a resource applies the same way — `COMMENT ON MATERIALIZED VIEW` with the same JSON metadata shape used for tables and views (`display`, `name`, `icon`, `fields`, etc.). See [Metadata](/guide/resource/metadata).
+
+## Two Different "Refresh" Operations — Don't Confuse Them
+
+<Callout type="warn">
+There are **two unrelated refresh operations** that happen to sound similar:
+
+1. `select supasheet.refresh_metadata();` — refreshes Supasheet's own *catalog* of what tables/views/materialized views exist and their comments. Run this after DDL changes. It does **not** touch your materialized view's data. See [Database Schema](/guide/database-schema).
+2. `REFRESH MATERIALIZED VIEW schema.your_view;` — recomputes the *actual data* inside your materialized view. Run this whenever the underlying data changes and you want the view to catch up.
+
+Creating or altering a materialized view requires both: `refresh_metadata()` so Supasheet knows the resource exists/changed shape, and `REFRESH MATERIALIZED VIEW` so it has data to show.
+</Callout>
+
+## Example: A Cached Sales Summary
+
+```sql
+CREATE MATERIALIZED VIEW public.sales_summary AS
+SELECT
+  date_trunc('day', created_at)::date AS day,
+  category,
+  COUNT(*) AS order_count,
+  SUM(total) AS revenue
+FROM public.orders
+GROUP BY 1, 2
+WITH NO DATA;
+
+CREATE UNIQUE INDEX ON public.sales_summary (day, category);
+
+COMMENT ON MATERIALIZED VIEW public.sales_summary IS '{
+  "icon": "TrendingUp",
+  "name": "Sales Summary",
+  "description": "Daily revenue by category, refreshed hourly"
+}';
+
+REVOKE ALL ON public.sales_summary FROM authenticated, service_role;
+GRANT SELECT ON public.sales_summary TO authenticated;
+
+INSERT INTO supasheet.role_permissions (role, permission) VALUES
+  ('user', 'public.sales_summary:select');
+
+-- Populate it for the first time
+REFRESH MATERIALIZED VIEW public.sales_summary;
+
+-- Keep it warm going forward
+CREATE OR REPLACE FUNCTION public.refresh_sales_summary()
+RETURNS void AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW CONCURRENTLY public.sales_summary;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT cron.schedule('refresh-sales-summary', '0 * * * *', 'SELECT public.refresh_sales_summary()');
+
+-- Tell Supasheet's catalog this resource now exists
+SELECT supasheet.refresh_metadata();
+```
+
+`CREATE UNIQUE INDEX` before the first refresh is what makes `REFRESH MATERIALIZED VIEW CONCURRENTLY` possible — without a unique index, concurrent refresh isn't available and readers will briefly be locked out during a plain `REFRESH`.
+
+## When to Reach for One
+
+Materialized views are the standard fix when a [dashboard widget](/guide/dashboards#performance-optimization) or [chart](/guide/charts#performance-considerations) is built on an aggregation over a large table and the query is measurably slow. Point the widget/chart/report's `COMMENT ON ... type: "dashboard_widget" | "chart" | "report"` view at the materialized view instead of the raw table, and refresh it on whatever cadence your freshness requirements allow (`pg_cron`, a webhook, or triggered from application code).
+
+## Permissions
+
+Access follows the same model as tables and views: grant `SELECT` at the Postgres level, then add a `role_permissions` row for `schema.name:select`. There is no separate `insert`/`update`/`delete` permission to grant — materialized views aren't writable directly.
+
+## Next Steps
+
+- **[Database Schema](/guide/database-schema)** — the meta layer and `refresh_metadata()`
+- **[Dashboards](/guide/dashboards)** and **[Charts](/guide/charts)** — the most common consumers of materialized views
+- **[Views](/guide/resource/views)** — layout types (Kanban, Calendar, etc.) available to any resource, including materialized views

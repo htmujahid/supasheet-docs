@@ -7,7 +7,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## Overview
 
-Supasheet allows you to configure default queries for your tables using JSON metadata in table comments. This lets you set default sorting, filtering, and join behavior that users see when they first open a resource.
+Supasheet allows you to configure default queries for your tables using JSON metadata in table comments. This lets you set default sorting, filtering, and which already-related tables to embed by default — the behavior users see when they first open a resource. `query` is a display-configuration layer on top of your actual SQL schema: it never creates relationships or joins on its own, it only controls how the default list-view query is shaped once those relationships already exist (via foreign keys, in the case of `join`).
 
 ## Configuration via Comments
 
@@ -92,63 +92,87 @@ Pre-filter your data to show specific records by default.
   {
     "id": "column_name",
     "value": "filter_value",     // string or array of strings
-    "variant": "text",            // text, number, date, dateRange, boolean, select, multiSelect, range
-    "operator": "eq"              // comparison operator
+    "operator": "eq"              // comparison operator — see below
   }
 ]
 ```
 
-**Available Variants:**
-- `text` - For text/string columns
-- `number` - For numeric columns (integer, decimal, etc.)
-- `date` - For single date values
-- `dateRange` - For date range filtering
-- `boolean` - For boolean columns
-- `select` - For enum or single-select columns
-- `multiSelect` - For array columns
-- `range` - For numeric range filtering
+<Callout type="warn">
+`FilterRule` does **not** have a `variant` field — the column's underlying data type is looked up automatically from the schema, and only the operators valid for that type are accepted. Filter rule objects are always exactly `{ id, value, operator }`.
+</Callout>
 
-### Operators by Variant
+### Operators by Column Type
 
-**Text Operators:**
-- `ilike` - Contains (case-insensitive)
-- `not.ilike` - Does not contain
-- `eq` - Is
-- `not.eq` - Is not
-- `empty` - Is empty
-- `not.empty` - Is not empty
+Which `operator` values are valid depends on the target column's type. This is the exact taxonomy Supasheet's filter UI uses (`src/config/filters.config.ts`):
 
-**Number Operators:**
-- `eq` - Is
-- `not.eq` - Is not
-- `lt` - Is less than
-- `lte` - Is less than or equal to
-- `gt` - Is greater than
-- `gte` - Is greater than or equal to
-- `between` - Is between (requires two values)
-- `empty` - Is empty
-- `not.empty` - Is not empty
+**Text columns:**
+| Operator | Meaning |
+|----------|---------|
+| `ilike` | Contains (case-insensitive) |
+| `not.ilike` | Does not contain |
+| `like` | Starts with / pattern match (case-sensitive) |
+| `eq` | Is |
+| `neq` | Is not |
+| `is` | Is empty |
+| `not.is` | Is not empty |
 
-**Date Operators:**
-- `eq` - Is
-- `not.eq` - Is not
-- `lt` - Is before
-- `gt` - Is after
-- `lte` - Is on or before
-- `gte` - Is on or after
-- `between` - Is between (requires two values)
-- `empty` - Is empty
-- `not.empty` - Is not empty
+**Numeric columns:**
+| Operator | Meaning |
+|----------|---------|
+| `eq` | Is |
+| `neq` | Is not |
+| `lt` | Is less than |
+| `lte` | Is less than or equal to |
+| `gt` | Is greater than |
+| `gte` | Is greater than or equal to |
+| `is` | Is empty |
+| `not.is` | Is not empty |
 
-**Boolean Operators:**
-- `eq` - Is
-- `not.eq` - Is not
+**Date / timestamp columns:**
+| Operator | Meaning |
+|----------|---------|
+| `eq` | Is |
+| `neq` | Is not |
+| `lt` | Is before |
+| `gt` | Is after |
+| `lte` | Is on or before |
+| `gte` | Is on or after |
+| `is` | Is empty |
+| `not.is` | Is not empty |
 
-**Multi-Select Operators (for enum/foreign key columns):**
-- `eq` - Is
-- `not.eq` - Is not
-- `empty` - Is empty
-- `not.empty` - Is not empty
+**Select / enum columns:**
+| Operator | Meaning |
+|----------|---------|
+| `eq` | Is |
+| `neq` | Is not |
+| `is` | Is empty |
+| `not.is` | Is not empty |
+
+**Multi-select / array columns:**
+| Operator | Meaning |
+|----------|---------|
+| `in` | Has any of |
+| `not.in` | Has none of |
+| `is` | Is empty |
+| `not.is` | Is not empty |
+
+**Boolean columns:**
+| Operator | Meaning |
+|----------|---------|
+| `is` | Is (true/false) |
+| `not.is` | Is not |
+
+**UUID columns:**
+| Operator | Meaning |
+|----------|---------|
+| `eq` | Is |
+| `neq` | Is not |
+| `is` | Is empty |
+| `not.is` | Is not empty |
+
+<Callout type="info">
+There is no `between` operator. To filter a range (dates, numbers), add two rules — one `gte` and one `lte` — against the same column.
+</Callout>
 
 ### Examples
 
@@ -160,7 +184,6 @@ COMMENT ON TABLE tasks IS '{
       {
         "id": "status",
         "value": "active",
-        "variant": "text",
         "operator": "eq"
       }
     ]
@@ -174,7 +197,6 @@ COMMENT ON TABLE tasks IS '{
       {
         "id": "color",
         "value": "#f59e0b",
-        "variant": "text",
         "operator": "ilike"
       }
     ]
@@ -188,7 +210,6 @@ COMMENT ON TABLE products IS '{
       {
         "id": "price",
         "value": "100",
-        "variant": "number",
         "operator": "gt"
       }
     ]
@@ -202,28 +223,30 @@ COMMENT ON TABLE tasks IS '{
       {
         "id": "status",
         "value": "active",
-        "variant": "text",
         "operator": "eq"
       },
       {
         "id": "is_important",
         "value": "true",
-        "variant": "boolean",
-        "operator": "eq"
+        "operator": "is"
       }
     ]
   }
 }';
 
--- Filter by date range (between two dates)
+-- Filter by date range (created in 2024 — two rules, no "between" operator)
 COMMENT ON TABLE tasks IS '{
   "query": {
     "filter": [
       {
         "id": "created_at",
-        "value": ["2024-01-01", "2024-12-31"],
-        "variant": "date",
-        "operator": "between"
+        "value": "2024-01-01",
+        "operator": "gte"
+      },
+      {
+        "id": "created_at",
+        "value": "2024-12-31",
+        "operator": "lte"
       }
     ]
   }
@@ -236,8 +259,7 @@ COMMENT ON TABLE tasks IS '{
       {
         "id": "status",
         "value": "archived",
-        "variant": "text",
-        "operator": "not.eq"
+        "operator": "neq"
       }
     ]
   }
@@ -250,7 +272,6 @@ COMMENT ON TABLE tasks IS '{
       {
         "id": "tags",
         "value": ["urgent", "bug"],
-        "variant": "multiSelect",
         "operator": "in"
       }
     ]
@@ -264,8 +285,7 @@ COMMENT ON TABLE tasks IS '{
       {
         "id": "notes",
         "value": "",
-        "variant": "text",
-        "operator": "empty"
+        "operator": "is"
       }
     ]
   }
@@ -274,7 +294,9 @@ COMMENT ON TABLE tasks IS '{
 
 ## Default Joins
 
-Automatically join related tables to display additional columns in your data view.
+`query.join` is a secondary, declarative layer — not the thing that makes two tables joinable in the first place. The real join always comes from a foreign key you define in SQL (`REFERENCES`), which is what lets PostgREST embed the related table at all (`?select=*,related_table!fk_column(cols)`). Once that relationship exists, Supasheet already surfaces it elsewhere automatically and independent of any metadata — FK columns render as searchable select dropdowns in forms (see [Relations](/guide/resource/basic#relations)), and related tables show up as their own tabs on the record detail page.
+
+What `query.join` controls is narrower: which of those already-possible embeds should be pulled into the resource's **list/sheet view** by default, and which specific columns to show from the related table, so users see them immediately without manually adding columns. Skip it and the relationship still exists and is still usable elsewhere — it just won't appear as extra columns in the default list view.
 
 ### Structure
 
@@ -311,10 +333,10 @@ COMMENT ON TABLE tasks IS '{
 }';
 ```
 
-This will:
-- Join the `accounts` table on `user_id`
-- Include `name` and `email` columns from accounts in the task list
-- Display as `accounts.name` and `accounts.email` columns
+This tells the default list view to:
+- Embed the already-related `accounts` table via the `user_id` foreign key
+- Pull in `name` and `email` from accounts alongside the task's own columns
+- Display them as `accounts.name` and `accounts.email` columns
 
 ### Multiple Joins
 
@@ -347,33 +369,35 @@ COMMENT ON TABLE orders IS '{
 ### Cross-Schema Joins
 
 <Callout type="warn">
-**Schema Limitation**: Due to PostgREST limitations, joins can only be performed within the same schema. You cannot directly join tables from different schemas.
+**Schema limitation**: PostgREST resolves joins/embedding within a single schema per request. You cannot directly join a table that lives in a different schema — most commonly this bites you when a table needs to reference `supasheet.users` (which lives in the `supasheet` schema) from `public` or any custom schema like `store`, `desk`, `crm`, etc.
 </Callout>
 
-If you need to join a table from another schema (e.g., `supasheet.users`), create a view in your working schema:
+The fix isn't a new table — it's a **replica view**: create a view with the *same name as the table you're referencing* (`users`, in this case) inside your own working schema, pointing at the real table with `security_invoker = true` so it still respects that user's RLS rather than the view owner's. This is the exact pattern used by every bundled example schema (`desk.users`, `crm.users`, `store.users`, etc. — see `supabase/examples/*.sql`) for referencing `supasheet.users`:
 
 ```sql
--- Create a view in the public schema that references supasheet.users
-CREATE OR REPLACE VIEW public.accounts
-WITH (security_invoker = true) AS
-SELECT * FROM supasheet.users;
+-- In your own schema (e.g. store) — not public, and not supasheet:
+create or replace view store.users
+with (security_invoker = true) as
+select * from supasheet.users;
 
--- Grant permissions
-REVOKE ALL ON public.accounts FROM authenticated, service_role;
-GRANT SELECT ON public.accounts TO authenticated;
+revoke all on store.users from authenticated, service_role;
+grant select on store.users to authenticated;
+```
 
--- Now you can join it in your tasks table
-CREATE TABLE public.tasks (
-  id UUID PRIMARY KEY,
+Now `store.users` can be joined/embedded like any ordinary table in that schema:
+
+```sql
+CREATE TABLE store.tasks (
+  id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   title TEXT NOT NULL,
   user_id UUID REFERENCES supasheet.users(id)
 );
 
-COMMENT ON TABLE public.tasks IS '{
+COMMENT ON TABLE store.tasks IS '{
   "query": {
     "join": [
       {
-        "table": "accounts",
+        "table": "users",
         "on": "user_id",
         "columns": ["name", "email"]
       }
@@ -382,15 +406,39 @@ COMMENT ON TABLE public.tasks IS '{
 }';
 ```
 
-**Key Points:**
-- Use `WITH (security_invoker = true)` to ensure RLS policies are applied based on the current user
-- The view must be in the same schema as the table you're querying
-- Grant appropriate permissions to the view
-- Reference the view by its name in the `table` property of the join configuration
+**Key points:**
+- The foreign key itself (`REFERENCES supasheet.users(id)`) can still point cross-schema just fine — Postgres has no problem with that. It's PostgREST's join/embed resolution (and therefore Supasheet's `query.join`, `fields.lookups`, and FK dropdown rendering) that needs the target inside the same schema.
+- Always use `WITH (security_invoker = true)` — without it, the view runs with the view owner's (usually elevated) privileges instead of the querying user's, silently bypassing RLS.
+- The replica view must live in the **same schema as the table doing the joining**, not in `public` by default — pick whichever schema your table is in.
+- Reference the view by its own name (`users`) in `join`/`lookups`/relationship config, not the original table's fully-qualified name.
+- This same limitation and fix apply to [`fields.lookups`](/guide/resource/metadata#fieldslookups) and FK dropdown relations described in [Relations](/guide/resource/basic#relations) — anywhere Supasheet needs to embed a cross-schema table.
 
 <Callout type="info">
 Joins respect Row Level Security policies. Users will only see joined data they have permission to access.
 </Callout>
+
+## Default Column Selection
+
+`select` restricts which columns load by default when the resource first opens — useful for wide tables where most columns aren't needed in the everyday list view.
+
+### Structure
+
+```typescript
+"select": ["column1", "column2", "column3"]
+```
+
+### Example
+
+```sql
+COMMENT ON TABLE store.products IS '{
+  "icon": "Package",
+  "query": {
+    "select": ["name", "price", "category", "in_stock"]
+  }
+}';
+```
+
+Users can still reveal hidden columns from the column-visibility menu — `select` only changes what's shown (and fetched) by default, it doesn't remove access to the other columns.
 
 ## Complete Example
 
@@ -412,6 +460,7 @@ COMMENT ON TABLE tasks IS '{
   "icon": "ListTodo",
   "display": "block",
   "query": {
+    "select": ["title", "status", "priority", "user_id", "color", "created_at"],
     "sort": [
       {"id": "title", "desc": false}
     ],
@@ -419,7 +468,6 @@ COMMENT ON TABLE tasks IS '{
       {
         "id": "color",
         "value": "#f59e0b",
-        "variant": "text",
         "operator": "ilike"
       }
     ],
@@ -435,6 +483,7 @@ COMMENT ON TABLE tasks IS '{
 ```
 
 When users first open the tasks resource, they will see:
+- Only the selected columns (`title`, `status`, `priority`, `user_id`, `color`, `created_at`)
 - Tasks sorted alphabetically by title
 - Filtered to show only tasks with orange color
 - With account name and email displayed from the joined accounts table
@@ -496,6 +545,6 @@ COMMENT ON VIEW tasks_with_accounts IS '{
 
 ## Next Steps
 
-- **[Views](/docs/guide/resource/views)** - Configure six view types (Sheet, Kanban, Calendar, Gallery, List, Tree)
-- **[Basic Resources](/docs/guide/resource/basic)** - Learn about CRUD interfaces
-- **[Data Types](/docs/guide/resource/data-types)** - Use custom data types
+- **[Views](/guide/resource/views)** - Configure six view types (Sheet, Kanban, Calendar, Gallery, List, Tree)
+- **[Basic Resources](/guide/resource/basic)** - Learn about CRUD interfaces
+- **[Data Types](/guide/resource/data-types)** - Use custom data types

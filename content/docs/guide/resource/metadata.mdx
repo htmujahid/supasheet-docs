@@ -26,7 +26,7 @@ type TableMetadata = {
   inline_form?: boolean
   query?: {
     sort?:   { id: string; desc: boolean }[]
-    filter?: { id: string; value: string | string[]; variant: string; operator: string }[]
+    filter?: { id: string; value: string | string[]; operator: string }[]
     join?:   { table: string; on: string; columns: string[] }[]
     select?: string[]
   }
@@ -38,13 +38,16 @@ type TableMetadata = {
     metadata?: string[]
     quick_create?: string[]
     duplicated?: string[]
-    behavior?: FieldBehavior[]
-    lookups?: LookupConfig[]
+    behavior?: Record<string, FieldBehavior>   // keyed by field name
+    lookups?: Record<string, LookupConfig>     // keyed by field name
   }
-  tabs?: string[]
-  history?: { table: string }
+  tabs?: string[]                    // filters which related-table tabs show — see `tabs` below
 }
 ```
+
+<Callout type="info">
+`FilterRule` (used in both `query.filter` and `filter_presets`) has no `variant` field — only `{ id, value, operator }`. The valid `operator` values depend on the target column's type; see [Query Configuration](/guide/resource/query#operators-by-column-type) for the full list.
+</Callout>
 
 ---
 
@@ -120,7 +123,7 @@ The parent table is detected automatically via the foreign-key relationship.
 
 ## `query`
 
-Default sorting, filtering, joins, and column selection applied when the resource first loads. See **[Query Configuration](/docs/guide/resource/query)** for the full reference.
+Default sorting, filtering, joins, and column selection applied when the resource first loads. See **[Query Configuration](/guide/resource/query)** for the full reference.
 
 ```sql
 COMMENT ON TABLE desk.tasks IS '{
@@ -137,7 +140,7 @@ COMMENT ON TABLE desk.tasks IS '{
 
 ## `views` and `primary_view`
 
-`views` declares the alternate views (Kanban, Calendar, Gallery, List, Tree). `primary_view` is the `id` of the view to load by default. See **[Views](/docs/guide/resource/views)** for the per-view configuration reference.
+`views` declares the alternate views (Kanban, Calendar, Gallery, List, Tree). `primary_view` is the `id` of the view to load by default. See **[Views](/guide/resource/views)** for the per-view configuration reference.
 
 ```sql
 COMMENT ON TABLE desk.projects IS '{
@@ -217,8 +220,7 @@ type FilterPreset = {
   filters: {
     id: string
     value: string | string[]
-    variant: string   // "text" | "select" | "multiSelect" | "boolean" | "date" | "range" | ...
-    operator: string  // "eq" | "in" | "gt" | "lt" | "contains" | "is" | ...
+    operator: string  // valid values depend on the column's type — see Query Configuration
   }[]
 }
 ```
@@ -227,14 +229,11 @@ type FilterPreset = {
 COMMENT ON TABLE desk.tasks IS '{
   "filter_presets": [
     {"id": "open",     "name": "Open (not completed)",
-     "filters": [{"id": "status", "value": ["pending", "in_progress"],
-                  "variant": "multiSelect", "operator": "in"}]},
+     "filters": [{"id": "status", "value": ["pending", "in_progress"], "operator": "in"}]},
     {"id": "critical", "name": "Critical & High",
-     "filters": [{"id": "priority", "value": ["critical", "high"],
-                  "variant": "multiSelect", "operator": "in"}]},
+     "filters": [{"id": "priority", "value": ["critical", "high"], "operator": "in"}]},
     {"id": "important", "name": "Important",
-     "filters": [{"id": "is_important", "value": "true",
-                  "variant": "boolean", "operator": "is"}]}
+     "filters": [{"id": "is_important", "value": "true", "operator": "is"}]}
   ]
 }';
 ```
@@ -259,27 +258,121 @@ COMMENT ON TABLE store.products IS '{
 
 ---
 
-## `tabs`
+## `fields.quick_create` and `fields.duplicated`
 
-Declare additional tabs on the detail page. Supasheet renders these as routes — `audit` and `comment` are built-in (gated by the matching permission); others can be wired up as custom routes.
+`quick_create` lists the fields shown in the abbreviated "quick create" form (e.g. the inline creator opened from a lookup or a kanban column's "+" button) — everything else is left to its default value and can be filled in later. `duplicated` lists the fields carried over when a user duplicates a record (fields left out reset to their defaults, e.g. `status` or `created_at`).
 
 ```sql
 COMMENT ON TABLE desk.tasks IS '{
-  "tabs": ["audit", "comment"]
+  "fields": {
+    "quick_create": ["title", "assignee_id", "due_date"],
+    "duplicated": ["title", "description", "priority", "project_id", "assignee_id"]
+  }
 }';
 ```
 
 ---
 
-## `history`
+## `fields.behavior`
 
-Point Supasheet at a companion history table — usually populated by a separate trigger — to surface a per-record change timeline on the detail page.
+Conditionally show, require, or lock fields based on the values of other fields in the same form. Keyed by field name; each entry accepts `visible` / `required` / `read_only`, each an array of `FieldCondition` (`{ id, operator, value }`) that must **all** match.
+
+```typescript
+type FieldCondition = {
+  id: string        // the other field to check
+  operator: string  // eq, neq, lt, lte, gt, gte, like, ilike, is, in, not.ilike, not.is, not.in
+  value: string | string[]
+}
+
+type FieldBehavior = {
+  visible?: FieldCondition[]
+  required?: FieldCondition[]
+  read_only?: FieldCondition[]
+}
+```
 
 ```sql
 COMMENT ON TABLE desk.tasks IS '{
-  "history": {"table": "tasks_history"}
+  "fields": {
+    "behavior": {
+      "due_date": {
+        "required": [{"id": "status", "operator": "neq", "value": "backlog"}]
+      },
+      "completed_at": {
+        "visible":   [{"id": "status", "operator": "eq", "value": "completed"}],
+        "read_only": [{"id": "status", "operator": "neq", "value": "completed"}]
+      },
+      "escalation_reason": {
+        "visible": [{"id": "priority", "operator": "in", "value": ["high", "critical"]}]
+      }
+    }
+  }
 }';
 ```
+
+In this example: `due_date` becomes required once a task leaves `backlog`; `completed_at` only shows up (and is only editable) once `status` is `completed`; `escalation_reason` only shows up for `high`/`critical` priority tasks — the `in` operator here is the new capability, not just equality checks.
+
+---
+
+## `fields.lookups`
+
+Auto-fill and filter dropdown options based on a related record picked in another field. Keyed by the local field that triggers the lookup (usually a foreign key select).
+
+```typescript
+type LookupFillRule   = { target: string; source: string }  // local field ← lookup column
+type LookupFilterRule = { on: string; column: string }       // local field → lookup column filter
+
+type LookupConfig = {
+  fill?: LookupFillRule[]
+  filter?: LookupFilterRule[]
+}
+```
+
+```sql
+-- Selecting a customer auto-fills their default shipping address,
+-- and the product list is filtered to the selected warehouse's stock.
+COMMENT ON TABLE store.orders IS '{
+  "fields": {
+    "lookups": {
+      "customer_id": {
+        "fill": [
+          {"target": "shipping_address", "source": "default_address"},
+          {"target": "shipping_city",    "source": "default_city"}
+        ]
+      },
+      "product_id": {
+        "filter": [
+          {"on": "warehouse_id", "column": "warehouse_id"}
+        ]
+      }
+    }
+  }
+}';
+```
+
+Here, picking a `customer_id` copies `default_address`/`default_city` from the looked-up customer into `shipping_address`/`shipping_city` on the form. Picking a `warehouse_id` restricts the `product_id` dropdown to products whose `warehouse_id` column matches.
+
+<Callout type="warn">
+The lookup target table must be in the **same schema** as the table declaring the lookup — this is the same PostgREST cross-schema limitation described in [Cross-Schema Joins](/guide/resource/query#cross-schema-joins). If `customer_id` pointed at a table in another schema (most commonly `supasheet.users`), create a same-named replica view with `security_invoker = true` in your own schema first, then point the *lookup* at that view. The foreign key constraint itself must keep referencing the real table (`REFERENCES supasheet.users(id)`) — a foreign key can never target a view, replica or not, so this part doesn't change.
+</Callout>
+
+---
+
+## `tabs`
+
+Filters which **related-table tabs** appear on the record detail page. By default — when `tabs` is omitted — every one-to-one, one-to-many, and many-to-many relationship Supasheet detects is shown as its own tab alongside the main "Detail" tab. Set `tabs` to a list of relationship names to show only those and hide the rest:
+
+```sql
+COMMENT ON TABLE desk.tasks IS '{
+  "tabs": ["comments", "attachments"]
+}';
+```
+
+Each string must match the relationship's name/embed key (the foreign table's PostgREST embed name), not a column or arbitrary label. The main "Detail" tab is always shown regardless of this setting.
+
+<Callout type="info">
+`tabs` has nothing to do with the Audit Log or Comments features — those are separate, permission-gated pages (`schema.table:audit` / `schema.table:comment`) linked from the record's actions menu, not tabs controlled by this field. See [Audit Logs](/guide/audit-logs) and [Comments](/guide/comments).
+</Callout>
 
 ---
 
@@ -304,6 +397,10 @@ COMMENT ON COLUMN store.products.sku IS '{
   "icon": "Barcode"
 }';
 ```
+
+<Callout type="info">
+`name` isn't just a form label — it now drives the column header everywhere the column appears: the data table, report tables, foreign-key display columns, and CSV export headers. Set it once here and it's consistent across the whole app.
+</Callout>
 
 ### Enum columns
 
@@ -361,14 +458,14 @@ type AvatarColumnMetadata = ColumnMetadata & {
 
 ```sql
 CREATE TABLE desk.tasks (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id              UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   title           TEXT NOT NULL,
   description     RICH_TEXT,
   status          TEXT NOT NULL DEFAULT 'pending'
                   CHECK (status IN ('pending', 'in_progress', 'completed', 'archived')),
   priority        TEXT NOT NULL DEFAULT 'medium'
                   CHECK (priority IN ('low', 'medium', 'high', 'critical')),
-  cover           FILE_OBJECT,
+  cover           FILE,
   attachments     FILE,
   assignee_id     UUID REFERENCES supasheet.users(id),
   project_id      UUID,
@@ -401,13 +498,18 @@ COMMENT ON TABLE desk.tasks IS $$
   ],
   "filter_presets": [
     {"id": "open",      "name": "Open (not completed)",
-     "filters": [{"id": "status", "value": ["pending", "in_progress"],
-                  "variant": "multiSelect", "operator": "in"}]},
+     "filters": [{"id": "status", "value": ["pending", "in_progress"], "operator": "in"}]},
     {"id": "important", "name": "Important",
-     "filters": [{"id": "is_important", "value": "true",
-                  "variant": "boolean", "operator": "is"}]}
+     "filters": [{"id": "is_important", "value": "true", "operator": "is"}]}
   ],
   "fields": {
+    "quick_create": ["title", "assignee_id", "due_date"],
+    "duplicated": ["title", "description", "priority", "project_id"],
+    "behavior": {
+      "completed_at": {
+        "visible": [{"id": "status", "operator": "eq", "value": "completed"}]
+      }
+    },
     "sections": [
       {"id": "summary",  "title": "Summary",
        "fields": ["title", "description", "cover"]},
@@ -419,7 +521,7 @@ COMMENT ON TABLE desk.tasks IS $$
        "fields": ["attachments", "notes"]}
     ]
   },
-  "tabs": ["audit", "comment"]
+  "tabs": ["tasks_history", "timesheets"]
 }
 $$;
 
@@ -454,8 +556,8 @@ Because Supabase comments only allow single-line strings, use dollar-quoted stri
 
 ## Next Steps
 
-- **[Views](/docs/guide/resource/views)** — Six view types and their configuration
-- **[Query Configuration](/docs/guide/resource/query)** — Sort, filter, join, and select
-- **[Data Types](/docs/guide/resource/data-types)** — Custom domains and the `FILE` composite type
-- **[Comments](/docs/guide/comments)** — Per-record discussions
-- **[Audit Logs](/docs/guide/audit-logs)** — Wire up the audit trigger
+- **[Views](/guide/resource/views)** — Six view types and their configuration
+- **[Query Configuration](/guide/resource/query)** — Sort, filter, join, and select
+- **[Data Types](/guide/resource/data-types)** — Custom domains and the `FILE` composite type
+- **[Comments](/guide/comments)** — Per-record discussions
+- **[Audit Logs](/guide/audit-logs)** — Wire up the audit trigger

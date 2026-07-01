@@ -15,7 +15,7 @@ Charts in Supasheet are created by defining SQL views in the `public` schema wit
 
 ## Chart Types
 
-Supasheet supports these chart types:
+Supasheet's `chart_type` metadata value supports these types:
 
 - **`area`** - Area chart for trends over time
 - **`bar`** - Bar chart for categorical comparisons
@@ -160,9 +160,11 @@ insert into supasheet.role_permissions (role, permission)
 values ('user', 'public.task_metrics_radar:select');
 ```
 
-## Chart Types
+### Additional Patterns
 
-### Single Metric
+The five `chart_type` values above cover the primitive chart shapes. You can combine them with different query shapes to get more specific presentations:
+
+#### Single Metric
 
 ```sql
 CREATE VIEW public.total_revenue AS
@@ -172,7 +174,7 @@ SELECT
 FROM orders;
 ```
 
-### Multi-Series Line Chart
+#### Multi-Series Line Chart
 
 ```sql
 CREATE VIEW public.revenue_vs_cost AS
@@ -187,7 +189,7 @@ GROUP BY date
 ORDER BY date;
 ```
 
-### Stacked Bar Chart
+#### Stacked Bar Chart
 
 ```sql
 CREATE VIEW public.orders_by_status_daily AS
@@ -202,7 +204,7 @@ GROUP BY date
 ORDER BY date;
 ```
 
-### Horizontal Bar Chart
+#### Horizontal Bar Chart
 
 ```sql
 CREATE VIEW public.top_customers AS
@@ -342,29 +344,27 @@ ORDER BY date;
 
 ## Chart Metadata
 
-Add descriptions and formatting hints:
+Descriptions and formatting hints belong in the JSON `comment` on the view, alongside `type` and `chart_type` — not as extra literal columns in the `SELECT` list:
 
 ```sql
 CREATE VIEW public.monthly_revenue AS
 SELECT
   DATE_TRUNC('month', created_at) as month,
-  SUM(total) as revenue,
-  'currency' as format,  -- Hint for number formatting
-  'line' as chart_type   -- Suggested chart type
+  SUM(total) as revenue
 FROM orders
 GROUP BY month
 ORDER BY month DESC
 LIMIT 12;
 
 COMMENT ON VIEW public.monthly_revenue IS
-  'Monthly revenue trend for the last 12 months';
+  '{"type": "chart", "name": "Monthly Revenue", "description": "Monthly revenue trend for the last 12 months", "chart_type": "line", "format": "currency"}';
 ```
 
 ## Performance Optimization
 
 ### Materialized Views
 
-For complex or slow queries:
+For complex or slow queries. See [Materialized Views](/guide/resource/materialized-views) for how Supasheet treats these as a resource type in their own right:
 
 ```sql
 CREATE MATERIALIZED VIEW public.expensive_chart AS
@@ -519,6 +519,6 @@ GROUP BY date;
 
 ## Next Steps
 
-- **[Dashboards](/docs/guide/dashboards)** - Combine charts into dashboards
-- **[Reports](/docs/guide/reports)** - Generate detailed reports
-- **[Database Schema](/docs/guide/database-schema)** - Learn more about the charts schema
+- **[Dashboards](/guide/dashboards)** - Combine charts into dashboards
+- **[Reports](/guide/reports)** - Generate detailed reports
+- **[Database Schema](/guide/database-schema)** - Learn more about the charts schema
