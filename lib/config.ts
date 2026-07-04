@@ -6,7 +6,7 @@ export const siteConfig = {
     "The admin panel you've been waiting for",
   links: {
     twitter: "https://twitter.com/htmujahid",
-    github: "https://github.com/htmujahid/supasheet",
+    github: "https://github.com/supasheet/supasheet",
   },
 }
 

@@ -39,7 +39,7 @@ COMMENT ON TABLE crm.deals IS '{
     title: 'That\'s it.',
     description: 'List, detail, create, edit, kanban, and calendar screens are live. Dashboard widgets and charts are one comment away. No UI code required.',
     code: `# Run the React app against your Supabase project
-$ git clone https://github.com/htmujahid/supasheet.git
+$ git clone https://github.com/supasheet/supasheet.git
 $ cd supasheet && npm install
 
 # Point at your project

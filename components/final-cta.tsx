@@ -24,7 +24,7 @@ export function FinalCTA() {
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </Link>
-                <Link href="https://github.com/htmujahid/supasheet" target="_blank" rel="noreferrer">
+                <Link href="https://github.com/supasheet/supasheet" target="_blank" rel="noreferrer">
                   <button className={buttonVariants({ variant: 'outline' }) + ' h-11 px-6 gap-2 w-full sm:w-auto rounded-2xl'}>
                     <Code2 className="h-5 w-5" />
                     Clone on GitHub

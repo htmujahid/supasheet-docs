@@ -11,7 +11,7 @@ export function FooterSection() {
           </p>
           <div className="flex items-center gap-4">
             <Link
-              href="https://github.com/htmujahid/supasheet"
+              href="https://github.com/supasheet/supasheet"
               target="_blank"
               rel="noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -20,7 +20,7 @@ export function FooterSection() {
               <Github className="h-5 w-5" />
             </Link>
             <Link
-              href="https://twitter.com/htmujahid"
+              href="https://twitter.com/supasheet_app"
               target="_blank"
               rel="noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
