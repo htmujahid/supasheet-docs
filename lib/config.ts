@@ -5,7 +5,7 @@ export const siteConfig = {
   description:
     "The admin panel you've been waiting for",
   links: {
-    twitter: "https://twitter.com/htmujahid",
+    twitter: "https://twitter.com/supasheet_app",
     github: "https://github.com/supasheet/supasheet",
   },
 }
