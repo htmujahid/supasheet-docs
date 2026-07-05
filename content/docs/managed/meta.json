@@ -1,0 +1,18 @@
+{
+  "title": "Managed Solution",
+  "description": "Hosted Supasheet with a visual UI builder",
+  "root": true,
+  "icon": "Cloud",
+  "pages": [
+    "index",
+    "getting-started",
+    "---Building---",
+    "ui-builder",
+    "charts-dashboards-reports",
+    "database-management",
+    "ai-assistant",
+    "---Administration---",
+    "administration",
+    "plans-and-trial"
+  ]
+}

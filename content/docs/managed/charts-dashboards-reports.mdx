@@ -1,0 +1,53 @@
+---
+title: Charts, Dashboards & Reports
+description: Build SQL-backed visualizations from the browser
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## The Model: SQL In, UI Out
+
+Charts, dashboard widgets, and reports are all defined the same way: **you write a SQL query, and the shape of its result columns drives the visualization**. This is the low-code part of the managed platform — one query per widget, no frontend code.
+
+The concepts are identical to self-hosted Supasheet ([Charts](/charts), [Dashboards](/dashboards), [Reports](/reports)); the platform just gives you an editor with previews instead of hand-written migrations.
+
+## Charts
+
+Five chart types are available: **bar**, **line**, **area**, **pie**, and **radar**. Each expects a specific result shape — for example, a bar or pie chart wants a `label` column plus a numeric value column:
+
+```sql
+select status as label, count(*) as value
+from public.tickets
+group by status;
+```
+
+Create a chart, pick its type, paste the query, and preview the result before saving.
+
+## Dashboard Widgets
+
+Dashboards are composed of widgets. Six widget types cover the common cases:
+
+| Widget | Purpose |
+|---|---|
+| Metric card | A single number (e.g. total revenue) |
+| Comparison card | Current vs previous value |
+| Metric + percent | A number with a change percentage |
+| Progress card | A value against a target |
+| List table | Latest rows (e.g. recent orders) |
+| Aggregated table | Grouped summaries |
+
+Each widget is one SQL query returning the columns that widget type expects. Mix widgets freely on a dashboard.
+
+## Reports
+
+Reports are tabular, printable views defined by a SQL query — ideal for exports and periodic reviews. Define the query, name the report, and it appears in the hosted app for every role you grant access to.
+
+<Callout type="info">
+Queries run against your own database through your project's Data API, so Row Level Security and role permissions apply to what each user actually sees.
+</Callout>
+
+## Tips
+
+- Build the query in the [SQL editor](/managed/database-management#sql-editor) first, then paste it into a chart or widget once the shape is right.
+- Wrap complex logic in a database **view** and select from it — the query stays short and the logic is reusable across charts, widgets, and reports.
+- Use the [AI assistant](/managed/ai-assistant) to draft queries from a plain-language description.

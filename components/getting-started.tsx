@@ -94,7 +94,7 @@ export function GettingStarted() {
             })}
           </div>
           <div className="flex flex-col sm:flex-row justify-center gap-4 mt-16">
-            <Link href="/guide">
+            <Link href="/installation">
               <button className={buttonVariants({ variant: 'primary' }) + ' gap-2 rounded-2xl h-11 px-6'}>
                 Read the docs
                 <ArrowRight className="h-4 w-4" />

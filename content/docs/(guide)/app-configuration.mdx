@@ -83,9 +83,9 @@ insert into supasheet.configs (key, value, description, is_public) values
   ('app.description', '"Internal operations console"'::jsonb, 'Used for meta tags', true);
 ```
 
-Remember to run `select supasheet.refresh_metadata();` after any schema change in the same migration (not required here since `configs` rows aren't DDL, but do it if you also touched tables/comments) — see [Database Schema](/guide/database-schema).
+Remember to run `select supasheet.refresh_metadata();` after any schema change in the same migration (not required here since `configs` rows aren't DDL, but do it if you also touched tables/comments) — see [Database Schema](/database-schema).
 
 ## Next Steps
 
-- **[Authorization](/guide/authorization)** — how `role_permissions` gates everything *other* than `configs`
-- **[Database Schema](/guide/database-schema)** — where `configs` sits among the other `supasheet` schema objects
+- **[Authorization](/authorization)** — how `role_permissions` gates everything *other* than `configs`
+- **[Database Schema](/database-schema)** — where `configs` sits among the other `supasheet` schema objects

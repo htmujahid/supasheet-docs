@@ -294,7 +294,7 @@ COMMENT ON TABLE tasks IS '{
 
 ## Default Joins
 
-`query.join` is a secondary, declarative layer — not the thing that makes two tables joinable in the first place. The real join always comes from a foreign key you define in SQL (`REFERENCES`), which is what lets PostgREST embed the related table at all (`?select=*,related_table!fk_column(cols)`). Once that relationship exists, Supasheet already surfaces it elsewhere automatically and independent of any metadata — FK columns render as searchable select dropdowns in forms (see [Relations](/guide/resource/basic#relations)), and related tables show up as their own tabs on the record detail page.
+`query.join` is a secondary, declarative layer — not the thing that makes two tables joinable in the first place. The real join always comes from a foreign key you define in SQL (`REFERENCES`), which is what lets PostgREST embed the related table at all (`?select=*,related_table!fk_column(cols)`). Once that relationship exists, Supasheet already surfaces it elsewhere automatically and independent of any metadata — FK columns render as searchable select dropdowns in forms (see [Relations](/resource/basic#relations)), and related tables show up as their own tabs on the record detail page.
 
 What `query.join` controls is narrower: which of those already-possible embeds should be pulled into the resource's **list/sheet view** by default, and which specific columns to show from the related table, so users see them immediately without manually adding columns. Skip it and the relationship still exists and is still usable elsewhere — it just won't appear as extra columns in the default list view.
 
@@ -411,7 +411,7 @@ COMMENT ON TABLE store.tasks IS '{
 - Always use `WITH (security_invoker = true)` — without it, the view runs with the view owner's (usually elevated) privileges instead of the querying user's, silently bypassing RLS.
 - The replica view must live in the **same schema as the table doing the joining**, not in `public` by default — pick whichever schema your table is in.
 - Reference the view by its own name (`users`) in `join`/`lookups`/relationship config, not the original table's fully-qualified name.
-- This same limitation and fix apply to [`fields.lookups`](/guide/resource/metadata#fieldslookups) and FK dropdown relations described in [Relations](/guide/resource/basic#relations) — anywhere Supasheet needs to embed a cross-schema table.
+- This same limitation and fix apply to [`fields.lookups`](/resource/metadata#fieldslookups) and FK dropdown relations described in [Relations](/resource/basic#relations) — anywhere Supasheet needs to embed a cross-schema table.
 
 <Callout type="info">
 Joins respect Row Level Security policies. Users will only see joined data they have permission to access.
@@ -545,6 +545,6 @@ COMMENT ON VIEW tasks_with_accounts IS '{
 
 ## Next Steps
 
-- **[Views](/guide/resource/views)** - Configure six view types (Sheet, Kanban, Calendar, Gallery, List, Tree)
-- **[Basic Resources](/guide/resource/basic)** - Learn about CRUD interfaces
-- **[Data Types](/guide/resource/data-types)** - Use custom data types
+- **[Views](/resource/views)** - Configure six view types (Sheet, Kanban, Calendar, Gallery, List, Tree)
+- **[Basic Resources](/resource/basic)** - Learn about CRUD interfaces
+- **[Data Types](/resource/data-types)** - Use custom data types

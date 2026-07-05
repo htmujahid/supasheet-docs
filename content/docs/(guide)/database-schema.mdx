@@ -36,7 +36,7 @@ CREATE TABLE desk.tasks (
 ```
 
 <Callout type="warn">
-Always reference `supasheet.users(id)` instead of `auth.users(id)`. See [User Management](/guide/user-management) for the reasoning.
+Always reference `supasheet.users(id)` instead of `auth.users(id)`. See [User Management](/user-management) for the reasoning.
 </Callout>
 
 ## The `supasheet` Schema
@@ -92,10 +92,10 @@ Dashboards, charts, reports, and templates are not separate tables — they are 
 
 | Type | Discovery function | Documented in |
 |------|--------------------|---------------|
-| `chart` | `supasheet.get_charts(p_schema)` | [Charts](/guide/charts) |
-| `dashboard_widget` | `supasheet.get_widgets(p_schema)` | [Dashboards](/guide/dashboards) |
-| `report` | `supasheet.get_reports(p_schema)` | [Reports](/guide/reports) |
-| `template` | `supasheet.get_templates(p_schema)` | [Templates](/guide/templates) |
+| `chart` | `supasheet.get_charts(p_schema)` | [Charts](/charts) |
+| `dashboard_widget` | `supasheet.get_widgets(p_schema)` | [Dashboards](/dashboards) |
+| `report` | `supasheet.get_reports(p_schema)` | [Reports](/reports) |
+| `template` | `supasheet.get_templates(p_schema)` | [Templates](/templates) |
 
 ### Example
 
@@ -150,8 +150,8 @@ npx supabase stop && npx supabase start
 
 ## Next Steps
 
-- **[Authorization](/guide/authorization)** — Grant permissions per schema/table
-- **[Resource Basics](/guide/resource/basic)** — Build CRUD on top of your tables
-- **[Charts](/guide/charts)** — Build a chart from a view
-- **[Reports](/guide/reports)** — Build a report from a view
-- **[Templates](/guide/templates)** — Reuse preset data via templates
+- **[Authorization](/authorization)** — Grant permissions per schema/table
+- **[Resource Basics](/resource/basic)** — Build CRUD on top of your tables
+- **[Charts](/charts)** — Build a chart from a view
+- **[Reports](/reports)** — Build a report from a view
+- **[Templates](/templates)** — Reuse preset data via templates

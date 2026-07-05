@@ -1,0 +1,46 @@
+---
+title: Database Management
+description: Edit your schema, security, and SQL without leaving the platform
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## A Schema Explorer for Your Project
+
+The builder includes a full database explorer for every schema in your connected project. You can inspect and edit the structures that Supasheet renders UI from — the same objects the [Guide](/database-schema) teaches you to create by hand in migrations.
+
+## Tables
+
+For each table you can manage:
+
+- **Columns & metadata** — types, defaults, and the presentation metadata used by the [UI builder](/managed/ui-builder).
+- **Constraints** — primary keys, unique and check constraints.
+- **Relationships** — foreign keys between tables.
+- **Triggers** — including one-click audit triggers that feed the built-in [audit log](/audit-logs).
+- **Security** — Row Level Security policies and per-role table privileges.
+
+## Views & Materialized Views
+
+Create and edit SQL views directly in the browser. Views are the workhorse of Supasheet: they back [read-only resources](/resource/views), [charts](/managed/charts-dashboards-reports), dashboard widgets, and reports. Materialized views are supported for expensive aggregations, and each view gets its own metadata and role-permission settings, just like a table.
+
+## Custom Data Types
+
+Define PostgreSQL enums and composite types visually. Enum columns automatically render as select inputs in the hosted app (see [Data Types](/resource/data-types)).
+
+## SQL Editor
+
+A full SQL editor (with autocomplete) is built in for anything the forms don't cover — ad-hoc queries, data fixes, or prototyping the queries you'll use in charts and widgets.
+
+<Callout type="warn">
+The SQL editor executes against your live database with elevated privileges. Prefer the structured editors for schema changes, and test destructive statements against non-production data first.
+</Callout>
+
+## Where's the Migration File?
+
+Self-hosted Supasheet encourages migration-first workflows; the managed builder applies changes directly. If you also maintain a migration history (or plan to move to self-hosting later), you can dump your schema at any time with the Supabase CLI:
+
+```bash
+npx supabase db pull
+```
+
+Your database remains a standard Supabase project — nothing about the managed platform prevents you from using the Supabase dashboard or CLI alongside it.

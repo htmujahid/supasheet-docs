@@ -1,0 +1,31 @@
+---
+title: AI Assistant
+description: Query and update your data in plain language
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Natural Language to SQL
+
+The managed platform includes an AI assistant that understands **your** schema. When you connect a project, the platform indexes your tables, columns, and relationships so the assistant can translate questions into accurate SQL:
+
+> "Show me the ten customers with the highest order total this quarter"
+
+becomes a `SELECT` you can run, refine, or paste straight into a [chart or dashboard widget](/managed/charts-dashboards-reports).
+
+## Reads and Writes
+
+- **Reads** — the assistant generates and runs `SELECT` queries and shows the results inline.
+- **Writes** — for `INSERT`, `UPDATE`, or `DELETE`, the assistant first shows a preview of the rows that will be affected and asks you to **confirm** before anything executes. Confirmed mutations return the changed rows so you can verify the outcome.
+
+<Callout title="Guardrails">
+The assistant will not run DDL (schema changes) and refuses unscoped destructive statements — an `UPDATE` or `DELETE` without a `WHERE` clause is rejected rather than guessed at. Schema changes belong in [Database Management](/managed/database-management).
+</Callout>
+
+## Good Uses
+
+- Drafting the SQL for charts, widgets, and reports without remembering exact column names.
+- Ad-hoc questions during a meeting ("how many signups this week vs last?").
+- Small, controlled data fixes with a visible preview before committing.
+
+For anything the assistant gets wrong, the generated SQL is always visible — edit it by hand in the [SQL editor](/managed/database-management#sql-editor).

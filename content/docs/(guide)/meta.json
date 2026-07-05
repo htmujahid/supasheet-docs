@@ -1,9 +1,10 @@
 {
   "title": "Guide",
-  "description": "Learn how to use Supasheet as a framework",
+  "description": "Add new features to your self-hosted Supasheet",
   "root": true,
   "icon": "BookOpen",
   "pages": [
+    "index",
     "installation",
     "quickstart",
     "---Core Concepts---",

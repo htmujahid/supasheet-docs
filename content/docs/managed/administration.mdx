@@ -1,0 +1,35 @@
+---
+title: Administration
+description: Users, roles, storage, and app configuration
+---
+
+## Users
+
+Manage your app's users from the platform — backed by the admin edge functions installed into your project:
+
+- **Create and invite** users (invites and magic links included).
+- **Update** profiles and credentials.
+- **Delete** users.
+
+These are the same capabilities described in [User Management](/user-management), operated from the platform UI instead of the self-hosted admin pages.
+
+## Roles & Permissions
+
+Supasheet ships three roles (`x-admin`, `admin`, `user`) with fine-grained per-table permissions (see [Authorization](/authorization)). The platform gives you matrix editors for:
+
+- **Role permissions** — which role can select / insert / update / delete each table.
+- **View permissions** — the same, per SQL view.
+- **User roles** — which users hold which roles.
+
+Changes take effect immediately in the hosted app.
+
+## Storage
+
+Manage your project's storage from the same place:
+
+- **Buckets** — create and configure public, personal, and per-resource buckets.
+- **Policies** — bucket-scoped access policies, mirroring the RLS-based model described in [File Storage](/storage).
+
+## App Configuration
+
+Branding and behavior settings — app name, description, and other key-value settings grouped by section — are edited visually and stored in your project's `supasheet.configs` table, exactly as in [App Configuration](/app-configuration). Your hosted app at `https://<ref>.supasheet.app` reflects them on the next load.

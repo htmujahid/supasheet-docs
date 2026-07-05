@@ -21,14 +21,14 @@ The tradeoff is staleness: a regular view always reflects live data; a materiali
 | Indexable | No | Yes |
 | Good for | Simple joins, dashboards/charts/reports over small-to-medium tables | Expensive aggregations over large tables |
 
-Everything you already know about tagging a resource applies the same way — `COMMENT ON MATERIALIZED VIEW` with the same JSON metadata shape used for tables and views (`display`, `name`, `icon`, `fields`, etc.). See [Metadata](/guide/resource/metadata).
+Everything you already know about tagging a resource applies the same way — `COMMENT ON MATERIALIZED VIEW` with the same JSON metadata shape used for tables and views (`display`, `name`, `icon`, `fields`, etc.). See [Metadata](/resource/metadata).
 
 ## Two Different "Refresh" Operations — Don't Confuse Them
 
 <Callout type="warn">
 There are **two unrelated refresh operations** that happen to sound similar:
 
-1. `select supasheet.refresh_metadata();` — refreshes Supasheet's own *catalog* of what tables/views/materialized views exist and their comments. Run this after DDL changes. It does **not** touch your materialized view's data. See [Database Schema](/guide/database-schema).
+1. `select supasheet.refresh_metadata();` — refreshes Supasheet's own *catalog* of what tables/views/materialized views exist and their comments. Run this after DDL changes. It does **not** touch your materialized view's data. See [Database Schema](/database-schema).
 2. `REFRESH MATERIALIZED VIEW schema.your_view;` — recomputes the *actual data* inside your materialized view. Run this whenever the underlying data changes and you want the view to catch up.
 
 Creating or altering a materialized view requires both: `refresh_metadata()` so Supasheet knows the resource exists/changed shape, and `REFRESH MATERIALIZED VIEW` so it has data to show.
@@ -82,7 +82,7 @@ SELECT supasheet.refresh_metadata();
 
 ## When to Reach for One
 
-Materialized views are the standard fix when a [dashboard widget](/guide/dashboards#performance-optimization) or [chart](/guide/charts#performance-considerations) is built on an aggregation over a large table and the query is measurably slow. Point the widget/chart/report's `COMMENT ON ... type: "dashboard_widget" | "chart" | "report"` view at the materialized view instead of the raw table, and refresh it on whatever cadence your freshness requirements allow (`pg_cron`, a webhook, or triggered from application code).
+Materialized views are the standard fix when a [dashboard widget](/dashboards#performance-optimization) or [chart](/charts#performance-considerations) is built on an aggregation over a large table and the query is measurably slow. Point the widget/chart/report's `COMMENT ON ... type: "dashboard_widget" | "chart" | "report"` view at the materialized view instead of the raw table, and refresh it on whatever cadence your freshness requirements allow (`pg_cron`, a webhook, or triggered from application code).
 
 ## Permissions
 
@@ -90,6 +90,6 @@ Access follows the same model as tables and views: grant `SELECT` at the Postgre
 
 ## Next Steps
 
-- **[Database Schema](/guide/database-schema)** — the meta layer and `refresh_metadata()`
-- **[Dashboards](/guide/dashboards)** and **[Charts](/guide/charts)** — the most common consumers of materialized views
-- **[Views](/guide/resource/views)** — layout types (Kanban, Calendar, etc.) available to any resource, including materialized views
+- **[Database Schema](/database-schema)** — the meta layer and `refresh_metadata()`
+- **[Dashboards](/dashboards)** and **[Charts](/charts)** — the most common consumers of materialized views
+- **[Views](/resource/views)** — layout types (Kanban, Calendar, etc.) available to any resource, including materialized views

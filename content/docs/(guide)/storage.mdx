@@ -78,7 +78,7 @@ COMMENT ON COLUMN store.products.image   IS '{"accept": "image/*", "maxSize": 52
 COMMENT ON COLUMN store.products.manuals IS '{"accept": ".pdf",   "maxSize": 10485760, "maxFiles": 5}';
 ```
 
-See **[Data Types](/guide/resource/data-types)** for the full type reference and **[Metadata → File columns](/guide/resource/metadata#file-columns)** for the column metadata options.
+See **[Data Types](/resource/data-types)** for the full type reference and **[Metadata → File columns](/resource/metadata#file-columns)** for the column metadata options.
 
 ### `FILE_OBJECT` (single file)
 
@@ -161,6 +161,6 @@ Supabase Storage also enforces a global `file_size_limit` per project. Make sure
 
 ## Next Steps
 
-- **[Data Types](/guide/resource/data-types)** — `FILE`, `FILE_OBJECT`, `AVATAR`, `RICH_TEXT`
-- **[Metadata](/guide/resource/metadata#file-columns)** — Column-level configuration for file fields
-- **[Authorization](/guide/authorization)** — How `schema.table:*` permissions gate the `uploads` bucket
+- **[Data Types](/resource/data-types)** — `FILE`, `FILE_OBJECT`, `AVATAR`, `RICH_TEXT`
+- **[Metadata](/resource/metadata#file-columns)** — Column-level configuration for file fields
+- **[Authorization](/authorization)** — How `schema.table:*` permissions gate the `uploads` bucket

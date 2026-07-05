@@ -1,0 +1,71 @@
+---
+title: Getting Started
+description: Sign up with your Supabase project and go live in minutes
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Before You Start
+
+You need a **Supabase project** (any plan, including the free tier). If you don't have one yet, create it at [supabase.com](https://supabase.com) first — the platform connects to existing projects; it does not create them for you.
+
+<Steps>
+<Step>
+### Sign In with Supabase
+
+Go to [supasheet.app](https://supasheet.app) and click **Sign in**. Authentication uses Supabase OAuth — there is no separate password to manage. You'll be asked to authorize Supasheet to access your organization, so the platform can list your projects and run the installation on your behalf.
+</Step>
+
+<Step>
+### Pick a Project
+
+After signing in you land on the dashboard, which lists every project in your Supabase organization. Choose the project you want to turn into a Supasheet app.
+</Step>
+
+<Step>
+### Install Supasheet
+
+Click **Install**. The installer runs three steps and streams progress as it goes:
+
+1. **Edge functions** — deploys the admin functions used for user management (create, invite, update, delete users, and magic-link generation).
+2. **Migrations** — applies the official Supasheet SQL migrations to your database: the `supasheet` meta schema, roles and permissions, dashboards, charts, reports, audit logs, storage, notifications, templates, and comments.
+3. **Data API** — exposes the `supasheet` schema through your project's Data API so the frontend can read its configuration.
+
+<Callout type="info">
+These are the same migrations as the open-source repository, applied through the Supabase Management API. Nothing proprietary is written into your database.
+</Callout>
+</Step>
+
+<Step>
+### (Optional) Load Demo Data
+
+If you're evaluating, load the demo dataset to explore resources, dashboards, and charts with realistic content. You can remove it later, or uninstall Supasheet entirely with **Drop** — your own tables are never touched.
+</Step>
+
+<Step>
+### Open Your App
+
+Click **Open** to launch the hosted frontend:
+
+```
+https://<your-project-ref>.supasheet.app
+```
+
+Sign in with a user from your Supabase project's auth. From here, everything in the [Guide](/quickstart) about how resources, dashboards, and permissions behave applies equally to the hosted app.
+</Step>
+
+<Step>
+### Start Building
+
+Head back to the platform and open your project's builder to configure how your data is presented — no code required for most of it:
+
+- [UI Builder](/managed/ui-builder) — resources, views, forms, filters
+- [Charts, Dashboards & Reports](/managed/charts-dashboards-reports) — SQL-backed visualizations
+- [Administration](/managed/administration) — users, roles, storage, branding
+</Step>
+</Steps>
+
+## Keeping Things in Sync
+
+If you rename your project or rotate its anon key in Supabase, use **Sync** from the dashboard to refresh the hosted frontend's configuration.

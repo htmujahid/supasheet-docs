@@ -83,7 +83,7 @@ Applies all local migrations to cloud database.
 The migrations in `supabase/migrations/` build the complete platform layer:
 
 - **Schemas**: `supasheet` (Supasheet's meta + RBAC + audit/notifications/comments), plus `public` (yours to use)
-- **Meta layer**: `supasheet.tables`, `columns`, `views`, `materialized_views` — materialized views refreshed manually via `select supasheet.refresh_metadata();` after DDL changes (see [Database Schema](/guide/database-schema#refreshing-the-meta-layer))
+- **Meta layer**: `supasheet.tables`, `columns`, `views`, `materialized_views` — materialized views refreshed manually via `select supasheet.refresh_metadata();` after DDL changes (see [Database Schema](/database-schema#refreshing-the-meta-layer))
 - **Users**: `supasheet.users` with triggers to mirror `auth.users`
 - **RBAC**: `supasheet.user_roles`, `role_permissions`, plus `app_role` and `app_permission` enums and helpers `has_role()` / `has_permission()`
 - **Audit log**: `supasheet.audit_logs` and `audit_trigger_function()`
@@ -180,7 +180,7 @@ npx supabase gen types typescript --local \
   > src/lib/database.types.ts
 ```
 
-See **[Quickstart](/guide/quickstart)** and **[Complete Example](/guide/complete-example)** for full templates, and **[Examples in the repo](https://github.com/supasheet/supasheet/tree/main/supabase/examples)** for 12 reference domains.
+See **[Quickstart](/quickstart)** and **[Complete Example](/complete-example)** for full templates, and **[Examples in the repo](https://github.com/supasheet/supasheet/tree/main/supabase/examples)** for 12 reference domains.
 
 ## Next Steps
 

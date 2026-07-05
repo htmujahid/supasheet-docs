@@ -1,0 +1,64 @@
+---
+title: UI Builder
+description: Configure resources, views, forms, and filters visually
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+In self-hosted Supasheet, you shape the UI by writing metadata as SQL comments on tables and columns (see [Resource Metadata](/resource/metadata)). The managed platform replaces that with a **visual builder**: structured forms that write the same metadata for you. The hosted frontend picks up changes immediately.
+
+Open any table in the builder to configure it. Everything below is point-and-click unless noted.
+
+## Resource Settings
+
+Per table you control:
+
+- **Display** — show or hide the resource in the app.
+- **Icon & group** — the sidebar icon (any Lucide icon name) and the section it appears under.
+- **Singleton** — treat the table as a single record (e.g. site settings) instead of a list.
+- **Primary view** — which view type opens by default.
+
+## Views
+
+Every resource gets the spreadsheet-style sheet view automatically. On top of that you can add any of the five alternate view types and map your columns to their slots:
+
+| View | Field mappings |
+|---|---|
+| **Kanban** | group (column that defines lanes), title, description, badge |
+| **Calendar** | date or start/end date, title, badge |
+| **Gallery** | cover image, title, description, extra fields |
+| **List** | title, description, secondary text |
+| **Tree** | parent (self-referencing column), title |
+
+Users switch between configured views from the resource toolbar in the hosted app.
+
+## Filter Presets
+
+Define named, one-click filters — for example "My open tickets" or "Due this week". Each preset has a name, description, icon, and a set of filter rules (column, operator, value). Presets appear in the resource toolbar.
+
+## Form Sections & Fields
+
+Control how create, edit, and detail forms are laid out:
+
+- **Sections** — group fields into titled, optionally collapsible sections with icons, or split them across tabs.
+- **Per-mode fields** — choose which fields appear on create, update, and read separately.
+- **Quick create** — a reduced field set for fast inline entry.
+- **Duplicate** — which fields carry over when a record is duplicated.
+- **Inline form** — edit records in place instead of the side sheet.
+
+## Conditional Behavior & Lookups
+
+Two low-code features cover most dynamic-form needs:
+
+- **Field behavior** — make a field *visible*, *required*, or *read-only* based on conditions on other fields (e.g. show `refund_reason` only when `status = 'refunded'`).
+- **Lookups** — when a user picks a foreign-key value, auto-fill related fields and filter dependent dropdowns (e.g. picking a customer fills their default currency and limits the projects list to theirs).
+
+## Query Configuration
+
+Tune what the resource loads by default: sort order, selected columns, base filters, and joins. This maps directly to the query the frontend sends to your Data API.
+
+<Callout title="It's still your schema">
+The builder edits presentation metadata only. Your table definitions, constraints, and RLS policies remain plain PostgreSQL — see [Database Management](/managed/database-management) for editing those, or the [Guide](/database-schema) for the underlying concepts.
+</Callout>

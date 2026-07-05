@@ -42,7 +42,7 @@ CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high', 'urgent');
 ### Step 2: Create a Replica View for `supasheet.users`
 
 <Callout type="warn">
-**This step is required, not optional.** The table you're about to create lives in `public`, but the canonical user table is `supasheet.users` — a different schema. PostgREST cannot embed a foreign key across schemas, so without this replica, the `query.join` you'll add to the table's own metadata (Step 4) and the `user_tasks`/`task_report` views (Steps 6 and 9) will silently fail to resolve. See [Cross-Schema Joins](/guide/resource/query#cross-schema-joins) for why.
+**This step is required, not optional.** The table you're about to create lives in `public`, but the canonical user table is `supasheet.users` — a different schema. PostgREST cannot embed a foreign key across schemas, so without this replica, the `query.join` you'll add to the table's own metadata (Step 4) and the `user_tasks`/`task_report` views (Steps 6 and 9) will silently fail to resolve. See [Cross-Schema Joins](/resource/query#cross-schema-joins) for why.
 </Callout>
 
 Create a same-named view in `public` that mirrors `supasheet.users`, before anything else references it:
@@ -639,8 +639,8 @@ select supasheet.refresh_metadata();
 
 ## Next Steps
 
-- **[Authorization](/guide/authorization)** - Understanding the permission system
-- **[Dashboards](/guide/dashboards)** - Learn more about widget types
-- **[Charts](/guide/charts)** - Explore chart types in detail
-- **[Reports](/guide/reports)** - Advanced report features
-- **[Audit Logs](/guide/audit-logs)** - Viewing and filtering audit logs
+- **[Authorization](/authorization)** - Understanding the permission system
+- **[Dashboards](/dashboards)** - Learn more about widget types
+- **[Charts](/charts)** - Explore chart types in detail
+- **[Reports](/reports)** - Advanced report features
+- **[Audit Logs](/audit-logs)** - Viewing and filtering audit logs

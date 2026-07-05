@@ -1,0 +1,66 @@
+---
+title: Managed Solution Overview
+description: Hosted Supasheet with a visual UI builder — no code, no DevOps
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## What is the Managed Solution?
+
+The Supasheet Managed Solution is a hosted platform that runs Supasheet for you. You **sign up with your Supabase account**, pick one of your Supabase projects, and the platform installs Supasheet into it — migrations, edge functions, and Data API configuration — with a single click. Your app is then live at:
+
+```
+https://<your-project-ref>.supasheet.app
+```
+
+On top of the hosted app you get a **visual UI builder**: configure resources, views, dashboards, charts, reports, roles, and branding through structured forms instead of writing metadata by hand. Most of the work is no-code; the rest is low-code SQL you write directly in the browser.
+
+<Callout title="Your data stays in your Supabase project">
+The managed platform is a control plane, not a database host. All of your tables, rows, files, and users live in **your own Supabase project**. The platform stores only your project reference, name, and the public anon key needed to serve the hosted frontend.
+</Callout>
+
+## Self-Host vs Managed
+
+Supasheet is open source first — self-hosting is and always will be free. The managed solution adds hosting and visual tooling on top of the same product:
+
+| | Self-Host | Managed |
+|---|---|---|
+| Supasheet features (CRUD, dashboards, charts, reports, RBAC, …) | ✅ All included | ✅ All included |
+| Your own Supabase project | ✅ Required | ✅ Required |
+| Frontend hosting | You deploy the SPA | Hosted at `<ref>.supasheet.app` |
+| Installation | Clone repo, run migrations via CLI | One-click install from the dashboard |
+| Configuration | SQL + metadata comments ([Guide](/installation)) | Visual UI builder |
+| Custom code & components | ✅ Full access to the codebase | — |
+| AI assistant (natural language to SQL) | — | ✅ Included |
+| Cost | Free (MIT) | 7-day free trial, then contact us |
+
+**Choose self-hosting** when you want full control of the codebase, custom components, or everything inside your own perimeter — see [Self-Host](/self-host).
+
+**Choose managed** when you want to skip DevOps and configure everything visually.
+
+## How It Works
+
+1. **Connect** — Sign in with Supabase OAuth. The platform lists the projects in your Supabase organization.
+2. **Install** — One click applies the official Supasheet migrations and deploys the admin edge functions into your project, then exposes the `supasheet` schema through the Data API. The install streams its progress live.
+3. **Build** — Use the UI builder to configure resources, views, filter presets, form sections, dashboards, charts, reports, roles, and app settings.
+4. **Open** — Your team signs in at `https://<ref>.supasheet.app` and works with the data directly in your Supabase project.
+
+Because the platform installs the same migrations as the open-source repository, a managed project is never locked in: you can point a self-hosted Supasheet frontend at the same Supabase project at any time.
+
+## Next Steps
+
+<Cards>
+  <Card title="Getting Started" href="/managed/getting-started">
+    Sign up, connect a project, and install Supasheet in minutes.
+  </Card>
+  <Card title="UI Builder" href="/managed/ui-builder">
+    Configure resources, views, forms, and filters visually.
+  </Card>
+  <Card title="Charts, Dashboards & Reports" href="/managed/charts-dashboards-reports">
+    Build SQL-backed visualizations without touching the codebase.
+  </Card>
+  <Card title="Plans & Trial" href="/managed/plans-and-trial">
+    How the 7-day trial and project limits work.
+  </Card>
+</Cards>

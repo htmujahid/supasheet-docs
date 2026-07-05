@@ -49,7 +49,7 @@ Click any column header to sort:
 
 ### Filtering
 
-Available filter operators depend on the column's data type — text, number, date, boolean, select, multi-select, and UUID columns each get their own operator set (contains, is, is before/after, has any of, and so on). See **[Operators by Column Type](/guide/resource/query#operators-by-column-type)** for the exact list per type.
+Available filter operators depend on the column's data type — text, number, date, boolean, select, multi-select, and UUID columns each get their own operator set (contains, is, is before/after, has any of, and so on). See **[Operators by Column Type](/resource/query#operators-by-column-type)** for the exact list per type.
 
 ### Column Visibility
 
@@ -129,7 +129,7 @@ The dropdowns show:
 - Paginated for large datasets
 
 <Callout type="warn">
-This only works when the referenced table lives in the **same schema** as the one being queried — PostgREST can't embed a foreign key that points to a different schema (e.g. a `store.orders.user_id` FK pointing at `supasheet.users`). If you need to reference a table from another schema, create a same-named replica view (`with (security_invoker = true)`) in your own schema first. See [Cross-Schema Joins](/guide/resource/query#cross-schema-joins) for the exact pattern.
+This only works when the referenced table lives in the **same schema** as the one being queried — PostgREST can't embed a foreign key that points to a different schema (e.g. a `store.orders.user_id` FK pointing at `supasheet.users`). If you need to reference a table from another schema, create a same-named replica view (`with (security_invoker = true)`) in your own schema first. See [Cross-Schema Joins](/resource/query#cross-schema-joins) for the exact pattern.
 </Callout>
 
 ### Display Fields
@@ -224,7 +224,7 @@ Confirms before deletion:
 
 Every resource supports **📤 CSV export** and **📥 CSV import** — no configuration needed.
 
-**Export** writes the currently visible columns to a CSV file, using each column's display `name` (see [Metadata](/guide/resource/metadata)) as the header — not the raw database column name. You can export everything in the current view or just the selected rows.
+**Export** writes the currently visible columns to a CSV file, using each column's display `name` (see [Metadata](/resource/metadata)) as the header — not the raw database column name. You can export everything in the current view or just the selected rows.
 
 **Import** parses a CSV client-side, matches its header row against the table's columns by name, and inserts in batches of 500 rows at a time. Each value is coerced to the target column's type (numbers, booleans, dates, etc.) before insert, and unmatched columns in the CSV are ignored rather than rejected.
 
@@ -336,8 +336,8 @@ All three tables now have full CRUD interfaces!
 
 ## Next Steps
 
-- **[Metadata](/guide/resource/metadata)** - Configure icons, visibility, columns, and views
-- **[Query Configuration](/guide/resource/query)** - Set default sorting and filters
-- **[Views](/guide/resource/views)** - Multiple view types (Sheet, Kanban, Calendar, Gallery, List, Tree)
-- **[Data Types](/guide/resource/data-types)** - Use custom data types
-- **[Authorization](/guide/authorization)** - Secure your tables with RLS
+- **[Metadata](/resource/metadata)** - Configure icons, visibility, columns, and views
+- **[Query Configuration](/resource/query)** - Set default sorting and filters
+- **[Views](/resource/views)** - Multiple view types (Sheet, Kanban, Calendar, Gallery, List, Tree)
+- **[Data Types](/resource/data-types)** - Use custom data types
+- **[Authorization](/authorization)** - Secure your tables with RLS
