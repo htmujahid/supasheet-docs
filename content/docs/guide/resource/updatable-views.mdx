@@ -1,0 +1,105 @@
+---
+title: Updatable Views
+description: Expose a subset of a table's columns as a full read-write resource with based_on
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+An updatable view is a regular Postgres view over a **subset of one table's columns**, tagged with `"based_on"` in its comment. Supasheet then treats it as a first-class resource: it gets its own sidebar entry, data table, detail page, and create/edit forms — but reading and writing only the columns the view exposes, under its own permission set.
+
+Use it to give a role a narrower slice of a wide table without duplicating any data:
+
+- A `ticket_triage` view exposing only `id`, `title`, `status`, `priority` for support agents, while the full `tickets` table stays admin-only.
+- An `employee_directory` view hiding salary columns from `hr.employees`.
+- A `task_board` view that allows status updates but hides estimates and billing fields.
+
+## How It Works
+
+Two conditions make a view behave as an updatable resource:
+
+1. **Postgres must consider it auto-updatable.** That means a simple `SELECT` of columns from a single base table — no joins, aggregates, `DISTINCT`, `GROUP BY`, `LIMIT`, or set operations. Postgres then routes `INSERT`/`UPDATE`/`DELETE` on the view directly to the base table.
+2. **The comment declares its parent** with `"based_on": "<table>"`. Supasheet uses this to borrow the base table's column metadata (types, enums, FK lookups) for forms — filtered down to the columns the view exposes — and to resolve related-table tabs on the detail page.
+
+Because the view is created `WITH (security_invoker = true)`, the base table's RLS policies still apply to every read and write. The view's own permissions (`<schema>.<view>:select` etc.) control what the UI offers on top of that.
+
+<Callout type="warn">
+The view **must expose the base table's primary key** (usually `id`). Supasheet needs it to open detail pages and target updates. If the primary key isn't exposed, it falls back to a unique column in the view — and with neither, the resource's detail and create pages will not resolve.
+</Callout>
+
+## Example: A Triage Slice of Tickets
+
+```sql
+-- Step 1: Permission values (committed before use)
+BEGIN;
+ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'support.ticket_triage:select';
+ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'support.ticket_triage:update';
+COMMIT;
+
+-- Step 2: The view — single table, subset of columns, PK included
+CREATE VIEW support.ticket_triage
+WITH (security_invoker = true) AS
+SELECT id, title, status, priority, created_at
+FROM support.tickets;
+
+-- Step 3: Grants — only the operations this slice should allow
+REVOKE ALL ON support.ticket_triage FROM authenticated, service_role;
+GRANT SELECT, UPDATE ON support.ticket_triage TO authenticated;
+
+-- Step 4: Declare the parent table (plus any table metadata you want)
+COMMENT ON VIEW support.ticket_triage IS '{
+  "based_on": "tickets",
+  "name": "Triage",
+  "icon": "Inbox",
+  "description": "Status and priority only",
+  "primary_view": "kanban",
+  "views": [
+    {"id": "kanban", "name": "By Status", "type": "kanban", "group": "status", "title": "title", "badge": "priority"}
+  ]
+}';
+
+-- Step 5: Seed role permissions
+INSERT INTO supasheet.role_permissions (role, permission) VALUES
+  ('agent', 'support.ticket_triage:select'),
+  ('agent', 'support.ticket_triage:update')
+ON CONFLICT (role, permission) DO NOTHING;
+
+-- Step 6: Refresh the catalog
+SELECT supasheet.refresh_metadata();
+```
+
+Agents holding these permissions see a "Triage" resource with a kanban board; dragging a card issues an `UPDATE` against the view, which Postgres applies to `support.tickets` — subject to the base table's RLS.
+
+## Metadata
+
+The comment accepts the full [table metadata](/guide/resource/metadata) shape on top of `based_on` — `views`, `filter_presets`, `fields.sections`, `query`, `tabs`, and so on. Column hints refer to the view's columns.
+
+```json
+{
+  "based_on": "tickets",
+  "name": "Triage",
+  "fields": {
+    "sections": [
+      {"id": "main", "title": "Ticket", "fields": ["title", "status", "priority"]}
+    ]
+  }
+}
+```
+
+## Permissions
+
+Grant and permit **only the actions the slice should expose**. A read-only directory needs just `:select`; a status board needs `:select` + `:update`. `INSERT` through the view works too (columns absent from the view fall back to base-table defaults), but only add `:insert` when creating through the slice makes sense.
+
+Remember both layers must allow an operation: the SQL `GRANT` on the view *and* the app permission in `role_permissions` — and the base table's RLS has the final word.
+
+## Updatable Views vs. Alternatives
+
+| | Updatable view (`based_on`) | Column-level grants | Separate table |
+|---|---|---|---|
+| Separate sidebar entry & permissions | Yes | No | Yes |
+| Hides columns entirely | Yes | Forms only | Yes |
+| Data duplication | None | None | Full |
+| Different RLS than parent | No (inherits base) | No | Yes |
+
+Reach for `based_on` when a role needs a *differently shaped* resource over the same rows. If you only need to block writes to a couple of columns, column-level grants on the table are enough. If the rows themselves differ, you want a real table.

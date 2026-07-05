@@ -1,4 +1,12 @@
 {
   "title": "Resource",
-  "pages": ["basic", "data-types", "metadata", "query", "views", "materialized-views"]
+  "pages": [
+    "basic",
+    "data-types",
+    "metadata",
+    "query",
+    "views",
+    "updatable-views",
+    "materialized-views"
+  ]
 }
