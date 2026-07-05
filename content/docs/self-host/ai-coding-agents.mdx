@@ -1,0 +1,124 @@
+---
+title: AI Coding Agents
+description: Use the bundled Supasheet skill with Claude Code, Cursor, Codex, and other coding agents
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Supasheet is SQL-first: new features — tables, views, dashboards, charts, reports, permissions, triggers — are implemented entirely in SQL migrations, with no app code. That makes a self-hosted instance a great fit for AI coding agents, as long as the agent knows Supasheet's conventions.
+
+To teach it those conventions, the repository ships an **agent skill** at `.agents/skills/supasheet/`. It follows the open [Agent Skills](https://agentskills.io) format (a `SKILL.md` entry point with supporting rule and reference files) and encodes everything an agent needs to build features correctly:
+
+```
+.agents/skills/supasheet/
+├── SKILL.md          # Entry point: the universal migration workflow + critical gotchas
+├── rules/            # One file per feature area (tables, views, dashboards, charts,
+│                     # reports, policies, triggers, roles, storage, ...)
+└── references/       # Deep dives (new-resource walkthrough, table metadata JSON,
+                      # data types, RBAC, notifications, audit logs, comments)
+```
+
+With the skill loaded, an agent that's asked to "add an invoices module" knows to write a migration with permission enum values, grants, RLS policies gated by `supasheet.has_permission()`, JSON table comments, a `supasheet.refresh_metadata()` call, and the `config.toml` schema exposure — instead of inventing React pages.
+
+## Claude Code
+
+Works out of the box. The repository commits a symlink at `.claude/skills/supasheet` pointing to `.agents/skills/supasheet`, and Claude Code discovers project skills in `.claude/skills/` automatically. Clone the repo, open Claude Code, and the skill activates whenever you ask for database-level features.
+
+If the symlink is missing (e.g. it was lost on checkout), recreate it:
+
+```bash
+mkdir -p .claude/skills
+ln -s ../../.agents/skills/supasheet .claude/skills/supasheet
+```
+
+## Agents with native skill support
+
+A growing number of agents read the same `SKILL.md` format. If yours does, either point it at `.agents/skills/` directly (some agents scan it natively) or symlink the skill into the agent's own project skills directory, mirroring the Claude Code setup:
+
+```bash
+# General pattern — check your agent's docs for its skills directory
+mkdir -p .<agent>/skills
+ln -s ../../.agents/skills/supasheet .<agent>/skills/supasheet
+```
+
+Keep `.agents/skills/supasheet` as the single source of truth and only ever symlink — don't copy, or the copies will drift when you pull updates.
+
+<Callout type="warn">
+On Windows, `ln -s` requires Developer Mode or `git config core.symlinks true`. If symlinks aren't an option, configure the agent to read `.agents/skills/supasheet` directly via its instructions file (next section) instead of copying the folder.
+</Callout>
+
+## Agents without skill support
+
+Every major coding agent reads a project instructions file. Add a pointer to the skill there and the agent will pull the conventions in as plain context — no skill runtime needed:
+
+```md
+## Supasheet conventions
+
+This project is a Supasheet instance. All features (tables, views,
+dashboards, charts, reports, permissions, triggers, storage columns)
+are implemented purely in SQL migrations — never in app code.
+
+Before any database or schema work, read
+`.agents/skills/supasheet/SKILL.md` and follow its workflow. Load the
+matching files under `.agents/skills/supasheet/rules/` and
+`references/` for the feature you are building.
+```
+
+Put that snippet in the file your agent reads:
+
+| Agent | Instructions file |
+|-------|-------------------|
+| OpenAI Codex | `AGENTS.md` |
+| Cursor | `AGENTS.md` or `.cursor/rules/` |
+| GitHub Copilot | `.github/copilot-instructions.md` |
+| Gemini CLI | `GEMINI.md` |
+| Windsurf | `.windsurf/rules/` |
+| Cline | `.clinerules` |
+
+`AGENTS.md` is the broadest option — most agents either read it natively or can be configured to. If you support multiple agents on your team, create `AGENTS.md` once and symlink or reference it from the tool-specific files.
+
+## What agents can build
+
+Because the entire feature surface is SQL, prompts map directly to migrations. Some examples that the skill handles end-to-end:
+
+- *"Add an `invoices` module with a kanban view grouped by status and a monthly revenue area chart"*
+- *"Create a `projects` table with file attachments, audit logging, and per-record comments"*
+- *"Add a report of orders joined with customers, exportable, visible only to the admin role"*
+- *"Add a notification trigger that alerts assignees when a task is reassigned"*
+- *"Create a read-only `analyst` role that can see every resource in the `crm` schema"*
+
+A correct result is always a new file in `supabase/migrations/` (plus a `config.toml` change for new schemas) — if an agent starts writing React components for CRUD screens, it hasn't loaded the skill.
+
+## Development loop
+
+Have the agent work against a local Supabase stack so migrations are verified before they touch production:
+
+```bash
+npx supabase start          # local stack
+npx supabase migration up   # apply the new migration
+# or: npx supabase db reset # replay everything from scratch
+
+# after adding a schema, regenerate types:
+npx supabase gen types typescript --local \
+  --schema public --schema supasheet --schema <yours> \
+  > src/lib/database.types.ts
+```
+
+<Callout type="warn">
+Review generated migrations before applying them anywhere that matters. Pay particular attention to RLS policies and `grant` statements — the skill instructs agents to lock down grants and gate every policy with `supasheet.has_permission()`, so anything more permissive than that deserves a second look.
+</Callout>
+
+Useful review anchors, all in the main repo:
+
+- `supabase/demo.sql` — one coherent module exercising every feature; compare the agent's output against it.
+- `supabase/examples/*.sql` — 14 example domain modules (crm, hr, store, blog, ...) with seed files.
+- `src/lib/database-meta.types.ts` — the TypeScript source of truth for every comment-JSON shape the UI parses.
+
+## Keeping the skill up to date
+
+The skill is versioned with the codebase, so `git pull` (or syncing your fork with upstream) updates the conventions together with the app. If you've extended your instance with custom conventions — house rules for naming, extra domain types, custom buckets — add your own rule file under `.agents/skills/supasheet/rules/` so agents follow those too.
+
+## Next Steps
+
+- **[Database Setup](/self-host/database-setup)** - Run migrations and seed data
+- **[Custom Components](/self-host/custom-components)** - When you do need app code
