@@ -1,4 +1,6 @@
-import { cn } from 'fumadocs-ui/utils/cn';
+function cn(...classes: Array<string | undefined | null | false>) {
+  return classes.filter(Boolean).join(' ');
+}
 
 function Card({ className, ...props }: React.ComponentProps<'div'>) {
   return (
