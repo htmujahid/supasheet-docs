@@ -144,13 +144,13 @@ export function CMSHighlights() {
               <div className="bg-muted/20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={activeView.image.light}
+                  src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${activeView.image.light}`}
                   alt={activeView.title}
                   className="w-full h-auto dark:hidden"
                 />
               {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={activeView.image.dark}
+                  src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${activeView.image.dark}`}
                   alt={activeView.title}
                   className="w-full h-auto hidden dark:block"
                 />
