@@ -7,19 +7,21 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## Natural Language to SQL
 
-The managed platform includes an AI assistant that understands **your** schema. When you connect a project, the platform indexes your tables, columns, and relationships so the assistant can translate questions into accurate SQL:
+Managed installs include an AI assistant that understands **your** schema, available in your Supasheet app at `https://<project-ref>.supasheet.app/ai`. When you connect a project, the platform indexes your tables, columns, and relationships so the assistant can translate questions into accurate SQL:
 
 > "Show me the ten customers with the highest order total this quarter"
 
-becomes a `SELECT` you can run, refine, or paste straight into a [chart or dashboard widget](/managed/charts-dashboards-reports).
+becomes a `SELECT` you can run, refine, or paste straight into a [chart or dashboard widget](/managed/charts-dashboards-reports). The assistant keeps the conversation context, so follow-ups like "now only for Europe" refine the previous query.
 
 ## Reads and Writes
 
 - **Reads** — the assistant generates and runs `SELECT` queries and shows the results inline.
 - **Writes** — for `INSERT`, `UPDATE`, or `DELETE`, the assistant first shows a preview of the rows that will be affected and asks you to **confirm** before anything executes. Confirmed mutations return the changed rows so you can verify the outcome.
 
+Everything runs as **you**: queries execute under your Supasheet role, so row level security and [permissions](/authorization) apply exactly as they do in the rest of the app.
+
 <Callout title="Guardrails">
-The assistant will not run DDL (schema changes) and refuses unscoped destructive statements — an `UPDATE` or `DELETE` without a `WHERE` clause is rejected rather than guessed at. Schema changes belong in [Database Management](/managed/database-management).
+The assistant will not run DDL (schema changes) and refuses unscoped destructive statements — an `UPDATE` or `DELETE` without a `WHERE` clause is rejected rather than guessed at. Schema changes belong in [Database Management](/managed/database-management), or let a coding agent build them through the [MCP server](/managed/mcp).
 </Callout>
 
 ## Good Uses

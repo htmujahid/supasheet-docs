@@ -1,0 +1,71 @@
+---
+title: MCP Server
+description: Build admin panels from Claude Code, Cursor, or any MCP client
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## What It Does
+
+The hosted Supasheet MCP server lets AI coding agents build complete admin panels on your Supabase projects — tables with generated forms, kanban/calendar/gallery views, dashboards, charts, reports, and role-based permissions — using only SQL migrations, applied remotely. It is the schema-changing counterpart to the [AI Assistant](/managed/ai-assistant), which handles data but deliberately refuses DDL.
+
+The server speaks the standard MCP streamable-HTTP transport, so it works with Claude Code, Cursor, Windsurf, and any other MCP client.
+
+## Connecting
+
+```
+https://mcp.supasheet.com/mcp
+```
+
+No tokens to create or paste: the server is its own OAuth 2.1 authorization server. Your MCP client discovers it, registers automatically, and opens a browser window where you sign in with the **same Supabase account you use on the Supasheet platform**. Your Supabase credentials stay on the server — MCP clients only ever hold a Supasheet-issued token.
+
+Claude Code:
+
+```bash
+claude mcp add --transport http supasheet https://mcp.supasheet.com/mcp
+```
+
+or in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "supasheet": {
+      "type": "http",
+      "url": "https://mcp.supasheet.com/mcp"
+    }
+  }
+}
+```
+
+One connection covers all your projects: each tool takes a `project_ref` parameter, and `list_projects` shows every Supabase project on your account with its Supasheet install status. Tools only operate on projects **installed on Supasheet** with an active plan or an unexpired trial — everything else returns a clear denial.
+
+### Read-only mode
+
+Append `?read_only=true` to the URL to hide all write tools (`apply_migration`, `expose_schema`, `hide_schema`, `set_role_permissions`, `refresh_metadata`) and force `execute_sql` into a read-only transaction. Useful for exploration and review sessions.
+
+<Callout title="Read-only is transactional">
+Queries still run as the project's `postgres` role via the Supabase Management API; read-only mode is enforced by running statements in a read-only transaction, the same approach as the official Supabase MCP.
+</Callout>
+
+## Tools
+
+| Group | Tools |
+| --- | --- |
+| Account | `list_projects` |
+| Database | `list_schemas`, `list_tables`, `list_columns`, `list_views`, `list_materialized_views`, `list_types`, `list_policies`, `list_triggers`, `list_indexes`, `list_check_constraints`, `execute_sql`, `apply_migration` |
+| Supasheet | `get_supasheet_status`, `expose_schema`, `hide_schema`, `list_role_permissions`, `set_role_permissions`, `refresh_metadata` |
+| Conventions | `list_conventions`, `get_conventions` |
+
+The conventions tools embed the full Supasheet SQL rulebook (the same knowledge that powers the [AI coding agents skill](/self-host/ai-coding-agents), synced from the open-source repo) so the connected agent generates correct table metadata JSON, RLS policies, permission enums, and view contracts.
+
+The introspection tools return the JSON comment metadata on tables, columns, and views, so an agent can read a resource's existing UI configuration (views, field sections, filter presets, widget and chart types) before changing it.
+
+`apply_migration` records each migration in `supabase_migrations.schema_migrations` and automatically runs `select supasheet.refresh_metadata()` after DDL so new resources appear in your Supasheet app immediately. After creating a new Postgres schema, agents call `expose_schema` to publish it through the Data API, and `set_role_permissions` to make the new resources visible to a role.
+
+## Typical Flow
+
+1. Connect your MCP client and sign in with your Supabase account when the browser window opens.
+2. Prompt: *"Add an expenses module: categories and expenses tables, a kanban by status, a monthly spend chart, and give the `user` role read access."*
+3. The agent calls `list_projects` and `get_supasheet_status` to orient itself, reads the relevant conventions, then applies ordered migrations via `apply_migration` and seeds access with `set_role_permissions`.
+4. Refresh your Supasheet app — the new resources are live.
