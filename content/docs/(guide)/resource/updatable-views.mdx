@@ -22,7 +22,7 @@ Two conditions make a view behave as an updatable resource:
 1. **Postgres must consider it auto-updatable.** That means a simple `SELECT` of columns from a single base table — no joins, aggregates, `DISTINCT`, `GROUP BY`, `LIMIT`, or set operations. Postgres then routes `INSERT`/`UPDATE`/`DELETE` on the view directly to the base table.
 2. **The comment declares its parent** with `"based_on": "<table>"`. Supasheet uses this to borrow the base table's column metadata (types, enums, FK lookups) for forms — filtered down to the columns the view exposes — and to resolve related-table tabs on the detail page.
 
-Because the view is created `WITH (security_invoker = true)`, the base table's RLS policies still apply to every read and write. The view's own permissions (`<schema>.<view>:select` etc.) control what the UI offers on top of that.
+Because the view is created `WITH (security_invoker = true)`, the base table's RLS policies still apply to every read and write. The view's own `GRANT`s (`SELECT`, `UPDATE`, ...) control what the UI offers on top of that.
 
 <Callout type="warn">
 The view **must expose the base table's primary key** (usually `id`). Supasheet needs it to open detail pages and target updates. If the primary key isn't exposed, it falls back to a unique column in the view — and with neither, the resource's detail and create pages will not resolve.
@@ -31,23 +31,17 @@ The view **must expose the base table's primary key** (usually `id`). Supasheet 
 ## Example: A Triage Slice of Tickets
 
 ```sql
--- Step 1: Permission values (committed before use)
-BEGIN;
-ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'support.ticket_triage:select';
-ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'support.ticket_triage:update';
-COMMIT;
-
--- Step 2: The view — single table, subset of columns, PK included
+-- Step 1: The view — single table, subset of columns, PK included
 CREATE VIEW support.ticket_triage
 WITH (security_invoker = true) AS
 SELECT id, title, status, priority, created_at
 FROM support.tickets;
 
--- Step 3: Grants — only the operations this slice should allow
+-- Step 2: Grants — only the operations this slice should allow
 REVOKE ALL ON support.ticket_triage FROM authenticated, service_role;
-GRANT SELECT, UPDATE ON support.ticket_triage TO authenticated;
+GRANT SELECT, UPDATE ON support.ticket_triage TO "agent";
 
--- Step 4: Declare the parent table (plus any table metadata you want)
+-- Step 3: Declare the parent table (plus any table metadata you want)
 COMMENT ON VIEW support.ticket_triage IS '{
   "based_on": "tickets",
   "name": "Triage",
@@ -59,17 +53,11 @@ COMMENT ON VIEW support.ticket_triage IS '{
   ]
 }';
 
--- Step 5: Seed role permissions
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-  ('agent', 'support.ticket_triage:select'),
-  ('agent', 'support.ticket_triage:update')
-ON CONFLICT (role, permission) DO NOTHING;
-
--- Step 6: Refresh the catalog
+-- Step 4: Refresh the catalog
 SELECT supasheet.refresh_metadata();
 ```
 
-Agents holding these permissions see a "Triage" resource with a kanban board; dragging a card issues an `UPDATE` against the view, which Postgres applies to `support.tickets` — subject to the base table's RLS.
+Users holding the `agent` role see a "Triage" resource with a kanban board; dragging a card issues an `UPDATE` against the view, which Postgres applies to `support.tickets` — subject to the base table's RLS.
 
 ## Metadata
 
@@ -89,9 +77,9 @@ The comment accepts the full [table metadata](/resource/metadata) shape on top o
 
 ## Permissions
 
-Grant and permit **only the actions the slice should expose**. A read-only directory needs just `:select`; a status board needs `:select` + `:update`. `INSERT` through the view works too (columns absent from the view fall back to base-table defaults), but only add `:insert` when creating through the slice makes sense.
+Grant **only the operations the slice should expose**. A read-only directory needs just `SELECT`; a status board needs `SELECT` + `UPDATE`. `INSERT` through the view works too (columns absent from the view fall back to base-table defaults), but only grant `INSERT` when creating through the slice makes sense.
 
-Remember both layers must allow an operation: the SQL `GRANT` on the view *and* the app permission in `role_permissions` — and the base table's RLS has the final word.
+Remember two layers still apply: the SQL `GRANT` on the view itself, and the base table's RLS policies underneath it — both must allow the operation for it to actually succeed.
 
 ## Updatable Views vs. Alternatives
 

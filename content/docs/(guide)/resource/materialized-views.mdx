@@ -56,10 +56,7 @@ COMMENT ON MATERIALIZED VIEW public.sales_summary IS '{
 }';
 
 REVOKE ALL ON public.sales_summary FROM authenticated, service_role;
-GRANT SELECT ON public.sales_summary TO authenticated;
-
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-  ('user', 'public.sales_summary:select');
+GRANT SELECT ON public.sales_summary TO "user";
 
 -- Populate it for the first time
 REFRESH MATERIALIZED VIEW public.sales_summary;
@@ -86,7 +83,7 @@ Materialized views are the standard fix when a [dashboard widget](/dashboards#pe
 
 ## Permissions
 
-Access follows the same model as tables and views: grant `SELECT` at the Postgres level, then add a `role_permissions` row for `schema.name:select`. There is no separate `insert`/`update`/`delete` permission to grant — materialized views aren't writable directly.
+Access follows the same model as tables and views: `GRANT SELECT` directly to the role(s) that should see it. There is no separate `INSERT`/`UPDATE`/`DELETE` grant needed — materialized views aren't writable directly, and there's no permissions table to seed alongside the grant.
 
 ## Next Steps
 

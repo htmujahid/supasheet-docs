@@ -85,7 +85,7 @@ The migrations in `supabase/migrations/` build the complete platform layer:
 - **Schemas**: `supasheet` (Supasheet's meta + RBAC + audit/notifications/comments), plus `public` (yours to use)
 - **Meta layer**: `supasheet.tables`, `columns`, `views`, `materialized_views` — materialized views refreshed manually via `select supasheet.refresh_metadata();` after DDL changes (see [Database Schema](/database-schema#refreshing-the-meta-layer))
 - **Users**: `supasheet.users` with triggers to mirror `auth.users`
-- **RBAC**: `supasheet.user_roles`, `role_permissions`, plus `app_role` and `app_permission` enums and helpers `has_role()` / `has_permission()`
+- **RBAC**: native Postgres roles (`x-admin`/`admin`/`user`, created via `CREATE ROLE`), a Custom Access Token Hook wiring `auth.users.raw_app_meta_data->>'role'` into the JWT, and the helper `has_role()` — access to resources is granted directly via `GRANT`/`REVOKE`, not a permissions table
 - **Audit log**: `supasheet.audit_logs` and `audit_trigger_function()`
 - **Notifications**: `supasheet.notifications` + `user_notifications` + `create_notification()` / resolver helpers
 - **Comments**: `supasheet.comments` and `get_comments()`
@@ -149,19 +149,16 @@ Create new migrations for your application tables:
 npx supabase migration new add_products_table
 ```
 
-Each migration that adds tables typically does six things — add permissions to the `app_permission` enum, create the table, enable RLS + policies, grant the new permissions to roles, (optionally) attach the audit trigger, and refresh the meta layer:
+Each migration that adds tables typically does five things — create the table, revoke default grants then grant exactly what each role needs, enable RLS + policies, (optionally) attach the audit trigger, and refresh the meta layer:
 
 ```sql
-BEGIN;
-ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'store.products:select';
-ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'store.products:insert';
-ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'store.products:update';
-ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'store.products:delete';
-COMMIT;
-
 CREATE TABLE store.products (...);
+
+REVOKE ALL ON TABLE store.products FROM authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE store.products TO "user";
+
 ALTER TABLE store.products ENABLE ROW LEVEL SECURITY;
--- ... policies, grants, role assignments, audit trigger ...
+-- ... policies, audit trigger ...
 
 -- Required last step: supasheet.tables/columns/views are materialized
 -- views and won't pick up your new table until you refresh them.

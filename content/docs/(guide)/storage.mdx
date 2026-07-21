@@ -21,7 +21,7 @@ All buckets and policies are defined in the migrations under `supabase/migration
 |--------|-------------|------|-------|
 | `public` | Yes (anyone with the URL) | Public + authenticated | Authenticated; updates/deletes by owner |
 | `personal` | Yes | Owner only (authenticated) | Owner only (authenticated) |
-| `uploads` | Yes | Gated by `schema.table:select` (or owner-only under `auth/`) | Gated by `schema.table:insert/update/delete` (or owner-only under `auth/`) |
+| `uploads` | Yes | Gated by whether your role has `SELECT` on `schema.table` (or owner-only under `auth/`) | Gated by whether your role has `INSERT`/`UPDATE`/`DELETE` on `schema.table` (or owner-only under `auth/`) |
 
 ### `public`
 
@@ -47,19 +47,19 @@ Per-user private storage — documents, drafts, sensitive uploads.
 
 ### `uploads` (used by the `FILE` type)
 
-This is the bucket Supasheet writes to when a user adds a file through a `FILE` or `AVATAR` column. Access is governed by your **per-table permissions** rather than ownership:
+This is the bucket Supasheet writes to when a user adds a file through a `FILE` or `AVATAR` column. Access is governed by your **native Postgres table grants** rather than ownership — the storage policy checks `has_table_privilege(current_user, format('%I.%I', schema, table), action)` directly against the path:
 
 - Path layout: `uploads/<schema>/<table>/<column>/<filename>`
-- `SELECT` requires `<schema>.<table>:select`
-- `INSERT` requires `<schema>.<table>:insert`
-- `UPDATE` / `DELETE` require the matching permission
+- `SELECT` requires your role to hold `SELECT` on `<schema>.<table>`
+- `INSERT` requires `INSERT` on `<schema>.<table>`
+- `UPDATE` / `DELETE` require the matching grant
 
-This means anyone who can read a row can read its attached files, anyone who can edit a row can replace them, and so on — without you writing custom storage policies.
+This means anyone whose role can read a row can read its attached files, anyone whose role can edit a row can replace them, and so on — without you writing custom storage policies. Grant table access the normal way (see [Authorization](/authorization)) and file access follows automatically.
 
-There's one exception carved out inside the same bucket: the **`uploads/auth/<uid>/...`** subpath, used for account profile pictures. Objects under `auth/` skip the `schema.table:action` permission check entirely — a signed-in user has full `SELECT`/`INSERT`/`UPDATE`/`DELETE` on `auth/<their own uid>/...` and nothing outside it. There is no separate `account_image` bucket; avatars are just another prefix inside `uploads`.
+There's one exception carved out inside the same bucket: the **`uploads/auth/<uid>/...`** subpath, used for account profile pictures. Objects under `auth/` skip the `has_table_privilege()` check entirely — a signed-in user has full `SELECT`/`INSERT`/`UPDATE`/`DELETE` on `auth/<their own uid>/...` and nothing outside it. There is no separate `account_image` bucket; avatars are just another prefix inside `uploads`.
 
 <Callout type="info">
-This `auth/` carve-out is the one place in `uploads` where access is owner-based instead of permission-based — every other path in the bucket follows the `<schema>.<table>:<action>` rule above.
+This `auth/` carve-out is the one place in `uploads` where access is owner-based instead of grant-based — every other path in the bucket follows the `has_table_privilege(<schema>.<table>, <action>)` rule above.
 </Callout>
 
 ## Using `FILE` Columns
@@ -163,4 +163,4 @@ Supabase Storage also enforces a global `file_size_limit` per project. Make sure
 
 - **[Data Types](/resource/data-types)** — `FILE`, `FILE_OBJECT`, `AVATAR`, `RICH_TEXT`
 - **[Metadata](/resource/metadata#file-columns)** — Column-level configuration for file fields
-- **[Authorization](/authorization)** — How `schema.table:*` permissions gate the `uploads` bucket
+- **[Authorization](/authorization)** — How table grants gate the `uploads` bucket

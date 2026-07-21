@@ -7,21 +7,16 @@ description: Generate reports from SQL queries
 
 Reports in Supasheet are SQL views in the `public` schema with JSON metadata in comments. To display a report, you need to:
 
-1. Add permission value to `supasheet.app_permission` enum (if needed)
-2. Create a view in the `public` schema
-3. Add JSON metadata comment with `type: "report"`
-4. Grant permissions on the view (revoke all, then grant select)
-5. Grant `:select` permission to roles via `supasheet.role_permissions`
+1. Create a view in the `public` schema
+2. Add JSON metadata comment with `type: "report"`
+3. Grant permissions on the view (revoke all, then grant select to the roles that should see it)
 
 ## Creating Reports
 
 ### Basic Report
 
 ```sql
--- Step 1: Add permission to enum (if not exists)
-alter type supasheet.app_permission add value if not exists 'public.task_report:select';
-
--- Step 2: Create view
+-- Step 1: Create view
 create or replace view public.task_report
 with(security_invoker = true) as
 select
@@ -30,16 +25,12 @@ select
 from tasks t
 join supasheet.users a on t.user_id = a.id;
 
--- Step 3: Grant permissions
-revoke all on public.task_report from authenticated, service_role;
-grant select on public.task_report to authenticated;
-
--- Step 4: Add metadata comment
+-- Step 2: Add metadata comment
 comment on view public.task_report is '{"type": "report", "name": "Task Summary", "description": "Summary of active tasks"}';
 
--- Step 5: Grant permission to role
-insert into supasheet.role_permissions (role, permission)
-values ('user', 'public.task_report:select');
+-- Step 3: Grant permissions (revoke all, then grant select to the roles that should see it)
+revoke all on public.task_report from authenticated, service_role;
+grant select on public.task_report to "user";
 ```
 
 **Report Comment Metadata:**

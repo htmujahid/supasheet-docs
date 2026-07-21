@@ -1,13 +1,13 @@
 ---
 title: Comments
-description: Permission-gated comments on any record, from any table
+description: Comments on any record, from any table, gated by the table's own SELECT access
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
 ## Overview
 
-Supasheet ships a generic comments system — any record in any table can have a comment thread without you adding new columns or migrations. Comments are stored centrally in `supasheet.comments` and gated by a dedicated permission, so you can decide on a per-table basis who can discuss what.
+Supasheet ships a generic comments system — any record in any table can have a comment thread without you adding new columns or migrations. Comments are stored centrally in `supasheet.comments`, and access to a table's comment thread is simply whatever `SELECT` privilege already exists on that table — there's nothing extra to configure per table.
 
 The schema is defined in `supabase/migrations/20260514000001_comments.sql`.
 
@@ -25,34 +25,25 @@ The schema is defined in `supabase/migrations/20260514000001_comments.sql`.
 
 Indexes on `(schema_name, table_name, record_id)`, `created_by`, and `created_at` keep listings fast.
 
-## The `:comment` Permission
+## Comment Access
 
-For each table you want to enable comments on, add a `comment` permission:
+There's no separate `:comment` permission to grant, and no per-table setup step. Comment access on a table is simply that table's ordinary `SELECT` privilege — if a role can `SELECT` `desk.tasks`, it can already read and post comments on `desk.tasks` rows:
 
-```sql
-ALTER TYPE supasheet.app_permission
-  ADD VALUE IF NOT EXISTS 'desk.tasks:comment';
+1. **Who can read comments on the table** — the table's RLS `SELECT` policy requires the caller's role to hold `SELECT` on the underlying table; `supasheet.get_comments()` enforces the identical rule.
+2. **Who can post comments** — the table's RLS `INSERT` policy requires that same `SELECT` privilege as well as the author matching `auth.uid()`.
 
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-  ('user',    'desk.tasks:comment'),
-  ('x-admin', 'desk.tasks:comment');
-```
-
-This permission controls **two things**:
-
-1. **Who can read comments on the table** — Supasheet's helper function `supasheet.get_comments()` only returns rows for users holding the matching permission.
-2. **Who can post comments** — the table's RLS `INSERT` policy requires the permission as well as the author matching `auth.uid()`.
+See [No Separate `:audit` or `:comment` Permission](/authorization#no-separate-audit-or-comment-permission) for the underlying mechanics.
 
 `UPDATE` and `DELETE` are always limited to the original author.
 
 ## Showing Comments in the UI
 
-There's no metadata to configure — a **Comments** link appears automatically in a record's actions menu (`/$schema/resource/$resource/$resourceId/comment`) for any user holding `desk.tasks:comment`. Granting the permission is the only setup required.
+There's no metadata to configure — a **Comments** link appears automatically in a record's actions menu (`/$schema/resource/$resource/$resourceId/comment`) for any user whose role can `SELECT` the underlying table.
 
-Users with `desk.tasks:comment` can browse the thread, post new comments, and edit / delete their own.
+Anyone who can read `desk.tasks` can browse its comment thread, post new comments, and edit / delete their own.
 
 <Callout type="info">
-Don't confuse this with the `tabs` metadata field described in [Metadata](/resource/metadata#tabs) — that field only filters which **related-table** tabs appear on the detail page (foreign key relationships). Comments and the audit log are separate, permission-gated pages, not metadata-configured tabs.
+Don't confuse this with the `tabs` metadata field described in [Metadata](/resource/metadata#tabs) — that field only filters which **related-table** tabs appear on the detail page (foreign key relationships). Comments and the audit log are separate, access-gated pages, not metadata-configured tabs.
 </Callout>
 
 ## Reading from SQL
@@ -64,21 +55,22 @@ SELECT *
 FROM supasheet.get_comments('desk', 'tasks', 'a1b2c3…');
 ```
 
-The function returns each comment joined to author info (`name`, `email`, `picture_url`). Like all Supasheet meta helpers, it runs with `security definer` but enforces the `:comment` permission internally — there is no way to read a thread you cannot already access.
+The function returns each comment joined to author info (`name`, `email`, `picture_url`). Like all Supasheet meta helpers, it runs with `security definer` but checks the caller's `SELECT` privilege on the target table internally — there is no way to read a thread on a table you can't already query.
 
-To check direct table queries:
+Direct table queries work too — the base table's RLS enforces the exact same rule, so there's no difference in *what* you can see, only whether you get author details joined in for free:
 
 ```sql
--- Comments authored by the current user (always visible to themselves)
+-- Every comment on a specific record — every row where you can SELECT
+-- the target table, not just the ones you authored
 SELECT * FROM supasheet.comments
-WHERE created_by = auth.uid();
-
--- Comments on a specific record — requires the :comment permission via the helper
-SELECT * FROM supasheet.get_comments('desk', 'tasks', 'a1b2c3…');
+WHERE schema_name = 'desk'
+  AND table_name = 'tasks'
+  AND record_id = 'a1b2c3…'
+ORDER BY created_at;
 ```
 
 <Callout type="info">
-The base table's policies allow users to read **their own** comments unconditionally; the helper function adds permission-aware visibility to the rest of the thread. Always read threads through the helper unless you have a specific need to bypass it.
+The base table's own RLS policy is `has_table_privilege(current_user, format('%I.%I', schema_name, table_name), 'select')` — the identical rule the `get_comments()` helper checks internally. Reach for the helper when you want author details (`created_by_name`/`email`/`picture_url`) joined in; query the table directly otherwise. Neither one shows you a narrower or wider set of comments than the other.
 </Callout>
 
 ## Posting Comments
@@ -86,7 +78,7 @@ The base table's policies allow users to read **their own** comments uncondition
 The `INSERT` policy enforces two checks:
 
 1. `created_by = auth.uid()` — you can only post as yourself
-2. The current user holds `schema.table:comment`
+2. The current role has `SELECT` on the target table (checked via `has_table_privilege`)
 
 ```sql
 INSERT INTO supasheet.comments
@@ -99,7 +91,7 @@ In the UI, this happens automatically when a user submits the comment form on th
 
 ## Editing and Deleting
 
-Authors can edit and delete their own comments. Admins can be granted the same via standard table permissions — but typically comments are immutable history, so most teams leave the defaults as-is.
+Authors can edit and delete their own comments. Admins can be granted the same by extending the default RLS policies with a role-based override (e.g. `pg_has_role(current_user, 'x-admin', 'member')`) — but typically comments are immutable history, so most teams leave the defaults as-is.
 
 ## Combining with Notifications
 
@@ -135,12 +127,12 @@ CREATE TRIGGER trg_notify_task_comment
 
 See **[Notifications](/notifications)** for the full API.
 
-## Permissions Cheatsheet
+## Access Cheatsheet
 
-| Goal | Required permission |
+| Goal | Required grant |
 |------|---------------------|
-| See the **Comments** tab on a record | `<schema>.<table>:comment` |
-| Post a comment on a record | `<schema>.<table>:comment` |
+| See the **Comments** tab on a record | `SELECT` on `<schema>.<table>` |
+| Post a comment on a record | `SELECT` on `<schema>.<table>` |
 | Edit / delete your own comment | None beyond above |
 | Edit / delete someone else's comment | Custom — extend the default policies |
 
@@ -148,4 +140,4 @@ See **[Notifications](/notifications)** for the full API.
 
 - **[Notifications](/notifications)** — Notify users when new comments land
 - **[Audit Logs](/audit-logs)** — Pair comments with a full change history
-- **[Authorization](/authorization)** — Grant `:comment` per role
+- **[Authorization](/authorization)** — How roles, grants, and RLS work together

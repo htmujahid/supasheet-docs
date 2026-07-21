@@ -111,7 +111,9 @@ CREATE POLICY "Admins view all orders"
   );
 ```
 
-Use the Supasheet helpers `supasheet.has_role(role)` and `supasheet.has_permission(permission)` in policies — they check `supasheet.user_roles` and `supasheet.role_permissions` for the current `auth.uid()`. Avoid hand-rolling `auth.jwt() ->> 'role'` style checks: roles live in tables, not the JWT.
+`supasheet.has_role(role)` is a thin wrapper around Postgres's own `pg_has_role(current_user, role, 'member')` — a native role-membership check against whatever role PostgREST actually `SET ROLE`'d to for this request (itself sourced from the JWT's `role` claim, which a Custom Access Token Hook populates from `auth.users.raw_app_meta_data->>'role'`). Use it (or `pg_has_role()` directly) for role-based overrides in RLS policies, as above.
+
+There's no `supasheet.has_permission()` function anymore, because there's no separate "permission" to check — whether a role can attempt an operation on a resource at all is decided by the table/view `GRANT`s it holds, not by a function call inside the policy. RLS only needs to express row-level conditions on top of that; prefer `pg_has_role()`/`has_role()` over hand-parsing `auth.jwt() ->> 'role'` yourself, since they check the actual enforced database role rather than re-implementing your own claim-parsing logic. See [Authorization](/authorization) for the full grants + JWT-to-role mechanics.
 
 ### 4. PostgREST Integration
 

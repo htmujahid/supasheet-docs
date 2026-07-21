@@ -18,7 +18,7 @@ To teach it those conventions, the repository ships an **agent skill** at `.agen
                       # data types, RBAC, notifications, audit logs, comments)
 ```
 
-With the skill loaded, an agent that's asked to "add an invoices module" knows to write a migration with permission enum values, grants, RLS policies gated by `supasheet.has_permission()`, JSON table comments, a `supasheet.refresh_metadata()` call, and the `config.toml` schema exposure — instead of inventing React pages.
+With the skill loaded, an agent that's asked to "add an invoices module" knows to write a migration with `GRANT`/`REVOKE` on the new resource to specific native roles, RLS policies (`using (true)` where the grant already gates the operation, or a real row-level condition where needed), JSON table comments, a `supasheet.refresh_metadata()` call, and the `config.toml` schema exposure — instead of inventing React pages.
 
 ## Claude Code
 
@@ -105,7 +105,7 @@ npx supabase gen types typescript --local \
 ```
 
 <Callout type="warn">
-Review generated migrations before applying them anywhere that matters. Pay particular attention to RLS policies and `grant` statements — the skill instructs agents to lock down grants and gate every policy with `supasheet.has_permission()`, so anything more permissive than that deserves a second look.
+Review generated migrations before applying them anywhere that matters. Pay particular attention to RLS policies and `grant` statements — check that grants go only to the specific roles that should have them (never a blanket `to authenticated`), and that any policy using `using (true)` genuinely has no row-level condition it should have instead (e.g. an ownership check) rather than just defaulting to it.
 </Callout>
 
 Useful review anchors, all in the main repo:

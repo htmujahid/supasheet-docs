@@ -371,7 +371,7 @@ COMMENT ON TABLE desk.tasks IS '{
 Each string must match the relationship's name/embed key (the foreign table's PostgREST embed name), not a column or arbitrary label. The main "Detail" tab is always shown regardless of this setting.
 
 <Callout type="info">
-`tabs` has nothing to do with the Audit Log or Comments features — those are separate, permission-gated pages (`schema.table:audit` / `schema.table:comment`) linked from the record's actions menu, not tabs controlled by this field. See [Audit Logs](/audit-logs) and [Comments](/comments).
+`tabs` has nothing to do with the Audit Log or Comments features — those are separate, grant-gated pages (audit via a fixed `SELECT` grant on `supasheet.audit_logs`; comments via the resource's own `SELECT` grant) linked from the record's actions menu, not tabs controlled by this field. See [Audit Logs](/audit-logs) and [Comments](/comments).
 </Callout>
 
 ---

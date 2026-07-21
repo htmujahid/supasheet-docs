@@ -10,7 +10,9 @@ import { Callout } from 'fumadocs-ui/components/callout';
 Supasheet ships a built-in audit-logging system that records every `INSERT`, `UPDATE`, and `DELETE` against any table you opt in. The trail is stored in `supasheet.audit_logs` and surfaced in two places:
 
 - **Core → Audit Logs** — A global, filterable view of all activity
-- **Resource detail → Audit tab** — Per-record history (requires the `schema.table:audit` permission)
+- **Resource detail → Audit tab** — Per-record history
+
+Both read directly from `supasheet.audit_logs` — there's no wrapper function or per-table permission to grant. Access is a plain `SELECT` grant on the table (already held by `"user"` and `"x-admin"`) plus two RLS policies: `x-admin` sees every row; anyone else only sees rows where `created_by = auth.uid()` — i.e. their own actions, not everyone else's activity on the same table or record. See [Authorization](/authorization#no-separate-audit-or-comment-permission) for how this fits into the rest of the access model.
 
 The schema is defined in `supabase/migrations/20250928062812_audit_logs.sql`.
 
@@ -26,7 +28,7 @@ For every audited mutation, a row is appended to `supasheet.audit_logs` with:
 | `schema_name`, `table_name` | Where the change happened |
 | `record_id` | The primary key of the affected row |
 | `created_by` (uuid) | The user who made the change (resolved from `auth.uid()`) |
-| `role` (`app_role`) | The user's role at the time of the change |
+| `role` (`text`) | The user's role at the time of the change (whatever string was in `raw_app_meta_data->>'role'`) |
 | `user_type` | `'real_user'` or `'system'` (background / service-role writes) |
 | `old_data` (jsonb) | Snapshot before the change (for UPDATE / DELETE) |
 | `new_data` (jsonb) | Snapshot after the change (for INSERT / UPDATE) |
@@ -54,29 +56,31 @@ The generic single-trigger form above is the recommended pattern (matches the ex
 For `DELETE`, the trigger captures the row state in `old_data` automatically using the standard `OLD` record exposed to row-level triggers.
 </Callout>
 
-## Granting Access
+## Who Can See the Audit Trail
 
-Two permissions control who can see what:
-
-- `supasheet.audit_logs:select` — required for the global **Core → Audit Logs** page (seeded for `x-admin`)
-- `schema.table:audit` — required to see the **Audit** tab on a record's detail page
+There's no permission to add and no wrapper function gating access — `supasheet.audit_logs` is a normal table, read directly by both UI surfaces, protected by two RLS policies:
 
 ```sql
--- Allow regular users to see audit history for tasks
-ALTER TYPE supasheet.app_permission ADD VALUE 'desk.tasks:audit';
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-  ('user', 'desk.tasks:audit');
+create policy "Users can view their own audit logs" on supasheet.audit_logs
+  for select to authenticated
+  using (created_by = (select auth.uid()));
+
+create policy "x-admin can view all audit logs" on supasheet.audit_logs
+  for select to authenticated
+  using (pg_has_role(current_user, 'x-admin', 'member'));
 ```
+
+RLS policies for the same command are OR'd together, so the net effect is: `x-admin` sees every row across every audited table; anyone else only sees rows where `created_by` is their own `auth.uid()` — their own actions, not their teammates' changes to the same table or even the same record. Both policies require the role to hold the table-level `SELECT` grant first, which is already seeded to `"user"` and `"x-admin"` in the base migration.
+
+<Callout type="info">
+Want a different rule — e.g. a `manager` role that sees every row for records their team owns? Add another permissive `select` policy on `supasheet.audit_logs` rather than editing either of the two above; Postgres OR's all matching permissive policies together automatically.
+</Callout>
+
+See [Authorization](/authorization#no-separate-audit-or-comment-permission) for how this fits into the rest of the access model.
 
 ## Reading the Trail from SQL
 
-Supasheet provides a helper `supasheet.get_audit_logs(p_schema, p_table, p_record_id)` that joins creator details:
-
-```sql
-SELECT * FROM supasheet.get_audit_logs('desk', 'tasks', 'a1b2…');
-```
-
-Direct queries work too:
+Query `supasheet.audit_logs` directly — there's no RPC wrapper. Embed `supasheet.users` through the `created_by` foreign key to pull in the actor's name/email/avatar in one round trip (this works because both tables live in the `supasheet` schema — see [Cross-Schema Joins](/resource/query#cross-schema-joins) for when a replica view would be needed instead):
 
 ```sql
 -- Everything I changed today
@@ -99,19 +103,31 @@ ORDER BY created_at;
 SELECT * FROM supasheet.audit_logs WHERE is_error;
 ```
 
-## Adding an Audit Log Link to the UI
+From the client (PostgREST embed, same pattern the built-in Audit tab uses):
 
-Audit history isn't a metadata-configured tab — it's a dedicated page (`/$schema/resource/$resource/$resourceId/audit`) that Supasheet automatically links to from a record's actions menu whenever the current user holds `schema.table:audit`. There's nothing to declare in the table's JSON `comment` for this; granting the permission is enough:
-
-```sql
-ALTER TYPE supasheet.app_permission ADD VALUE 'desk.tasks:audit';
-
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-  ('user', 'desk.tasks:audit');
+```ts
+const { data } = await supabase
+  .schema("supasheet")
+  .from("audit_logs")
+  .select(
+    "*, ...users(created_by_name:name, created_by_email:email, created_by_picture_url:picture_url)"
+  )
+  .eq("schema_name", "desk")
+  .eq("table_name", "tasks")
+  .eq("record_id", recordId)
+  .order("created_at", { ascending: false })
 ```
 
 <Callout type="info">
-Don't confuse this with the `tabs` metadata field documented in [Metadata](/resource/metadata#tabs) — that field only filters which **related-table** tabs show on the detail page (foreign key relationships). It has no effect on audit or comment access, which are controlled purely by permissions.
+The `...` prefix is PostgREST's [spread embed](https://docs.postgrest.org/en/stable/references/api/resource_embedding.html#spread-embeds) — it flattens the joined `users` columns directly onto each row (aliased to `created_by_name`/`created_by_email`/`created_by_picture_url`) instead of nesting them under a `users` key, so there's no client-side mapping needed.
+</Callout>
+
+## The Audit Tab in the UI
+
+Audit history isn't a metadata-configured tab — it's a dedicated page (`/$schema/resource/$resource/$resourceId/audit`) that Supasheet automatically links to from a record's actions menu whenever the current user holds `SELECT` on `supasheet.audit_logs` (i.e. `"user"` or `"x-admin"` — everyone with the default grants). There's nothing to declare in the table's JSON `comment` for this. What that user actually sees once they open it is still gated by the two RLS policies above — a plain `"user"` sees only their own actions on that record, `x-admin` sees the full history.
+
+<Callout type="info">
+Don't confuse this with the `tabs` metadata field documented in [Metadata](/resource/metadata#tabs) — that field only filters which **related-table** tabs show on the detail page (foreign key relationships). It has no effect on audit access (grant + RLS on `supasheet.audit_logs`, as above) or comment access (the table's existing `SELECT` grant — see [Authorization](/authorization#no-separate-audit-or-comment-permission)).
 </Callout>
 
 ## Complete Example
@@ -134,20 +150,14 @@ CREATE TRIGGER audit_products
   FOR EACH ROW
   EXECUTE FUNCTION supasheet.audit_trigger_function();
 
--- Permissions
-ALTER TYPE supasheet.app_permission ADD VALUE 'store.products:select';
-ALTER TYPE supasheet.app_permission ADD VALUE 'store.products:insert';
-ALTER TYPE supasheet.app_permission ADD VALUE 'store.products:update';
-ALTER TYPE supasheet.app_permission ADD VALUE 'store.products:delete';
-ALTER TYPE supasheet.app_permission ADD VALUE 'store.products:audit';
+-- Grants (audit visibility needs no grant of its own on store.products —
+-- it's controlled entirely by the shared grant + RLS on supasheet.audit_logs)
+REVOKE ALL ON TABLE store.products FROM authenticated, service_role;
 
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-  ('user', 'store.products:select'),
-  ('user', 'store.products:insert'),
-  ('user', 'store.products:update'),
-  ('user', 'store.products:audit');
+GRANT SELECT, INSERT, UPDATE ON TABLE store.products TO "user";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE store.products TO "x-admin";
 
--- Metadata (audit access needs no entry here — it's driven entirely by the :audit permission above)
+-- Metadata (audit visibility needs no entry here either)
 COMMENT ON TABLE store.products IS '{
   "icon": "Package"
 }';
@@ -155,6 +165,6 @@ COMMENT ON TABLE store.products IS '{
 
 ## Next Steps
 
-- **[Authorization](/authorization)** — How `:audit` slots into the permission model
+- **[Authorization](/authorization)** — How native roles and grants control resource access
 - **[Comments](/comments)** — Pair audit with discussions on each record
 - **[Notifications](/notifications)** — Notify users when audited events happen

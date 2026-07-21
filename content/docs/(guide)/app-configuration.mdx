@@ -28,7 +28,7 @@ create table supasheet.configs (
 
 ## Visibility Model
 
-Unlike most `supasheet` tables, `configs` is readable directly by `anon` and `authenticated` via RLS — there's no `role_permissions` entry required:
+Unlike most `supasheet` tables, `configs` is readable directly by `anon` and `authenticated` via RLS — there's no per-role `GRANT` required:
 
 ```sql
 create policy configs_select_anon on supasheet.configs for
@@ -44,7 +44,7 @@ select
 - **Authenticated users** see every row, public or not.
 
 <Callout type="warn">
-Only put values in `configs` that are safe to expose to *any* signed-in user. If a setting needs to be admin-only, gate it the normal way — a dedicated table with `role_permissions` — rather than relying on `is_public = false`, since every logged-in user can still read it.
+Only put values in `configs` that are safe to expose to *any* signed-in user. If a setting needs to be admin-only, gate it the normal way — a dedicated table, `GRANT`ed only to the roles that should see it (e.g. `x-admin`) — rather than relying on `is_public = false`, since every logged-in user can still read it.
 </Callout>
 
 Writes aren't exposed through PostgREST at all — `INSERT`/`UPDATE`/`DELETE` are revoked from every client role. Change config values via migration or through the database directly.
@@ -87,5 +87,5 @@ Remember to run `select supasheet.refresh_metadata();` after any schema change i
 
 ## Next Steps
 
-- **[Authorization](/authorization)** — how `role_permissions` gates everything *other* than `configs`
+- **[Authorization](/authorization)** — how native role grants gate everything *other* than `configs`
 - **[Database Schema](/database-schema)** — where `configs` sits among the other `supasheet` schema objects

@@ -7,7 +7,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## Overview
 
-Supasheet ships a complete in-app notifications system. It's optimised for **fan-out** — one event creates a single notification row and N per-user delivery rows — so you can deliver a single broadcast to every user with a role, every user with a specific permission, or any custom user list, without duplicating payloads.
+Supasheet ships a complete in-app notifications system. It's optimised for **fan-out** — one event creates a single notification row and N per-user delivery rows — so you can deliver a single broadcast to every user with a role, every user whose role holds a specific table privilege, or any custom user list, without duplicating payloads.
 
 Defined in `supabase/migrations/20251006051303_notifications.sql`.
 
@@ -77,8 +77,8 @@ Two helper functions return user lists you can pass straight into `p_user_ids`:
 -- Everyone with a specific role
 SELECT supasheet.get_users_with_role('admin');
 
--- Everyone whose role grants a specific permission
-SELECT supasheet.get_users_with_permission('desk.tasks:update');
+-- Everyone whose role currently holds a given table privilege
+SELECT supasheet.get_users_with_table_privilege('desk', 'tasks', 'update');
 ```
 
 Pattern of use:
@@ -92,30 +92,39 @@ PERFORM supasheet.create_notification(
 );
 ```
 
-These helpers mirror your authorisation rules — only users actually granted the role or permission receive the notification.
+These helpers mirror your authorisation rules — only users actually granted the role or table privilege receive the notification. Both are `SECURITY DEFINER`, restricted to `service_role` — call them from inside your own `SECURITY DEFINER` notification trigger functions, not from client code.
 
 ## Triggering from Domain Tables
 
-The most useful pattern is to attach a trigger that creates notifications when something happens in your domain. The migration ships a working example: `trg_user_roles_notify` notifies a user the first time they're granted a role.
+The most useful pattern is to attach a trigger that creates notifications when something happens in your domain. The migration ships a working example: `trg_user_role_changed_notify` fires on `auth.users` itself and notifies a user whenever their role is assigned or changed.
 
 ```sql
-CREATE OR REPLACE FUNCTION supasheet.trg_user_roles_notify ()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
-BEGIN
-  PERFORM supasheet.create_notification(
-    'role_granted',
-    'Role assigned',
-    'You have been granted the "' || NEW.role::text || '" role.',
-    ARRAY[NEW.user_id],
-    jsonb_build_object('role', NEW.role, 'user_id', NEW.user_id)
-  );
-  RETURN NEW;
-END $$;
+create or replace function supasheet.trg_user_role_changed_notify () returns trigger language plpgsql security definer
+set search_path = '' as $$
+declare
+    v_role text := new.raw_app_meta_data ->> 'role';
+begin
+    if v_role is not null then
+        perform supasheet.create_notification(
+            'role_granted',
+            'Role assigned',
+            'You have been granted the "' || v_role || '" role.',
+            array[new.id],
+            jsonb_build_object('role', v_role, 'user_id', new.id)
+        );
+    end if;
+    return new;
+end;
+$$;
 
-CREATE TRIGGER user_roles_notify
-  AFTER INSERT ON supasheet.user_roles
-  FOR EACH ROW EXECUTE FUNCTION supasheet.trg_user_roles_notify();
+create trigger user_role_changed_notify
+after update of raw_app_meta_data on auth.users for each row when (
+  old.raw_app_meta_data ->> 'role' is distinct from new.raw_app_meta_data ->> 'role'
+)
+execute function supasheet.trg_user_role_changed_notify ();
 ```
+
+Since a user's role lives on `auth.users.raw_app_meta_data->>'role'` rather than a join table, the trigger fires `AFTER UPDATE OF raw_app_meta_data` and uses a `WHEN` clause to only run when the `role` key actually changed — this covers both the first-time assignment and any subsequent role change with a single trigger.
 
 ### Example: Notify Assignee on Task Insert
 
@@ -167,18 +176,17 @@ LIMIT  50;
 
 ## Permissions
 
-| Permission | Used for |
-|------------|----------|
-| `supasheet.notifications:select` | Allows the **Core → Notifications** admin view |
-| `supasheet.user_notifications:select` | Companion permission for admin views |
+| Table | Used for |
+|-------|----------|
+| `supasheet.notifications` | Allows the **Core → Notifications** admin view |
+| `supasheet.user_notifications` | Companion table for admin views |
 
-End-users do **not** need either permission — RLS lets them see their own deliveries through the user-scoped policies. Grant the permissions above only to admin roles that need to audit the full notification stream.
+End-users do **not** need a grant on either table — RLS lets them see their own deliveries through the user-scoped policies. Grant `SELECT` on the tables above only to admin roles that need to audit the full notification stream.
 
 ```sql
--- Grant admin visibility into all notifications (already seeded for x-admin)
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-  ('admin', 'supasheet.notifications:select'),
-  ('admin', 'supasheet.user_notifications:select');
+-- Grant admin visibility into all notifications (already granted to x-admin)
+grant select on table supasheet.notifications to "admin";
+grant select on table supasheet.user_notifications to "admin";
 ```
 
 ## Best Practices
@@ -197,4 +205,4 @@ Notifications are intentionally synchronous — `create_notification` runs in th
 
 - **[Comments](/comments)** — Pair comments with comment-driven notifications
 - **[Audit Logs](/audit-logs)** — Notifications + audit logs gives you a clean event trail
-- **[Authorization](/authorization)** — Resolving recipients with `get_users_with_role` / `_with_permission`
+- **[Authorization](/authorization)** — Resolving recipients with `get_users_with_role` / `get_users_with_table_privilege`

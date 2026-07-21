@@ -33,11 +33,7 @@ Only columns that exist in **both** the template view and the target table are c
 ## Defining a Template
 
 ```sql
--- Step 1: Add the permission
-ALTER TYPE supasheet.app_permission
-  ADD VALUE IF NOT EXISTS 'hostel.monthly_payment_template:select';
-
--- Step 2: Build the view that produces the desired rows
+-- Step 1: Build the view that produces the desired rows
 CREATE OR REPLACE VIEW hostel.monthly_payment_template AS
 SELECT
   a.id          AS allocation_id,
@@ -47,7 +43,7 @@ SELECT
 FROM hostel.allocations a
 WHERE a.status = 'active';
 
--- Step 3: Tag the view as a template (optionally name its preferred target table)
+-- Step 2: Tag the view as a template (optionally name its preferred target table)
 COMMENT ON VIEW hostel.monthly_payment_template IS '{
   "type": "template",
   "name": "Monthly Payment Template",
@@ -55,12 +51,9 @@ COMMENT ON VIEW hostel.monthly_payment_template IS '{
   "target_table": "payments"
 }';
 
--- Step 4: Grant access
+-- Step 3: Grant access directly to the roles that should see this template
 REVOKE ALL ON hostel.monthly_payment_template FROM authenticated, service_role;
-GRANT SELECT ON hostel.monthly_payment_template TO authenticated;
-
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-  ('x-admin', 'hostel.monthly_payment_template:select');
+GRANT SELECT ON hostel.monthly_payment_template TO "x-admin";
 ```
 
 ## Comment Metadata

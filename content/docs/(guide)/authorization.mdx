@@ -1,6 +1,6 @@
 ---
 title: Authorization
-description: Role-based permissions and Row Level Security
+description: Native Postgres roles, grants, and Row Level Security
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -9,306 +9,296 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 Supasheet uses a two-layer authorization system:
 
-1. **Permissions** - Control what resources users can see in the UI (tables, views, charts, reports)
+1. **Roles & Grants** - Real Postgres roles with real `GRANT`/`REVOKE` privileges control what resources users can see and operate on (tables, views, charts, reports)
 2. **Row Level Security (RLS)** - Control which specific rows users can access in those resources
 
-Both work together to provide complete authorization, but serve different purposes.
-
-## Permissions System
-
-### How Permissions Work
-
-Permissions control **UI visibility**. Users only see resources they have permission to access.
-
-**Permission Format:**
-```
-{schema}.{table_or_view}:{operation}
-```
-
-**Examples:**
-- `public.tasks:select` - Read tasks table
-- `public.tasks:insert` - Create tasks
-- `public.tasks:update` - Update tasks
-- `public.tasks:delete` - Delete tasks
-- `public.tasks:audit` - Read the audit trail for a record
-- `public.tasks:comment` - Read and post comments on a record
-- `public.task_report:select` - View task report
-- `public.task_status_pie:select` - View task chart
-
-### Adding Permissions
-
-When creating a new table or view:
-
-```sql
--- Step 1: Add permissions to the enum
-alter type supasheet.app_permission add value 'public.tasks:select';
-alter type supasheet.app_permission add value 'public.tasks:insert';
-alter type supasheet.app_permission add value 'public.tasks:update';
-alter type supasheet.app_permission add value 'public.tasks:delete';
-
--- Step 2: Grant permissions to roles
-insert into supasheet.role_permissions (role, permission) values
-  ('user', 'public.tasks:select'),
-  ('user', 'public.tasks:insert'),
-  ('user', 'public.tasks:update'),
-  ('user', 'public.tasks:delete');
-```
-
-<Callout type="warn">
-**Required**: You must add permissions for every table, view, chart, dashboard, and report. Without permissions, users won't see these resources in the UI.
-</Callout>
-
-### Permissions for All Resource Types
-
-**All resource types require `:select` permission to be visible:**
-
-```sql
--- Table permissions (all operations)
-alter type supasheet.app_permission add value 'public.tasks:select';
-alter type supasheet.app_permission add value 'public.tasks:insert';
-alter type supasheet.app_permission add value 'public.tasks:update';
-alter type supasheet.app_permission add value 'public.tasks:delete';
-
--- View permissions (select only)
-alter type supasheet.app_permission add value 'public.vw_tasks:select';
-
--- Report permissions (select only)
-alter type supasheet.app_permission add value 'public.task_report:select';
-
--- Dashboard permissions (select only)
-alter type supasheet.app_permission add value 'public.task_summary:select';
-
--- Chart permissions (select only)
-alter type supasheet.app_permission add value 'public.task_status_pie:select';
-
--- Grant all to user role
-insert into supasheet.role_permissions (role, permission) values
-  ('user', 'public.tasks:select'),
-  ('user', 'public.tasks:insert'),
-  ('user', 'public.tasks:update'),
-  ('user', 'public.tasks:delete'),
-  ('user', 'public.vw_tasks:select'),
-  ('user', 'public.task_report:select'),
-  ('user', 'public.task_summary:select'),
-  ('user', 'public.task_status_pie:select');
-```
+There is no permissions table and no permission enum. A user's access is exactly what their Postgres role has been granted — nothing more, nothing less.
 
 <Callout type="info">
-Views, reports, dashboards, and charts only need `:select` permission since they are read-only. Tables need all four operations (select, insert, update, delete) for full CRUD functionality.
+This is a deliberate departure from many role/permission frameworks that model access as rows in an app-level table. Supasheet uses Postgres's own privilege system instead: `CREATE ROLE`, `GRANT`, `REVOKE`. There's nothing to keep in sync — the database *is* the source of truth.
 </Callout>
 
-### Built-in Roles
+## How Roles Work
 
-Supasheet ships with three roles defined on the `supasheet.app_role` enum:
+### Native Postgres Roles
 
-#### `user` (Default)
-- Automatically assigned to new sign-ups via the `on_auth_user_created` trigger
-- Has no permissions by default — grant access explicitly for each resource
-- Recommended for end-users of your application
-
-#### `admin`
-- An intermediate role with no built-in permissions
-- Reserved for application admins; grant the resource permissions that match your business rules
-
-#### `x-admin`
-- The Supasheet super-admin role
-- Seeded with permissions for the entire `supasheet` schema (users, roles, permissions, audit logs, notifications, etc.)
-- Required to manage roles, permissions, and other admins through the UI under **Core**
-
-<Callout type="warn">
-`x-admin` is the only role that can manage other roles and permissions. Always have at least one user with this role.
-</Callout>
-
-### Special-Case Permissions
-
-Beyond the standard CRUD operations, Supasheet recognises two additional per-table permissions:
-
-- `schema.table:audit` — required to view the per-record audit trail on the detail page
-- `schema.table:comment` — required to read and post comments on a record
-
-### Adding New Roles
-
-Create custom roles by adding values to the enum:
+Supasheet ships three roles, created directly with `CREATE ROLE`:
 
 ```sql
--- Add new role type
-alter type supasheet.app_role add value 'manager';
-alter type supasheet.app_role add value 'editor';
-
--- Grant permissions to the new role
-insert into supasheet.role_permissions (role, permission) values
-  ('manager', 'public.tasks:select'),
-  ('manager', 'public.tasks:update'),
-  ('editor', 'public.posts:select'),
-  ('editor', 'public.posts:insert');
+create role "x-admin" nologin;
+create role "admin" nologin;
+create role "user" nologin;
 ```
 
-### Assigning Roles to Users
-
-Users get roles through the `supasheet.user_roles` table:
+Each is `nologin` — nobody connects to Postgres *as* these roles directly. Instead, they're wired into Supabase's connection pooling so PostgREST can assume them per request:
 
 ```sql
--- Assign role to user
-insert into supasheet.user_roles (user_id, role)
-values ('user-uuid-here', 'manager');
+-- The connection-pooling role (authenticator) is allowed to become any of these
+grant "x-admin", "admin", "user" to authenticator;
 
--- User can have multiple roles
-insert into supasheet.user_roles (user_id, role) values
-  ('user-uuid-here', 'user'),
-  ('user-uuid-here', 'editor');
+-- Each app role inherits everything already granted to `authenticated`
+grant authenticated to "x-admin", "admin", "user";
 ```
 
-### Assign Default Role
+### From JWT to Postgres Role
 
-To change what role new users get automatically, uncomment the trigger function in accounts.sql migration:
+A Supabase **Custom Access Token Hook** (`supasheet.custom_access_token`) copies the role stored on the user's `auth.users.raw_app_meta_data->>'role'` into the JWT's top-level `role` claim on every token issuance:
 
 ```sql
-create or replace function supasheet.new_account_created_setup()
-returns trigger
-language plpgsql
-as $$
+create or replace function supasheet.custom_access_token (event jsonb)
+returns jsonb language plpgsql stable
+set search_path = '' as $$
+declare
+  claims jsonb;
+  requested_role text;
 begin
-  -- Change 'user' to your desired default role
-  insert into supasheet.user_roles (user_id, role)
-  values (new.id, 'user');
-  return new;
+  claims := event -> 'claims';
+  requested_role := event -> 'claims' -> 'app_metadata' ->> 'role';
+
+  if requested_role is not null and exists (select 1 from pg_roles where rolname = requested_role) then
+    claims := jsonb_set(claims, '{role}', to_jsonb(requested_role));
+  end if;
+
+  return jsonb_set(event, '{claims}', claims);
 end;
 $$;
 ```
 
-### Permission Helper Functions
+PostgREST reads that `role` claim and issues `SET ROLE "<role>"` for the request. From that point on, every query — every `SELECT`, `INSERT`, `UPDATE`, `DELETE`, and every RLS policy evaluation — runs *as that Postgres role*. Whatever you've `GRANT`ed to `"user"` is what a user-role request can do; nothing more.
 
-Use these functions in your SQL:
+<Callout type="warn">
+This means the JWT's `role` claim is the single source of truth for "what native Postgres role is this request running as." There's no separate app-level role lookup at query time — Postgres's own privilege system does the enforcement.
+</Callout>
+
+### Built-in Roles
+
+#### `user` (Default)
+- Automatically assigned via a `before insert` trigger on `auth.users` (`supasheet.assign_default_role`) that sets `raw_app_meta_data->>'role'` to `'user'` when nothing else was requested at sign-up
+- Has no grants by default — grant access explicitly for each resource
+- Recommended for end-users of your application
+
+#### `admin`
+- An intermediate role with no built-in grants
+- Reserved for application admins; grant the resource privileges that match your business rules
+
+#### `x-admin`
+- The Supasheet super-admin role
+- Granted full access to the entire `supasheet` schema (users, audit logs, notifications, configs, etc.) directly in the base migrations
+- The only role whose UI capability checks are hardcoded rather than grant-derived: every admin Edge Function (create/invite/update/delete/ban/generate-link/set-role users) requires `x-admin` membership specifically, checked via `pg_has_role`
+
+<Callout type="warn">
+`x-admin` is the only role that can manage other users and roles through the UI (under **Core → Users**). Always have at least one user with this role.
+</Callout>
+
+### Helper Functions
 
 ```sql
--- Check if user has specific permission
-select supasheet.has_permission('public.tasks:select');
+-- Check if the current request's role is (or inherits) a given role
+select supasheet.has_role('x-admin');
 
--- Check if user has specific role
-select supasheet.has_role('manager');
+-- Inspect the current session: your user id, JWT role claim, and active Postgres role
+select supasheet.whoami();
 ```
 
-## Meta Tables & Permissions
+`has_role()` is a thin wrapper around Postgres's own `pg_has_role(current_user, requested_role, 'member')` — it exists for convenience and readability in policies, not because there's any additional bookkeeping behind it.
 
-Meta tables store database structure information and are automatically filtered by permissions.
+<Callout type="warn">
+**Gotcha:** inside a `SECURITY DEFINER` function, `current_user` resolves to the function's *owner*, not the caller — `pg_has_role(current_user, ...)` would silently check the wrong role. If you write your own `SECURITY DEFINER` function that needs to know the caller's role, add a trailing parameter `p_caller text default current_user` and use `p_caller` instead of `current_user` inside the function body. Because default-argument expressions evaluate in the *caller's* context before the security-definer switch, this correctly captures the real caller. Every built-in `SECURITY DEFINER` function in `supasheet` (the meta discovery functions, audit logging, notification resolvers) follows this pattern — grep for `p_caller` if you want more examples.
+</Callout>
 
-### What are Meta Tables?
+## Granting Access to Resources
 
-- `supasheet.tables` - All tables
-- `supasheet.columns` - All columns
-- `supasheet.views` - All views
-- `supasheet.materialized_views` - All materialized views
+Access to a table, view, materialized view, dashboard widget, chart, or report is controlled entirely by standard Postgres grants — there is no separate "permission" to register anywhere else. If a role can `SELECT` a resource, that role sees it in the UI; if it can't, the resource simply doesn't appear.
 
-### Permission-Based Filtering
+### Tables
 
-Meta table functions only return resources users have `:select` permission for:
+Tables typically need all four operations granted to the roles that should have full CRUD:
 
 ```sql
--- Only returns tables user can access
-select * from supasheet.get_tables();
+revoke all on table public.tasks
+from authenticated, service_role;
 
--- Only returns views user can access
-select * from supasheet.get_views();
-
--- Only returns columns from accessible tables
-select * from supasheet.get_columns();
+grant select, insert, update, delete on table public.tasks to "user";
+grant select, insert, update, delete on table public.tasks to "x-admin";
 ```
 
-This means the UI automatically hides resources users don't have permission to see.
-
-## Row Level Security (RLS)
-
-RLS policies control **which rows** users can access. Security is enforced at the database level.
-
-### Basic RLS Setup
+Grant only what a role should actually have — for example, a role that can create and read but never delete:
 
 ```sql
--- Enable RLS
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+grant select, insert, update on table public.tasks to "editor";
+```
 
--- Create policy
-CREATE POLICY "Users view own tasks"
-  ON tasks
-  FOR SELECT
-  TO authenticated
-  USING (user_id = auth.uid());
+### Views, Materialized Views, Dashboards, Charts, Reports
+
+All read-only resource types only ever need `SELECT`:
+
+```sql
+revoke all on public.task_status_pie
+from authenticated, service_role;
+
+grant select on public.task_status_pie to "user";
 ```
 
 <Callout type="info">
-Without policies, **no rows are accessible** when RLS is enabled. You must explicitly grant access.
+Views, materialized views, dashboard widgets, charts, and reports are all just Postgres views under the hood, distinguished from each other by JSON in their `COMMENT`. Granting `SELECT` is the entire access-control story for every one of them — there's no separate registration step.
 </Callout>
 
-### Using Permissions in RLS
+<Callout type="warn">
+**Required**: Every table, view, dashboard, chart, and report needs an explicit grant to at least one role. Without a grant, `has_table_privilege()` returns false for every role, and the resource simply never appears in the UI for anyone.
+</Callout>
 
-Combine permissions with RLS for complete control:
+### How the UI Decides What to Show
+
+The meta layer (`supasheet.get_tables()`, `get_views()`, `get_materialized_views()`, `get_permissions()`, `get_nav_items()`, …) computes visibility live, on every request, using Postgres's own `has_table_privilege()`:
 
 ```sql
-CREATE POLICY "tasks_select"
-  ON tasks
-  FOR SELECT
-  TO authenticated
-  USING (
-    user_id = auth.uid()
-    AND supasheet.has_permission('public.tasks:select')
-  );
+-- Simplified shape of what the meta layer checks per resource
+select has_table_privilege(current_user, 'public.tasks', 'select');
 ```
 
-This ensures:
-- User has the permission (sees table in UI)
-- User owns the row (can access specific data)
+Because this is computed from the request's actual active role rather than looked up in a table, there's nothing to keep in sync: change a `GRANT`, and every user on that role sees the effect on their very next request — no cache to invalidate, no metadata refresh needed for the *access* question (you still need `select supasheet.refresh_metadata()` after schema changes so the *structural* catalog — table/column/view lists — picks up new objects at all; see the [Complete Example](/complete-example)).
 
-### Common RLS Patterns
+### No Separate `:audit` or `:comment` Permission
 
-#### User-Owned Data
+Two special-case capabilities from earlier permission-table-based designs are now handled globally instead of per-resource:
+
+- **Audit trail visibility** needs no per-resource setup — `supasheet.audit_logs` is read directly (no wrapper function), gated by a table `SELECT` grant (already held by `"user"` and `"x-admin"`) plus two RLS policies: `x-admin` sees every row; everyone else only sees rows where `created_by = auth.uid()` (their own actions). Add another permissive `select` policy on the table if a role needs a different rule — don't edit the two existing ones.
+- **Comment read/write access** is simply the table's existing `SELECT` privilege — if a role can read a table, it can read and post comments on its rows. There's no separate comment grant to add.
+
+## Assigning Roles to Users
+
+A user's role lives on `auth.users.raw_app_meta_data->>'role'` — there is no `user_roles` table, and a user has exactly one role at a time (not a set of roles).
+
+```sql
+-- Assign (or change) a user's role
+update auth.users
+set raw_app_meta_data = raw_app_meta_data || jsonb_build_object('role', 'manager')
+where id = 'user-uuid-here';
+
+-- Unassign — falls back to whatever assign_default_role does on next sign-in-adjacent trigger,
+-- but for an existing user this simply clears the claim:
+update auth.users
+set raw_app_meta_data = raw_app_meta_data - 'role'
+where id = 'user-uuid-here';
+```
+
+<Callout type="warn">
+Changing `raw_app_meta_data` doesn't retroactively update tokens already issued — the new role takes effect the next time Supabase mints an access token for that user (next sign-in, or the next refresh-token exchange).
+</Callout>
+
+In the UI, an `x-admin` assigns roles from **Core → Users → (a user) → Security**, via a role selector that calls the `admin-set-user-role` Edge Function (which itself calls `auth.admin.updateUserById()` with the service role key — a user can never set their own role through this path). Assigning a role fires a notification to that user via a trigger on `auth.users` (`trg_user_role_changed_notify`, listening for `raw_app_meta_data` changes).
+
+## Adding Custom Roles
+
+Creating a new role is exactly the same recipe used for the built-in ones — there's no enum to extend first:
+
+```sql
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'manager') then
+    create role "manager" nologin;
+  end if;
+end;
+$$;
+
+grant "manager" to authenticator;
+grant authenticated to "manager";
+
+-- Now grant it access like any other role
+grant select, update on table public.tasks to "manager";
+```
+
+Assign it to a user the same way as any built-in role — `update auth.users set raw_app_meta_data = raw_app_meta_data || jsonb_build_object('role', 'manager') where id = ...`.
+
+<Callout type="info">
+The Core → Users role selector in the UI only offers the three built-in roles out of the box (it doesn't yet enumerate custom roles dynamically). Assign a custom role via SQL, or wire up your own picker against `pg_roles` filtered to members of `authenticated`.
+</Callout>
+
+## Row Level Security (RLS)
+
+RLS policies control **which rows** users can access. Security is enforced at the database level, on top of whatever the role's table-level grant already allows.
+
+### The Default: Grants Already Gate the Operation
+
+Since a `GRANT` already decided *whether* a role can attempt an operation at all, most RLS policies in a Supasheet schema simply pass everything through:
+
+```sql
+alter table public.tasks enable row level security;
+
+create policy tasks_select on public.tasks
+  for select to authenticated using (true);
+
+create policy tasks_insert on public.tasks
+  for insert to authenticated with check (true);
+
+create policy tasks_update on public.tasks
+  for update to authenticated using (true) with check (true);
+
+create policy tasks_delete on public.tasks
+  for delete to authenticated using (true);
+```
+
+<Callout type="info">
+Without policies, **no rows are accessible** even when RLS is enabled and the role has a table grant — you must explicitly grant access at the row level too, even if that's just `using (true)`.
+</Callout>
+
+### Row-Level Business Rules
+
+RLS is where genuine per-row rules — ownership, status, visibility windows — still live. Combine them freely; there's no permission-string clause to weave in anymore:
 
 ```sql
 -- Users see only their own data
-CREATE POLICY "own_data" ON tasks FOR SELECT
-  TO authenticated USING (user_id = auth.uid());
+create policy own_data on tasks for select
+  to authenticated using (user_id = auth.uid());
 
-CREATE POLICY "create_own" ON tasks FOR INSERT
-  TO authenticated WITH CHECK (user_id = auth.uid());
+create policy create_own on tasks for insert
+  to authenticated with check (user_id = auth.uid());
 
-CREATE POLICY "update_own" ON tasks FOR UPDATE
-  TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+create policy update_own on tasks for update
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
 
-CREATE POLICY "delete_own" ON tasks FOR DELETE
-  TO authenticated USING (user_id = auth.uid());
+create policy delete_own on tasks for delete
+  to authenticated using (user_id = auth.uid());
 ```
 
-#### Role-Based Access
+### Role-Based Overrides
+
+Use `pg_has_role()` (or the `supasheet.has_role()` wrapper) directly in a policy when a specific role should bypass an ownership check — this is how `x-admin` sees every row while everyone else only sees their own:
 
 ```sql
--- Admins see everything
-CREATE POLICY "admin_all" ON tasks FOR ALL
-  TO authenticated
-  USING (supasheet.has_role('x-admin'));
+-- Owners see their own rows; x-admin sees everything
+create policy tasks_select on tasks for select
+  to authenticated
+  using (
+    user_id = auth.uid()
+    or pg_has_role(current_user, 'x-admin', 'member')
+  );
 
 -- Managers see their team's data
-CREATE POLICY "manager_access" ON tasks FOR SELECT
-  TO authenticated
-  USING (
-    supasheet.has_role('manager')
-    AND team_id IN (
-      SELECT team_id FROM team_managers
-      WHERE user_id = auth.uid()
+create policy manager_access on tasks for select
+  to authenticated
+  using (
+    pg_has_role(current_user, 'manager', 'member')
+    and team_id in (
+      select team_id from team_managers
+      where user_id = auth.uid()
     )
   );
 ```
 
-#### Public + Private Data
+### Public + Private Data
 
 ```sql
--- Anyone can view public tasks
-CREATE POLICY "public_tasks" ON tasks FOR SELECT
-  TO authenticated USING (is_public = true);
+-- Anyone signed in can view public tasks
+create policy public_tasks on tasks for select
+  to authenticated using (is_public = true);
 
--- Users can view their own private tasks
-CREATE POLICY "own_private_tasks" ON tasks FOR SELECT
-  TO authenticated
-  USING (user_id = auth.uid() AND is_public = false);
+-- Users can additionally view their own private tasks
+create policy own_private_tasks on tasks for select
+  to authenticated
+  using (user_id = auth.uid() and is_public = false);
 ```
 
 ### Policy Operations
@@ -323,19 +313,33 @@ CREATE POLICY "own_private_tasks" ON tasks FOR SELECT
 
 ```sql
 -- Add indexes for policy conditions
-CREATE INDEX tasks_user_id_idx ON tasks(user_id);
-CREATE INDEX tasks_team_id_idx ON tasks(team_id);
+create index tasks_user_id_idx on tasks (user_id);
+create index tasks_team_id_idx on tasks (team_id);
 
 -- Use EXISTS instead of IN
-CREATE POLICY "better_policy" ON tasks FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM team_members
-      WHERE team_id = tasks.team_id
-        AND user_id = auth.uid()
+create policy better_policy on tasks for select
+  using (
+    exists (
+      select 1 from team_members
+      where team_id = tasks.team_id
+        and user_id = auth.uid()
     )
   );
 ```
+
+## Notifications Integration
+
+When a notification trigger needs to resolve "which users should see this," it queries roles and grants directly instead of a permissions table:
+
+```sql
+-- Every user currently holding a given role
+select supasheet.get_users_with_role('x-admin');
+
+-- Every user whose role currently holds a given table privilege
+select supasheet.get_users_with_table_privilege('public', 'tasks', 'update');
+```
+
+Both are `SECURITY DEFINER`, restricted to `service_role` — they're meant to be called from inside your own `SECURITY DEFINER` notification trigger functions, not from the client. See [Notifications](/notifications) for the full trigger pattern.
 
 ## Complete Workflow
 
@@ -343,44 +347,36 @@ When adding a new resource:
 
 ```sql
 -- 1. Create the table
-CREATE TABLE tasks (...);
+create table tasks (...);
 
--- 2. Add permissions
-alter type supasheet.app_permission add value 'public.tasks:select';
-alter type supasheet.app_permission add value 'public.tasks:insert';
-alter type supasheet.app_permission add value 'public.tasks:update';
-alter type supasheet.app_permission add value 'public.tasks:delete';
+-- 2. Revoke default grants, then grant exactly what each role needs
+revoke all on table tasks from authenticated, service_role;
+grant select, insert, update, delete on table tasks to "user";
 
 -- 3. Enable RLS
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+alter table tasks enable row level security;
 
--- 4. Create RLS policies
+-- 4. Create RLS policies — `using (true)` is the default once the grant
+--    above already gates the operation; add real row-level conditions
+--    only where you actually need them
 create policy tasks_select on tasks for select
-  to authenticated
-  using (user_id = auth.uid() and supasheet.has_permission('public.tasks:select'));
+  to authenticated using (true);
 
 create policy tasks_insert on tasks for insert
-  to authenticated
-  with check (supasheet.has_permission('public.tasks:insert'));
-
--- 5. Grant permissions to roles
-insert into supasheet.role_permissions (role, permission) values
-  ('user', 'public.tasks:select'),
-  ('user', 'public.tasks:insert'),
-  ('user', 'public.tasks:update'),
-  ('user', 'public.tasks:delete');
+  to authenticated with check (true);
 ```
 
 <Callout type="info">
-Supasheet's meta schema is kept in sync automatically by event triggers (`table_creation_trigger`, `comment_trigger`, `enum_alteration_trigger`, etc.) defined in `supabase/migrations/00000000000000_meta.sql`. You do **not** need to manually refresh `supasheet.tables` or `supasheet.columns` after running DDL.
+Supasheet's meta schema is kept in sync automatically by event triggers (`table_creation_trigger`, `comment_trigger`, `enum_alteration_trigger`, etc.) defined in `supabase/migrations/00000000000000_meta.sql`. You do **not** need to manually refresh `supasheet.tables` or `supasheet.columns` after running DDL — but every migration should still end with `select supasheet.refresh_metadata();` to be safe (see [Complete Example](/complete-example)).
 </Callout>
 
 ## Key Takeaways
 
-- **Permissions** control UI visibility (what resources appear)
-- **RLS** controls data access (which rows are accessible)
-- **Meta tables** are filtered by permissions automatically
-- **Use `has_permission()` and `has_role()`** in your policies
+- **Roles and grants** control UI visibility (what resources appear) — real `CREATE ROLE` + `GRANT`/`REVOKE`, no permissions table
+- **RLS** controls data access (which rows are accessible), layered on top of whatever the grant already allows
+- **The JWT's `role` claim drives `SET ROLE`** — PostgREST runs every request as that native Postgres role
+- **A user has one role at a time**, stored on `auth.users.raw_app_meta_data->>'role'`, not a `user_roles` join table
+- **Use `pg_has_role()` / `supasheet.has_role()`** in policies for role-based overrides; use `has_table_privilege()` (already wired into the meta layer) to reason about resource visibility
 
 ## Next Steps
 

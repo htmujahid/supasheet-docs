@@ -43,10 +43,10 @@ description: Essential checks before going live
   - Restore procedure tested
 
 - [ ] **`supasheet` schema exposed** via PostgREST (`[api].schemas` includes `supasheet` and every domain schema you use)
-- [ ] **Permissions seeded** for every table, view, chart, dashboard, report, and template
+- [ ] **Grants seeded** — every table, view, chart, dashboard, report, and template has an explicit `GRANT` to the roles that should see it
 - [ ] At least one user holds the **`x-admin`** role
 - [ ] **Audit triggers** attached to tables you want to track
-- [ ] **`:audit` / `:comment` permissions** granted where the audit / comment tabs should be visible
+- [ ] Nothing extra needed for the **Audit / Comments** tabs — audit visibility follows the fixed `SELECT` grant on `supasheet.audit_logs`, comment visibility follows the resource's own `SELECT` grant
 
 ## Application
 

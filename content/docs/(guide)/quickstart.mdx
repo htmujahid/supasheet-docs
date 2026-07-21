@@ -27,19 +27,11 @@ This creates a new migration file in `/supabase/migrations/`.
 Edit the migration file and add:
 
 ```sql
-begin;
 -- Step 1: Create custom types
 create type task_status as enum ('pending', 'in_progress', 'completed');
 create type task_priority as enum ('low', 'medium', 'high');
 
--- Step 2: Add permissions to the system
-alter type supasheet.app_permission add value 'public.tasks:select';
-alter type supasheet.app_permission add value 'public.tasks:insert';
-alter type supasheet.app_permission add value 'public.tasks:update';
-alter type supasheet.app_permission add value 'public.tasks:delete';
-commit;
-
--- Step 3: Create tasks table
+-- Step 2: Create tasks table
 CREATE TABLE public.tasks (
   id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   title TEXT NOT NULL,
@@ -60,45 +52,43 @@ CREATE TABLE public.tasks (
 create index idx_tasks_user_id on tasks (user_id);
 create index idx_tasks_status on tasks (status);
 
--- Step 4: Enable Row Level Security with permission checks
-ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
-
--- Revoke default permissions
+-- Step 3: Grant access, then enable Row Level Security
+-- There's no permission enum to register first — access is a direct
+-- GRANT on the table itself, to the native Postgres role(s) that should
+-- have it. Revoke the default grants, then grant exactly what the
+-- 'user' role needs.
 revoke all on table tasks from authenticated, service_role;
 
--- Grant basic permissions
-grant select, insert, update, delete on table tasks to authenticated;
+grant select, insert, update, delete on table tasks to "user";
 
--- Create RLS policies with permission checks
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+
+-- Step 4: Create RLS policies
+-- The grant above already decided *whether* the 'user' role can attempt
+-- an operation; RLS decides *which rows*. Tasks are owned by a single
+-- user, so ownership is the only row-level rule needed here.
 create policy tasks_select on tasks
   for select
   to authenticated
-  using (user_id = auth.uid() and supasheet.has_permission('public.tasks:select'));
+  using (user_id = auth.uid());
 
 create policy tasks_insert on tasks
   for insert
   to authenticated
-  with check (supasheet.has_permission('public.tasks:insert'));
+  with check (user_id = auth.uid());
 
 create policy tasks_update on tasks
   for update
   to authenticated
-  using (user_id = auth.uid() and supasheet.has_permission('public.tasks:update'))
-  with check (user_id = auth.uid() and supasheet.has_permission('public.tasks:update'));
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
 
 create policy tasks_delete on tasks
   for delete
   to authenticated
-  using (user_id = auth.uid() and supasheet.has_permission('public.tasks:delete'));
+  using (user_id = auth.uid());
 
--- Step 5: Grant permissions to the 'user' role
-insert into supasheet.role_permissions (role, permission) values
-  ('user', 'public.tasks:select'),
-  ('user', 'public.tasks:insert'),
-  ('user', 'public.tasks:update'),
-  ('user', 'public.tasks:delete');
-
--- Step 6: Refresh the meta layer so Supasheet picks up the new table
+-- Step 5: Refresh the meta layer so Supasheet picks up the new table
 select supasheet.refresh_metadata();
 ```
 </Step>

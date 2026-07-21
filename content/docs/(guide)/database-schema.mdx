@@ -46,8 +46,6 @@ The internal schema that powers everything. Created by the migrations in `supaba
 | Table / View | Defined in | Purpose |
 |--------------|------------|---------|
 | `supasheet.users` | `20250523000814_users.sql` | User profiles synced with `auth.users` |
-| `supasheet.user_roles` | `20250523000822_roles.sql` | User ↔ role assignments |
-| `supasheet.role_permissions` | `20250523000822_roles.sql` | Role ↔ permission grants |
 | `supasheet.tables` | `00000000000000_meta.sql` | Cached metadata for every accessible table |
 | `supasheet.columns` | `00000000000000_meta.sql` | Cached metadata for every accessible column |
 | `supasheet.views` | `00000000000000_meta.sql` | Cached metadata for every accessible view |
@@ -116,10 +114,7 @@ COMMENT ON VIEW desk.task_status_pie IS '{
 }';
 
 REVOKE ALL ON desk.task_status_pie FROM authenticated, service_role;
-GRANT SELECT ON desk.task_status_pie TO authenticated;
-
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-  ('user', 'desk.task_status_pie:select');
+GRANT SELECT ON desk.task_status_pie TO "user";
 
 -- Required after creating the view and setting its comment
 select supasheet.refresh_metadata();

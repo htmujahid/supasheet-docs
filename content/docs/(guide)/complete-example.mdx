@@ -65,42 +65,17 @@ The foreign key you'll add in the next step still points straight at `supasheet.
 </Step>
 
 <Step>
-### Step 3: Add Permissions to the System
+### Step 3: Plan the Grants You'll Need
 
-Add permission values for ALL operations you'll need:
+There's no permission enum to register up front — access is just Postgres `GRANT`s applied directly to each resource once it exists. It's still worth planning the full list before you start, since every table, view, dashboard, chart, and report needs at least one grant to appear in the UI at all:
 
-```sql
--- Permissions for the table (CRUD operations)
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.tasks:select';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.tasks:insert';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.tasks:update';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.tasks:delete';
-
--- Permissions for views
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.user_tasks:select';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.task_report:select';
-
--- Permissions for dashboard widgets
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.task_summary:select';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.task_completion_rate:select';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.tasks_by_status:select';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.task_urgent_count:select';
-
-ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'public.task_list_simple:select';
-ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'public.active_tasks_simple:select';
-ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'public.task_list_detailed:select';
-ALTER TYPE supasheet.app_permission ADD VALUE IF NOT EXISTS 'public.task_analytics_detailed:select';
-
--- Permissions for charts
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.task_trend_area:select';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.task_priority_bar:select';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.task_completion_line:select';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.task_status_pie:select';
-ALTER TYPE supasheet.app_permission ADD VALUE 'public.task_metrics_radar:select';
-```
+- Table: `tasks` (select, insert, update, delete)
+- Views: `user_tasks`, `task_report` (select)
+- Dashboard widgets: `task_summary`, `task_completion_rate`, `tasks_by_status`, `task_urgent_count`, `task_list_simple`, `active_tasks_simple`, `task_list_detailed`, `task_analytics_detailed` (select)
+- Charts: `task_trend_area`, `task_priority_bar`, `task_completion_line`, `task_status_pie`, `task_metrics_radar` (select)
 
 <Callout type="warn">
-**IMPORTANT**: You must add permissions for EVERY table, view, dashboard, chart, and report you create. Without these permissions, users won't be able to access the data even if they have the right role.
+**IMPORTANT**: Every table, view, dashboard, chart, and report you create needs an explicit `grant` to at least one role (Step 5 for the table, Step 11 for everything else). Without a grant, `has_table_privilege()` returns false for every role and the resource never appears in the UI, no matter what role a user has.
 </Callout>
 
 </Step>
@@ -167,42 +142,49 @@ Supasheet uses custom domain types like `FILE`, `RICH_TEXT`, `PERCENTAGE`, `DURA
 </Step>
 
 <Step>
-### Step 5: Set Up Row Level Security (RLS)
+### Step 5: Grant Access and Set Up Row Level Security (RLS)
 
-Enable RLS and create policies:
+Revoke the default grants, grant exactly what each role needs, enable RLS, then add row-level policies:
 
 ```sql
--- Revoke default permissions
+-- Revoke default grants
 REVOKE ALL ON TABLE public.tasks FROM authenticated, service_role;
 
--- Grant basic permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tasks TO authenticated;
+-- Grant CRUD to the roles that should have it
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tasks TO "user";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tasks TO "x-admin";
 
 -- Enable RLS
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 
--- Create RLS policies
+-- Create RLS policies — the grant above already decided *whether* a role
+-- can attempt an operation; RLS decides *which rows*. Here, every task is
+-- owned by a single user, so ownership is the only row-level rule needed.
 CREATE POLICY tasks_select ON public.tasks
     FOR SELECT
     TO authenticated
-    USING (user_id = auth.uid() AND supasheet.has_permission('public.tasks:select'));
+    USING (user_id = auth.uid());
 
 CREATE POLICY tasks_insert ON public.tasks
     FOR INSERT
     TO authenticated
-    WITH CHECK (user_id = auth.uid() AND supasheet.has_permission('public.tasks:insert'));
+    WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY tasks_update ON public.tasks
     FOR UPDATE
     TO authenticated
-    USING (user_id = auth.uid() AND supasheet.has_permission('public.tasks:update'))
-    WITH CHECK (user_id = auth.uid() AND supasheet.has_permission('public.tasks:update'));
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY tasks_delete ON public.tasks
     FOR DELETE
     TO authenticated
-    USING (user_id = auth.uid() AND supasheet.has_permission('public.tasks:delete'));
+    USING (user_id = auth.uid());
 ```
+
+<Callout type="info">
+If every authenticated user should see every row regardless of ownership, use `USING (true)` instead — that's the default in the bundled example schemas (`supabase/demo.sql`, `supabase/examples/*.sql`) for tables that aren't per-user-owned. Reach for an ownership condition like the one above only when rows genuinely belong to individual users.
+</Callout>
 
 </Step>
 
@@ -498,42 +480,23 @@ EXECUTE FUNCTION supasheet.audit_trigger_function();
 </Step>
 
 <Step>
-### Step 11: Grant Permissions to Roles
+### Step 11: Verify Access
 
-Grant all permissions to appropriate roles:
+There's no separate "grant permissions to roles" step — every `GRANT` in Steps 5–9 already *is* the access control. This step is just a sanity check that every resource is reachable by the roles you expect:
 
 ```sql
--- CRUD permissions for tasks
-INSERT INTO supasheet.role_permissions (role, permission) VALUES ('user', 'public.tasks:select');
-INSERT INTO supasheet.role_permissions (role, permission) VALUES ('user', 'public.tasks:insert');
-INSERT INTO supasheet.role_permissions (role, permission) VALUES ('user', 'public.tasks:update');
-INSERT INTO supasheet.role_permissions (role, permission) VALUES ('user', 'public.tasks:delete');
-
--- View permissions
-INSERT INTO supasheet.role_permissions (role, permission) VALUES ('user', 'public.user_tasks:select');
-INSERT INTO supasheet.role_permissions (role, permission) VALUES ('user', 'public.task_report:select');
-INSERT INTO supasheet.role_permissions (role, permission) VALUES ('user', 'public.task_summary:select');
-
--- Dashboard widget permissions
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-    ('user', 'public.task_completion_rate:select'),
-    ('user', 'public.tasks_by_status:select'),
-    ('user', 'public.task_urgent_count:select');
-
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-    ('user', 'public.task_list_simple:select'),
-    ('user', 'public.active_tasks_simple:select'),
-    ('user', 'public.task_list_detailed:select'),
-    ('user', 'public.task_analytics_detailed:select');
-
--- Chart permissions
-INSERT INTO supasheet.role_permissions (role, permission) VALUES
-    ('user', 'public.task_trend_area:select'),
-    ('user', 'public.task_priority_bar:select'),
-    ('user', 'public.task_completion_line:select'),
-    ('user', 'public.task_status_pie:select'),
-    ('user', 'public.task_metrics_radar:select');
+-- Should return true for "user" on everything a signed-up end-user needs
+select has_table_privilege('user', 'public.tasks', 'select');
+select has_table_privilege('user', 'public.tasks', 'insert');
+select has_table_privilege('user', 'public.user_tasks', 'select');
+select has_table_privilege('user', 'public.task_summary', 'select');
+select has_table_privilege('user', 'public.task_trend_area', 'select');
+select has_table_privilege('user', 'public.task_report', 'select');
 ```
+
+<Callout type="info">
+If any of these return `false` and you expected `true`, go back to the resource's `GRANT` statement in Steps 5–9 — that's the only place access is decided. There's no permissions table to check instead.
+</Callout>
 
 </Step>
 
@@ -557,11 +520,11 @@ Skip this and none of the tables, views, dashboard widgets, charts, or reports y
 ## Key Takeaways
 
 1. **Replica Views Are Required, Not Optional**: If your table lives outside `supasheet` and references `supasheet.users` (or any table in another schema) via a foreign key, create a same-named replica view in your own schema *before* anything tries to join/embed it — `query.join`, `fields.lookups`, and hand-written view joins all need the target in the same schema to resolve. Skipping this doesn't degrade gracefully — the join silently fails to appear.
-2. **Permissions First**: Always add permissions to `supasheet.app_permission` enum before creating resources
-3. **RLS is Required**: Every table must have RLS policies that check permissions using `supasheet.has_permission()`
-4. **Revoke Then Grant**: Always revoke all permissions first, then explicitly grant what's needed
+2. **No Permission Enum**: There's nothing to register before creating resources — access is a direct `GRANT` on the resource itself, to the specific native Postgres role(s) that should have it
+3. **RLS is Required**: Every table must have RLS policies — once the grant has decided *whether* a role can attempt an operation, RLS decides *which rows*; `using (true)` is the correct default when there's no row-level rule beyond the grant
+4. **Revoke Then Grant**: Always revoke all default grants first, then explicitly grant what's needed to each role by name
 5. **JSON Comments for Metadata**: Use JSON comments on views to identify dashboards, charts, and reports (no separate tables or schemas)
-6. **Grant to Roles**: Assign permissions to roles in `supasheet.role_permissions` table
+6. **Grant to Roles Directly**: A role's access is exactly what `GRANT` gives it — there's no `role_permissions` table to seed separately
 7. **Security Invoker**: Use `with(security_invoker = true)` for views to respect RLS policies
 8. **Audit Everything**: Add audit triggers for INSERT, UPDATE, and DELETE operations
 9. **Refresh the Meta Layer**: Always end a migration with `select supasheet.refresh_metadata();` — the meta tables are materialized views, not live introspection
@@ -583,52 +546,47 @@ select * from supasheet.users;
 revoke all on public.users from authenticated, service_role;
 grant select on public.users to authenticated;
 
--- 3. Add all permissions
-alter type supasheet.app_permission add value 'public.[table]:select';
-alter type supasheet.app_permission add value 'public.[table]:insert';
-alter type supasheet.app_permission add value 'public.[table]:update';
-alter type supasheet.app_permission add value 'public.[table]:delete';
--- ... add permissions for views, dashboards, charts, reports
-
--- 4. Create table (foreign keys still point at the real table, e.g.
+-- 3. Create table (foreign keys still point at the real table, e.g.
 --    `references supasheet.users(id)` — never at the replica view)
 CREATE TABLE [table] (...);
 
--- 5. Enable RLS and create policies
-alter table [table] enable row level security;
+-- 4. Revoke default grants, grant exactly what each role needs, enable RLS
 revoke all on table [table] from authenticated, service_role;
-grant select, insert, update, delete on table [table] to authenticated;
-create policy [table]_select on [table] for select ...;
--- ... other policies
+grant select, insert, update, delete on table [table] to "user";
+grant select, insert, update, delete on table [table] to "x-admin";
+alter table [table] enable row level security;
+create policy [table]_select on [table] for select to authenticated using (true);
+-- ... other policies (using (true), or a real row-level condition if rows
+-- are per-user-owned — see Authorization)
 
--- 6. Create views (join the replica view, e.g. public.users, not the
---    cross-schema table directly)
+-- 5. Create views (join the replica view, e.g. public.users, not the
+--    cross-schema table directly). Each needs its own grant, to the
+--    roles that should see it:
 create or replace view public.vw_[table] ...;
+revoke all on public.vw_[table] from authenticated, service_role;
+grant select on public.vw_[table] to "user";
 
--- 7. Create dashboard widget views with metadata
+-- 6. Create dashboard widget views with metadata (grant + comment each)
 create or replace view public.[widget_name] ...;
+grant select on public.[widget_name] to "user";
 comment on view public.[widget_name] is '{"type": "dashboard_widget", "name": "...", "description": "...", "widget_type": "card_1"}';
 
--- 8. Create chart views with metadata
+-- 7. Create chart views with metadata (grant + comment each)
 create or replace view public.[chart_name] ...;
+grant select on public.[chart_name] to "user";
 comment on view public.[chart_name] is '{"type": "chart", "name": "...", "description": "...", "chart_type": "line"}';
 
--- 9. Create report views with metadata
+-- 8. Create report views with metadata (grant + comment each)
 create or replace view public.[report_name] ...;
+grant select on public.[report_name] to "user";
 comment on view public.[report_name] is '{"type": "report", "name": "...", "description": "..."}';
 
--- 10. Add audit triggers
+-- 9. Add audit triggers
 CREATE TRIGGER audit_[table]_insert AFTER INSERT ON [table] FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
 CREATE TRIGGER audit_[table]_update AFTER UPDATE ON [table] FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
 CREATE TRIGGER audit_[table]_delete BEFORE DELETE ON [table] FOR EACH ROW EXECUTE FUNCTION supasheet.audit_trigger_function();
 
--- 11. Grant permissions to roles
-insert into supasheet.role_permissions (role, permission) values
-    ('user', 'public.[table]:select'),
-    ('user', 'public.[table]:insert');
-    -- ... all other permissions
-
--- 12. Refresh the meta layer (IMPORTANT!)
+-- 10. Refresh the meta layer (IMPORTANT!)
 -- supasheet.tables/columns/views/materialized_views are materialized views,
 -- not live introspection — nothing updates them until you call this.
 select supasheet.refresh_metadata();
@@ -639,7 +597,7 @@ select supasheet.refresh_metadata();
 
 ## Next Steps
 
-- **[Authorization](/authorization)** - Understanding the permission system
+- **[Authorization](/authorization)** - Understanding native roles, grants, and RLS
 - **[Dashboards](/dashboards)** - Learn more about widget types
 - **[Charts](/charts)** - Explore chart types in detail
 - **[Reports](/reports)** - Advanced report features
