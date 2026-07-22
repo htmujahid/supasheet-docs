@@ -3,8 +3,8 @@ import { Clock, Blocks, Sparkles, Heart, Shield, Zap } from 'lucide-react';
 const reasons = [
   {
     icon: Clock,
-    title: 'Internal tools shouldn\'t take weeks',
-    description: 'Stop rebuilding the same CRUD, auth, and dashboards every project. Define a table, get a working ops screen, nothing to glue together.',
+    title: 'Business apps shouldn\'t take weeks',
+    description: 'Stop rebuilding the same CRUD, auth, and dashboards every project. Define a table, get a working screen, nothing to glue together.',
   },
   {
     icon: Blocks,
@@ -14,7 +14,7 @@ const reasons = [
   {
     icon: Shield,
     title: 'RBAC enforced by the database',
-    description: 'Permissions live in Postgres. Every table has RLS policies that check the role-permission matrix, even a leaked client key can\'t bypass it.',
+    description: 'Permissions live in Supabase Postgres. Every table has RLS policies that check auth.uid() and role claims from Supabase Auth against the role-permission matrix, even a leaked client key can\'t bypass it.',
   },
   {
     icon: Heart,
@@ -43,7 +43,7 @@ export function WhyChoose() {
               Why Supasheet?
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
-              Six reasons teams pick Supasheet over rolling their own admin panel
+              Six reasons teams pick Supasheet over rolling their own application layer
               or paying per-seat for a low-code tool.
             </p>
           </div>

@@ -19,7 +19,7 @@ const features = [
   {
     icon: Lock,
     title: 'Fine-grained RBAC',
-    description: 'Role-permission matrix enforced by Postgres RLS. The UI gates the same way for UX, but security is enforced at the database, even leaked client keys can\'t bypass it.',
+    description: 'Role-permission matrix enforced by Supabase\'s Postgres RLS policies, checked against auth.uid() and JWT claims from Supabase Auth. The UI gates the same way for UX, but security is enforced at the database, even leaked client keys can\'t bypass it.',
   },
   {
     icon: Layout,
@@ -56,10 +56,11 @@ export function FeaturesSection() {
           <div className="flex flex-col items-center justify-center space-y-4 text-center mb-16">
             <div className="space-y-4">
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
-                Everything internal ops needs, built-in
+                Everything a Supabase-native app needs, built-in
               </h2>
               <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
-                Stop stitching together libraries and SaaS tools. Supasheet ships the full stack,
+                Stop stitching together libraries and SaaS tools. Whether you&apos;re building an
+                admin panel, a CRM, or an ERP module, Supasheet ships the full stack,
                 CRUD, auth, RBAC, dashboards, files, and audit, as one open-source app.
               </p>
             </div>

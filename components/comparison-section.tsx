@@ -5,15 +5,15 @@ type Cell = 'yes' | 'no' | 'limited' | string;
 const columns = ['Supasheet', 'Retool', 'Supabase Studio', 'NocoDB', 'Directus'] as const;
 
 const rows: { feature: string; values: Cell[] }[] = [
+  { feature: 'RBAC enforced by Supabase RLS',              values: ['yes', 'no', 'yes', 'App-layer', 'App-layer'] },
+  { feature: 'Audit trails native to Supabase Postgres',   values: ['yes', 'no', 'no', 'no', 'yes'] },
   { feature: 'Open source',                                values: ['yes', 'no', 'yes', 'yes', 'yes'] },
   { feature: 'Self-hostable',                              values: ['yes', 'limited', 'yes', 'yes', 'yes'] },
   { feature: 'Auto-generated CRUD',                        values: ['yes', 'Manual', 'limited', 'yes', 'yes'] },
   { feature: 'Multiple data views (kanban, calendar…)',    values: ['yes', 'no', 'no', 'yes', 'limited'] },
   { feature: 'Built-in auth + MFA',                        values: ['yes', 'limited', 'Managed', 'limited', 'yes'] },
-  { feature: 'RBAC enforced by DB (RLS)',                  values: ['yes', 'no', 'yes', 'App-layer', 'App-layer'] },
   { feature: 'Configurable dashboards',                    values: ['yes', 'yes', 'no', 'limited', 'limited'] },
   { feature: 'File storage UI',                            values: ['yes', 'Plugin', 'yes', 'no', 'yes'] },
-  { feature: 'Audit logs',                                 values: ['yes', 'no', 'no', 'no', 'yes'] },
   { feature: 'No per-seat fees',                           values: ['yes', 'no', 'yes', 'yes', 'limited'] },
   { feature: 'You own the React code',                     values: ['yes', 'no', 'N/A', 'limited', 'limited'] },
 ];
@@ -41,8 +41,12 @@ export function ComparisonSection() {
               How Supasheet compares
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
-              Other tools either lock you in, charge per seat, or stop short of a complete
-              internal-ops stack. Supasheet ships everything, and you keep the code.
+              Retool, Supabase Studio, NocoDB, and Directus check permissions in the app layer.
+              Supasheet enforces RBAC, RLS, and audit trails natively in Supabase, via Supabase
+              Auth&apos;s JWTs, <code>auth.uid()</code>, and Postgres RLS policies, not a
+              bolted-on app-layer permission system. Other tools also lock you in, charge per
+              seat, or stop short of a complete application stack. Supasheet ships everything,
+              and you keep the code.
             </p>
           </div>
           <div className="rounded-xl border bg-card overflow-hidden">

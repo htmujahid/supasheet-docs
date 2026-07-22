@@ -49,7 +49,8 @@ export function FAQSection() {
               Questions, answered
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
-              Everything teams typically ask before building their internal ops on Supasheet.
+              Everything teams typically ask before building on Supasheet, whether that&apos;s
+              internal ops, a CRM, or a customer-facing portal.
             </p>
           </div>
           <div className="rounded-xl border bg-card divide-y text-left">

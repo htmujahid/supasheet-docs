@@ -46,11 +46,12 @@ export function UseCases() {
         <div className="mx-auto max-w-6xl">
           <div className="text-center space-y-4 mb-16">
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
-              What teams build with Supasheet
+              More than an admin panel: a platform for real applications
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
-              Eleven pre-built example schemas ship with the repo, clone one, run the migrations,
-              and start operating. Or wire up your own and Supasheet renders the UI for free.
+              Eleven pre-built example schemas ship with the repo. Clone one, run the migrations,
+              and you have a working CRM, storefront back office, HR system, or finance tool.
+              Or wire up your own schema and Supasheet renders the UI for free.
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

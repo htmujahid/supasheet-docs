@@ -3,8 +3,8 @@ import { RotateCw, CreditCard, AlertTriangle } from 'lucide-react';
 const problems = [
   {
     icon: RotateCw,
-    title: 'Building internal tools is repetitive',
-    description: 'Every CRUD screen is the same, list, detail, form, delete. Yet every team rebuilds them from scratch for every project.',
+    title: 'Building business apps is repetitive',
+    description: 'Every CRUD screen is the same, list, detail, form, delete, whether it\'s an admin panel, a CRM, or an ERP module. Yet every team rebuilds them from scratch for every project.',
   },
   {
     icon: CreditCard,
@@ -25,11 +25,12 @@ export function ProblemSection() {
         <div className="mx-auto max-w-6xl">
           <div className="text-center space-y-4 mb-16">
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl text-foreground">
-              Internal tools shouldn&apos;t take weeks.
+              Business apps shouldn&apos;t take weeks.
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-lg leading-relaxed">
-              Yet every team keeps rebuilding the same CRUD, dashboards, and permission plumbing.
-              Supasheet ships the whole layer, once, open source, on your Supabase.
+              Yet every team keeps rebuilding the same CRUD, dashboards, and permission plumbing,
+              whether they&apos;re shipping an admin panel or a full ERP. Supasheet ships the whole
+              layer, once, open source, on your Supabase.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

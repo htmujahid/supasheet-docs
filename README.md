@@ -1,10 +1,10 @@
 # Supasheet Documentation
 
-Official documentation for [Supasheet](https://github.com/supasheet/supasheet) - a SQL-based admin panel and CMS built on top of Supabase.
+Official documentation for [Supasheet](https://github.com/supasheet/supasheet) - a SQL-first, Supabase-native application platform.
 
 ## About Supasheet
 
-Supasheet is a powerful, code-first admin panel where you primarily write SQL to define your entire application. It leverages Supabase's core features (PostgREST, Auth, Storage, RLS) and automatically generates UI based on your database schema.
+Supasheet is a powerful, code-first application platform where you primarily write SQL to define your entire application - from admin panels to full ERPs and CRMs. It leverages Supabase's core features (PostgREST, Auth, Storage, RLS) and automatically generates UI based on your database schema.
 
 ### Key Features
 

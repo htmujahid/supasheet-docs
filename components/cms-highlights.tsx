@@ -7,7 +7,7 @@ const dataViews = [
   {
     icon: LayoutGrid,
     title: 'Grid View',
-    description: 'Spreadsheet-like interface with powerful filtering, sorting, and bulk editing, the everyday workhorse for ops teams.',
+    description: 'Spreadsheet-like interface with powerful filtering, sorting, and bulk editing, the everyday workhorse for any team.',
     image: {
       light: '/images/sheet-light.png',
       dark: '/images/sheet-dark.png',

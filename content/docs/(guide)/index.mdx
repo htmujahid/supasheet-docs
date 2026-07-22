@@ -8,7 +8,7 @@ import { Cards, Card } from 'fumadocs-ui/components/card';
 
 ## What is Supasheet?
 
-Supasheet is a **complete, opinionated open-source CMS platform built on Supabase**. It goes far beyond a basic admin panel — authentication, role-based access control, multi-view CRUD, dashboards, charts, reports, file storage, audit logging, comments, notifications, and templates are all included out of the box.
+Supasheet is a **complete, opinionated open-source CMS platform built on Supabase**. It goes far beyond a basic admin panel — authentication, role-based access control, multi-view CRUD, dashboards, charts, reports, file storage, audit logging, comments, notifications, and templates are all included out of the box. Teams use it to run internal operations, or to build full products like a CRM, an ERP module, or a B2B customer portal, all backed by permissions and audit trails enforced natively by Supabase: Postgres RLS policies driven by Supabase Auth's JWTs and `auth.uid()`, not a bolted-on app-layer permission system.
 
 It follows a **SQL-first** philosophy: you define your data model and business logic in PostgreSQL, and Supasheet automatically renders a polished, production-ready UI on top of it.
 
@@ -36,7 +36,7 @@ Supasheet is built on top of Supabase:
 - **PostgREST** — Automatic REST API generated from your PostgreSQL schema
 - **Supabase Auth** — JWT-based authentication with email/password, MFA, and OAuth providers
 - **Supabase Storage** — File storage with bucket-scoped RLS policies
-- **Row Level Security** — Postgres policies for fine-grained authorization
+- **Row Level Security** — Postgres RLS policies driven by Supabase Auth claims, for fine-grained authorization
 - **Realtime** — Optional realtime subscriptions for live updates
 - **Edge Functions** — Deno-powered admin endpoints for user management
 
