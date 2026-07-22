@@ -8,7 +8,7 @@ import { Cards, Card } from 'fumadocs-ui/components/card';
 
 ## What is Supasheet?
 
-Supasheet is a **complete, opinionated open-source CMS platform built on Supabase**. It goes far beyond a basic admin panel — authentication, role-based access control, multi-view CRUD, dashboards, charts, reports, file storage, audit logging, comments, notifications, and templates are all included out of the box. Teams use it to run internal operations, or to build full products like a CRM, an ERP module, or a B2B customer portal, all backed by permissions and audit trails enforced natively by Supabase: Postgres RLS policies driven by Supabase Auth's JWTs and `auth.uid()`, not a bolted-on app-layer permission system.
+Supasheet is a **complete, opinionated open-source CMS platform built on Supabase**. It goes far beyond a basic admin panel — authentication, role-based access control, multi-view CRUD, dashboards, charts, reports, file storage, audit logging, comments, notifications, and templates are all included out of the box. Teams use it to run internal operations, or to build full products like a CRM, an ERP module, or a B2B customer portal, all backed by permissions and audit trails enforced natively by Supabase: Postgres RLS policies driven by Supabase Auth's JWTs and `auth.uid()`, not a bolted-on app-layer permission system. The [example schemas](/database-schema) shipped with the project — CRM, HR, Finance, Inventory, Manufacturing, Procurement, Quality, LMS, Hostel, Helpdesk, Store, and Blog — show it scales from a weekend internal tool to a full ERP or B2B product.
 
 It follows a **SQL-first** philosophy: you define your data model and business logic in PostgreSQL, and Supasheet automatically renders a polished, production-ready UI on top of it.
 
@@ -19,6 +19,11 @@ It follows a **SQL-first** philosophy: you define your data model and business l
 - **Authorization (RBAC)** — Three built-in roles (`x-admin`, `admin`, `user`) with fine-grained per-table permissions and PostgreSQL Row Level Security
 - **Resource (CRUD)** — Auto-generated create / read / update / delete UIs for any table or view
 - **Six View Types** — Sheet (table), Kanban, Calendar, Gallery, List, and Tree, switchable per resource
+- **Form Sections** — Organize create/update forms into collapsible titled sections with per-mode field visibility
+- **Conditional Fields** — Field visibility, required state, and read-only state driven by other field values
+- **Lookups** — Auto-fill related fields and cascading dropdowns from a foreign key selection
+- **Filter Presets** — Saved, named filter shortcuts per resource
+- **Record Duplication** — Duplicate records with configurable field selection
 - **Inline editing** — Side-sheet editor available on every view
 - **Dashboards** — Widget-based dashboards driven by SQL views
 - **Charts** — Area, bar, line, pie, and radar charts powered by Recharts
@@ -79,6 +84,8 @@ Read the [SQL-first philosophy](/sql-first-philosophy) to understand how Supashe
 - **Rich Text** — Lexical
 - **Charts** — Recharts
 - **Icons** — Lucide React
+- **Drag & Drop** — dnd-kit
+- **Tree View** — `@headless-tree/react`
 - **Backend** — Supabase (Auth, Postgres, Storage, Edge Functions)
 
 ## Community & Support
