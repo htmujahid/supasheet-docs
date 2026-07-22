@@ -5,9 +5,7 @@ import { siteConfig } from './config';
  * Shared layout configurations
  *
  * you can customise layouts individually from:
- * Docs Layout (doc pages) and Home Layout (marketing homepage): both
- * rendered from app/(docs)/[[...slug]]/page.tsx, since that catch-all
- * route also owns `/`.
+ * Docs Layout: app/(docs)/layout.tsx
  */
 export function baseOptions(): BaseLayoutProps {
   return {

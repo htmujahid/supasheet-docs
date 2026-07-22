@@ -15,24 +15,23 @@ export function HeroSection() {
           <div className="inline-flex">
             <div className={buttonVariants({ size: "sm", variant: "secondary" }) + " pointer-events-none rounded-2xl"}>
               <Workflow className="h-4 w-4" />
-              Open source · Self-hosted · Supabase-native
+              Open source • Self-hosted • Built on Supabase
             </div>
           </div>
           <div className="flex flex-col gap-6 max-w-5xl">
             <h1 className="text-center text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl text-foreground">
-              Turn your Postgres schema
+              Run your internal operations
               <br />
               <span className="text-spektr-cyan-50">
-                into any business app.
+                on Supabase.
               </span>
             </h1>
 
             <p className="text-muted-foreground mx-auto max-w-3xl text-center text-lg leading-relaxed md:text-xl">
-              Supasheet turns any Supabase project into a complete application platform.
-              Auto-generated CRUD, multiple data views, built-in auth with MFA, RBAC and RLS
-              enforced natively by Supabase, configurable dashboards, charts, AI chat, audit logs,
-              and more, all in one open-source React app. Use it to run internal operations, or
-              build a CRM, ERP module, or B2B customer portal.
+              Supasheet turns any Supabase project into a complete internal operations platform.
+              Auto-generated CRUD, multiple data views (grid, kanban, calendar, gallery, list),
+              built-in auth with MFA, fine-grained RBAC, configurable dashboards, charts,
+              file storage, and audit logs, all in one open-source React app.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 pt-4">

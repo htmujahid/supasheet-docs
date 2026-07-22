@@ -3,7 +3,7 @@ export const siteConfig = {
   url: "https://supasheet.app",
   ogImage: "https://supasheet.app/images/bg-light.png",
   description:
-    "The open-source Supabase-native application platform",
+    "The admin panel you've been waiting for",
   links: {
     twitter: "https://twitter.com/supasheet_app",
     github: "https://github.com/supasheet/supasheet",
