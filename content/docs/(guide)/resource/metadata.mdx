@@ -22,6 +22,7 @@ type TableMetadata = {
   name?: string
   description?: string
   icon?: string
+  collapsible_group?: string        // sidebar collapsible section this resource is grouped under
   singleton?: boolean
   inline_form?: boolean
   query?: {
@@ -37,11 +38,13 @@ type TableMetadata = {
     sections?: FieldSection[]
     metadata?: string[]
     quick_create?: string[]
-    duplicated?: string[]
     behavior?: Record<string, FieldBehavior>   // keyed by field name
     lookups?: Record<string, LookupConfig>     // keyed by field name
   }
-  tabs?: string[]                    // filters which related-table tabs show — see `tabs` below
+  detail?: {                         // table-only — views have no detail page
+    header?: { title?: string; badges?: string[] }
+    tabs?: string[]
+  }
 }
 ```
 
@@ -258,15 +261,14 @@ COMMENT ON TABLE store.products IS '{
 
 ---
 
-## `fields.quick_create` and `fields.duplicated`
+## `fields.quick_create`
 
-`quick_create` lists the fields shown in the abbreviated "quick create" form (e.g. the inline creator opened from a lookup or a kanban column's "+" button) — everything else is left to its default value and can be filled in later. `duplicated` lists the fields carried over when a user duplicates a record (fields left out reset to their defaults, e.g. `status` or `created_at`).
+Lists the fields shown in the abbreviated "quick create" form (e.g. the inline creator opened from a lookup or a kanban column's "+" button) — everything else is left to its default value and can be filled in later.
 
 ```sql
 COMMENT ON TABLE desk.tasks IS '{
   "fields": {
-    "quick_create": ["title", "assignee_id", "due_date"],
-    "duplicated": ["title", "description", "priority", "project_id", "assignee_id"]
+    "quick_create": ["title", "assignee_id", "due_date"]
   }
 }';
 ```
@@ -319,8 +321,10 @@ In this example: `due_date` becomes required once a task leaves `backlog`; `comp
 Auto-fill and filter dropdown options based on a related record picked in another field. Keyed by the local field that triggers the lookup (usually a foreign key select).
 
 ```typescript
-type LookupFillRule   = { target: string; source: string }  // local field ← lookup column
-type LookupFilterRule = { on: string; column: string }       // local field → lookup column filter
+// source_column is always a field on this table's own form;
+// target_column is always a column on the lookup target table.
+type LookupFillRule   = { source_column: string; target_column: string }
+type LookupFilterRule = { source_column: string; target_column: string }
 
 type LookupConfig = {
   fill?: LookupFillRule[]
@@ -336,13 +340,13 @@ COMMENT ON TABLE store.orders IS '{
     "lookups": {
       "customer_id": {
         "fill": [
-          {"target": "shipping_address", "source": "default_address"},
-          {"target": "shipping_city",    "source": "default_city"}
+          {"source_column": "shipping_address", "target_column": "default_address"},
+          {"source_column": "shipping_city",    "target_column": "default_city"}
         ]
       },
       "product_id": {
         "filter": [
-          {"on": "warehouse_id", "column": "warehouse_id"}
+          {"source_column": "warehouse_id", "target_column": "warehouse_id"}
         ]
       }
     }
@@ -358,17 +362,22 @@ The lookup target table must be in the **same schema** as the table declaring th
 
 ---
 
-## `tabs`
+## `detail`
 
-Filters which **related-table tabs** appear on the record detail page. By default — when `tabs` is omitted — every one-to-one, one-to-many, and many-to-many relationship Supasheet detects is shown as its own tab alongside the main "Detail" tab. Set `tabs` to a list of relationship names to show only those and hide the rest:
+Table-only — views have no detail page. Configures the detail page's heading and which related-table tabs it shows.
 
 ```sql
 COMMENT ON TABLE desk.tasks IS '{
-  "tabs": ["comments", "attachments"]
+  "detail": {
+    "header": {"title": "title", "badges": ["status", "priority"]},
+    "tabs": ["comments", "attachments"]
+  }
 }';
 ```
 
-Each string must match the relationship's name/embed key (the foreign table's PostgREST embed name), not a column or arbitrary label. The main "Detail" tab is always shown regardless of this setting.
+`header.title` names a column whose value renders as the page heading (falls back to the record's primary key when empty). `header.badges` names columns rendered as badges next to the heading.
+
+`tabs` filters which **related-table tabs** appear on the record detail page. By default — when `tabs` is omitted — every one-to-one, one-to-many, and many-to-many relationship Supasheet detects is shown as its own tab alongside the main "Detail" tab. Set `tabs` to a list of relationship names to show only those and hide the rest. Each string must match the relationship's name/embed key (the foreign table's PostgREST embed name), not a column or arbitrary label. The main "Detail" tab is always shown regardless of this setting.
 
 <Callout type="info">
 `tabs` has nothing to do with the Audit Log or Comments features — those are separate, grant-gated pages (audit via a fixed `SELECT` grant on `supasheet.audit_logs`; comments via the resource's own `SELECT` grant) linked from the record's actions menu, not tabs controlled by this field. See [Audit Logs](/audit-logs) and [Comments](/comments).
@@ -409,7 +418,8 @@ Style enum / text-with-check values with icons and badge variants. Set `progress
 ```typescript
 type EnumColumnMetadata = ColumnMetadata & {
   progress?: boolean
-  enums?: {
+  icon_only?: boolean  // show only the icon (in a tooltip), not the text label
+  values?: {
     [value: string]: {
       icon?: string
       variant: "default" | "secondary" | "success" | "warning" | "destructive" | "info"
@@ -420,7 +430,7 @@ type EnumColumnMetadata = ColumnMetadata & {
 
 ```sql
 COMMENT ON COLUMN desk.tasks.status IS '{
-  "enums": {
+  "values": {
     "pending":     {"variant": "secondary", "icon": "Clock"},
     "in_progress": {"variant": "info",      "icon": "Loader"},
     "completed":   {"variant": "success",   "icon": "Check"},
@@ -433,22 +443,22 @@ COMMENT ON COLUMN desk.tasks.status IS '{
 
 ```typescript
 type FileColumnMetadata = ColumnMetadata & {
-  accept?: string     // MIME types or extensions accepted by the picker
-  maxFiles?: number   // Maximum file count (FILE / array)
-  maxSize?: number    // Maximum size in bytes
+  accept?: string      // MIME types or extensions accepted by the picker
+  max_files?: number   // Maximum file count (FILE / array)
+  max_size?: number    // Maximum size in bytes
 }
 ```
 
 ```sql
 COMMENT ON COLUMN desk.tasks.cover       IS '{"accept": "image/*"}';
-COMMENT ON COLUMN desk.tasks.attachments IS '{"accept": "*", "maxFiles": 999}';
+COMMENT ON COLUMN desk.tasks.attachments IS '{"accept": "*", "max_files": 999}';
 ```
 
 ### `AVATAR` columns
 
 ```typescript
 type AvatarColumnMetadata = ColumnMetadata & {
-  maxSize?: number
+  max_size?: number
 }
 ```
 
@@ -504,7 +514,6 @@ COMMENT ON TABLE desk.tasks IS $$
   ],
   "fields": {
     "quick_create": ["title", "assignee_id", "due_date"],
-    "duplicated": ["title", "description", "priority", "project_id"],
     "behavior": {
       "completed_at": {
         "visible": [{"id": "status", "operator": "eq", "value": "completed"}]
@@ -521,12 +530,14 @@ COMMENT ON TABLE desk.tasks IS $$
        "fields": ["attachments", "notes"]}
     ]
   },
-  "tabs": ["tasks_history", "timesheets"]
+  "detail": {
+    "tabs": ["tasks_history", "timesheets"]
+  }
 }
 $$;
 
 COMMENT ON COLUMN desk.tasks.status IS '{
-  "enums": {
+  "values": {
     "pending":     {"variant": "secondary", "icon": "Clock"},
     "in_progress": {"variant": "info",      "icon": "Loader"},
     "completed":   {"variant": "success",   "icon": "Check"},
@@ -535,7 +546,7 @@ COMMENT ON COLUMN desk.tasks.status IS '{
 }';
 
 COMMENT ON COLUMN desk.tasks.priority IS '{
-  "enums": {
+  "values": {
     "low":      {"variant": "default",     "icon": "Minus"},
     "medium":   {"variant": "info",        "icon": "Equal"},
     "high":     {"variant": "warning",     "icon": "TrendingUp"},
@@ -544,7 +555,7 @@ COMMENT ON COLUMN desk.tasks.priority IS '{
 }';
 
 COMMENT ON COLUMN desk.tasks.cover       IS '{"accept": "image/*"}';
-COMMENT ON COLUMN desk.tasks.attachments IS '{"accept": "*", "maxFiles": 999}';
+COMMENT ON COLUMN desk.tasks.attachments IS '{"accept": "*", "max_files": 999}';
 COMMENT ON COLUMN desk.tasks.completion  IS '{"progress": true}';
 ```
 

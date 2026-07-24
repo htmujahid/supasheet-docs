@@ -213,7 +213,7 @@ COMMENT ON COLUMN tasks.cover IS '{"accept":"image/*"}';
 COMMENT ON COLUMN tasks.attachments IS '{"accept":"*"}';
 
 -- With size limit
-COMMENT ON COLUMN tasks.document IS '{"accept":".pdf","maxSize":10485760,"maxFiles":1}';
+COMMENT ON COLUMN tasks.document IS '{"accept":".pdf","max_size":10485760,"max_files":1}';
 ```
 
 ### Configuration Options
@@ -221,8 +221,8 @@ COMMENT ON COLUMN tasks.document IS '{"accept":".pdf","maxSize":10485760,"maxFil
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `accept` | string | `"*"` | File types to accept (MIME type or extension) |
-| `maxSize` | number | `5242880` (5MB) | Maximum file size in bytes |
-| `maxFiles` | number | `1` | Maximum number of files allowed |
+| `max_size` | number | `5242880` (5MB) | Maximum file size in bytes |
+| `max_files` | number | `1` | Maximum number of files allowed |
 
 ### Accept Format Examples
 
@@ -280,8 +280,8 @@ CREATE TABLE products (
 );
 
 -- Configure file columns
-COMMENT ON COLUMN products.cover IS '{"accept":"image/*","maxSize":2097152}';
-COMMENT ON COLUMN products.logo IS '{"accept":"image/*","maxSize":1048576}';
+COMMENT ON COLUMN products.cover IS '{"accept":"image/*","max_size":2097152}';
+COMMENT ON COLUMN products.logo IS '{"accept":"image/*","max_size":1048576}';
 ```
 
 ## Size Reference
