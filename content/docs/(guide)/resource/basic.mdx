@@ -195,6 +195,10 @@ FROM products p;
 
 Every row has action buttons:
 
+<Callout type="info">
+These are the built-in View / Edit / Delete actions every resource gets for free. You can also define your own custom, permission-gated actions (cancel, publish, duplicate, ...) as tagged SQL functions — see **[Row Actions (custom)](/resource/actions)**.
+</Callout>
+
 ### View
 
 Opens a detailed view of the row:
@@ -339,5 +343,6 @@ All three tables now have full CRUD interfaces!
 - **[Metadata](/resource/metadata)** - Configure icons, visibility, columns, and views
 - **[Query Configuration](/resource/query)** - Set default sorting and filters
 - **[Views](/resource/views)** - Multiple view types (Sheet, Kanban, Calendar, Gallery, List, Tree)
+- **[Row Actions](/resource/actions)** - Custom, permission-gated operations beyond CRUD
 - **[Data Types](/resource/data-types)** - Use custom data types
 - **[Authorization](/authorization)** - Secure your tables with RLS

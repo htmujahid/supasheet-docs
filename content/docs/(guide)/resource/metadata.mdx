@@ -380,7 +380,7 @@ COMMENT ON TABLE desk.tasks IS '{
 `tabs` filters which **related-table tabs** appear on the record detail page. By default — when `tabs` is omitted — every one-to-one, one-to-many, and many-to-many relationship Supasheet detects is shown as its own tab alongside the main "Detail" tab. Set `tabs` to a list of relationship names to show only those and hide the rest. Each string must match the relationship's name/embed key (the foreign table's PostgREST embed name), not a column or arbitrary label. The main "Detail" tab is always shown regardless of this setting.
 
 <Callout type="info">
-`tabs` has nothing to do with the Audit Log or Comments features — those are separate, grant-gated pages (audit via a fixed `SELECT` grant on `supasheet.audit_logs`; comments via the resource's own `SELECT` grant) linked from the record's actions menu, not tabs controlled by this field. See [Audit Logs](/audit-logs) and [Comments](/comments).
+`tabs` has nothing to do with the Audit Log or Comments features — those are separate, grant-gated pages (audit via a fixed `SELECT` grant on `supasheet.audit_logs`; comments via the resource's own `SELECT` grant) linked from the record's actions menu, not tabs controlled by this field. See [Audit Logs](/audit-logs) and [Comments](/comments). Custom, function-backed buttons in that same actions menu are configured separately — see [Row Actions](/resource/actions).
 </Callout>
 
 ---
@@ -569,6 +569,7 @@ Because Supabase comments only allow single-line strings, use dollar-quoted stri
 
 - **[Views](/resource/views)** — Six view types and their configuration
 - **[Query Configuration](/resource/query)** — Sort, filter, join, and select
+- **[Row Actions](/resource/actions)** — Custom operations that reuse this same `FieldCondition` shape for visibility
 - **[Data Types](/resource/data-types)** — Custom domains and the `FILE` composite type
 - **[Comments](/comments)** — Per-record discussions
 - **[Audit Logs](/audit-logs)** — Wire up the audit trigger

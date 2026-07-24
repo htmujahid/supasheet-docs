@@ -1,0 +1,256 @@
+---
+title: Row Actions
+description: Custom, permission-gated operations exposed as buttons and menu items on a record
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+Row actions let you attach custom business operations — beyond the built-in Create / Edit / Delete — to a resource's records: cancelling an order, publishing a post, duplicating a task, bumping a priority. Each action is just a **SQL function tagged with `{"type": "action"}`** in its comment. Supasheet discovers it automatically and renders it as a button or dropdown item wherever that record appears — the sheet/table row, related-table rows on a parent's detail page, and the detail page header.
+
+There's no separate permissions field for actions — visibility is driven entirely by whether the current role has `EXECUTE` on the function, the same `GRANT`-based model used everywhere else in Supasheet.
+
+## How It Works
+
+1. Write a `plpgsql` or `sql` function that performs the operation. Its first argument is typically the record's primary key.
+2. Tag the function with a JSON comment: `type: "action"`, `resource: "<table_or_view_name>"`, plus a display `name` and any optional fields below.
+3. `REVOKE ALL` on the function, then `GRANT EXECUTE` directly to the roles that should be able to run it.
+4. Supasheet lists the action on every row of that resource for any user whose role can execute the function — nothing else to wire up.
+
+```sql
+CREATE OR REPLACE FUNCTION demo.cancel_project (p_id uuid, p_reason text DEFAULT NULL)
+RETURNS void LANGUAGE plpgsql SECURITY INVOKER
+SET search_path = '' AS $$
+DECLARE
+  v_status demo.project_status;
+BEGIN
+  SELECT status INTO v_status FROM demo.projects WHERE id = p_id;
+
+  IF v_status IN ('completed', 'cancelled') THEN
+    RAISE EXCEPTION 'Cannot cancel a % project', v_status;
+  END IF;
+
+  UPDATE demo.projects
+  SET status = 'cancelled',
+      notes = COALESCE(notes || E'\n', '') || COALESCE('Cancelled: ' || p_reason, 'Cancelled')
+  WHERE id = p_id;
+END;
+$$;
+
+COMMENT ON FUNCTION demo.cancel_project (uuid, text) IS '{
+  "type": "action",
+  "resource": "projects",
+  "name": "Cancel project",
+  "description": "Mark this project as cancelled",
+  "icon": "XCircle",
+  "variant": "destructive",
+  "visible": [{"id": "status", "operator": "not.in", "value": ["completed", "cancelled"]}],
+  "confirm": {"title": "Cancel this project?", "description": "This sets the project status to cancelled."},
+  "success_message": "Project cancelled"
+}';
+
+REVOKE ALL ON FUNCTION demo.cancel_project (uuid, text) FROM public, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION demo.cancel_project (uuid, text) TO "x-admin", "user";
+```
+
+<Callout type="info">
+Use `SECURITY INVOKER` (the default recommendation across Supasheet) so the function runs under the calling user's RLS context, not a superuser's — a row action should never be able to touch data the user couldn't otherwise reach.
+</Callout>
+
+## Comment Metadata
+
+```typescript
+type RowActionMeta = {
+  type: "action"
+  resource: string      // table/view name this action attaches to
+  name: string           // Button / menu-item label
+  description?: string
+  icon?: string          // Lucide icon
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost"
+  confirm?: { title?: string; description?: string }
+  visible?: FieldCondition[]     // same shape as fields.behavior.visible — see Metadata
+  success_message?: string
+  action_type?: "default" | "picker"
+}
+```
+
+`resource` must match the table/view name exactly — it's how Supasheet knows which resource's rows should show the action; it does not need to match the function's own schema (a function can live in a different schema than the resource it acts on).
+
+## Argument Resolution
+
+When an action runs, Supasheet fills in the function's arguments from the current row automatically — you don't write any client code to wire this up.
+
+For each parameter in the function's signature, Supasheet strips a leading `p_` (if present) and looks for a column of that name on the row, case-insensitively. A match is passed through as-is; a parameter with **no** matching column is simply omitted from the call, so the function's own SQL `DEFAULT` takes over.
+
+```sql
+-- p_id      -> resolved from the row's `id` column
+-- p_reason  -> no `reason` column on the row, so omitted -> uses `DEFAULT NULL`
+CREATE FUNCTION demo.cancel_project (p_id uuid, p_reason text DEFAULT NULL) ...
+```
+
+<Callout type="warn">
+There's currently no UI for prompting the user for an arbitrary free-text argument — only column values on the row (or an enum picker, below) can be supplied. Give every parameter that isn't a row column a `DEFAULT`, or the call will fail with a missing-argument error.
+</Callout>
+
+## Action Types
+
+### `default`
+
+Runs the function directly (or opens the confirm dialog first, if `confirm` is set). Renders as a dropdown menu item — or, when it's the only visible action on the detail page header, as a standalone button.
+
+### `picker`
+
+For actions whose job is to set one of the resource's own enum columns to a specific value — e.g. "Set priority". Instead of one menu item per value, Supasheet renders a single submenu populated from that enum column's own values (reusing the [enum column metadata](/resource/metadata#enum-columns) for labels/icons), with the row's current value pre-selected. Choosing an option calls the function with that value substituted in for the matching argument.
+
+```sql
+CREATE OR REPLACE FUNCTION demo.set_project_priority (p_id uuid, p_priority demo.priority_level)
+RETURNS void LANGUAGE plpgsql SECURITY INVOKER
+SET search_path = '' AS $$
+BEGIN
+  UPDATE demo.projects SET priority = p_priority WHERE id = p_id;
+END;
+$$;
+
+COMMENT ON FUNCTION demo.set_project_priority (uuid, demo.priority_level) IS '{
+  "type": "action",
+  "resource": "projects",
+  "name": "Set priority",
+  "icon": "Flag",
+  "action_type": "picker"
+}';
+
+REVOKE ALL ON FUNCTION demo.set_project_priority (uuid, demo.priority_level) FROM public, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION demo.set_project_priority (uuid, demo.priority_level) TO "x-admin", "user";
+```
+
+Supasheet finds the target column by walking the function's arguments (after stripping `p_`) for the first one whose name matches a column on the resource with data type `USER-DEFINED` (i.e. a Postgres enum/domain — see [Data Types](/resource/data-types)).
+
+<Callout type="warn">
+`action_type: "picker"` only works when one of the function's arguments matches an actual enum column on the resource. If no match is found, the submenu renders with no options rather than falling back to a normal button — double-check the argument name (or its `p_`-stripped form) matches the column exactly.
+</Callout>
+
+## Visibility
+
+`visible` takes the same `FieldCondition[]` array used by [`fields.behavior.visible`](/resource/metadata#fieldsbehavior), evaluated against the current row. Omit it to always show the action.
+
+```json
+"visible": [{"id": "status", "operator": "not.in", "value": ["completed", "cancelled"]}]
+```
+
+Use this to hide actions that don't make sense in the record's current state (e.g. don't offer "Publish" once `is_published` is already `true`) instead of letting the function raise an error.
+
+## Confirmation
+
+Set `confirm` to require an explicit confirmation step before the function runs — useful for destructive or hard-to-undo actions. Leaving it out runs the action immediately on click.
+
+```json
+"confirm": {"title": "Cancel this project?", "description": "This sets the project status to cancelled."}
+```
+
+`title` falls back to `"<name>?"` and `description` is optional. `variant: "destructive"` colors both the trigger and the confirm button red.
+
+## Feedback & Refresh
+
+- On success, Supasheet shows `success_message` as a toast (or `"<name> succeeded"` if omitted) and invalidates the resource's cached data so the table/detail page refetches immediately.
+- On failure, the toast shows the error message the function raised (e.g. via `RAISE EXCEPTION`), or `"Failed to run <name>"` if the error has no message.
+
+## Where Actions Appear
+
+- **Table / foreign-table rows** — a compact "⋯" icon button that appears on row hover.
+- **Detail page header** — a labeled "Actions" dropdown; collapses to a single plain button when there's exactly one visible non-picker action.
+
+## Permissions
+
+| Action | Required permission |
+|--------|---------------------|
+| See a row action on a resource | `EXECUTE` on the tagged function |
+| Run the action | Same `EXECUTE` grant, plus whatever RLS policies the function's own reads/writes are subject to (respected as usual under `SECURITY INVOKER`) |
+
+Actions are per-role like everything else — grant `EXECUTE` only to the roles that should see the button, and revoke it from `public`, `authenticated`, and `service_role` first so nothing leaks in through a broader default grant.
+
+## Discovery Function
+
+Behind the scenes, the UI calls:
+
+```sql
+SELECT * FROM supasheet.get_actions('demo', 'projects');
+```
+
+This returns every function in the `demo` schema whose comment has `"type": "action"` and `"resource": "projects"`, filtered to those the current user (`has_function_privilege`) can actually execute. It's defined in `supabase/migrations/99999999999999_meta.sql`.
+
+## Practical Examples
+
+### Simple action, no arguments beyond the row
+
+```sql
+CREATE OR REPLACE FUNCTION demo.duplicate_task (p_id uuid)
+RETURNS uuid LANGUAGE plpgsql SECURITY INVOKER
+SET search_path = '' AS $$
+DECLARE
+  v_new_id uuid;
+BEGIN
+  INSERT INTO demo.tasks (title, description, status, assignee_id)
+  SELECT title || ' (copy)', description, 'pending', assignee_id
+  FROM demo.tasks WHERE id = p_id
+  RETURNING id INTO v_new_id;
+
+  RETURN v_new_id;
+END;
+$$;
+
+COMMENT ON FUNCTION demo.duplicate_task (uuid) IS '{
+  "type": "action",
+  "resource": "tasks",
+  "name": "Duplicate",
+  "description": "Create a copy of this task as a new to-do",
+  "icon": "Copy",
+  "success_message": "Task duplicated"
+}';
+
+REVOKE ALL ON FUNCTION demo.duplicate_task (uuid) FROM public, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION demo.duplicate_task (uuid) TO "x-admin", "user";
+```
+
+### Conditional action, no confirmation needed
+
+```sql
+CREATE OR REPLACE FUNCTION demo.publish_portfolio_item (p_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY INVOKER
+SET search_path = '' AS $$
+BEGIN
+  UPDATE demo.portfolio_items SET is_published = true WHERE id = p_id;
+END;
+$$;
+
+COMMENT ON FUNCTION demo.publish_portfolio_item (uuid) IS '{
+  "type": "action",
+  "resource": "portfolio_items",
+  "name": "Publish",
+  "description": "Make this portfolio item visible on the public site",
+  "icon": "Globe",
+  "visible": [{"id": "is_published", "operator": "eq", "value": "false"}],
+  "success_message": "Portfolio item published"
+}';
+
+REVOKE ALL ON FUNCTION demo.publish_portfolio_item (uuid) FROM public, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION demo.publish_portfolio_item (uuid) TO "x-admin", "user";
+```
+
+Once published, the action disappears from that row — `visible` re-evaluates against the freshly refetched record.
+
+## Best Practices
+
+- **Name parameters `p_<column_name>`.** That's what Supasheet's row-to-argument matching keys off; anything else won't auto-fill from the record.
+- **Give every non-row parameter a `DEFAULT`.** There's no UI for prompting arbitrary input today, only row columns and enum pickers.
+- **Use `visible` instead of letting the function fail.** Hide actions that don't apply to the record's current state rather than surfacing a Postgres error.
+- **Reach for `confirm` on anything destructive or hard to reverse.** Pair it with `variant: "destructive"`.
+- **Keep functions `SECURITY INVOKER`.** RLS on the tables the function touches should still gate what it can actually change.
+- **Grant narrowly.** `REVOKE ALL` first, then `GRANT EXECUTE` only to the specific roles the action is meant for — the same pattern as table grants.
+
+## Next Steps
+
+- **[Metadata](/resource/metadata)** — `FieldCondition`, enum column styling, and other JSON-comment configuration
+- **[Data Types](/resource/data-types)** — Enum/domain types that power `action_type: "picker"`
+- **[Authorization](/authorization)** — How roles and grants work across Supasheet
+- **[Templates](/templates)** — Another `type`-tagged, function-driven feature, for bulk row creation instead of per-row operations
